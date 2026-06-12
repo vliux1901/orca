@@ -1,111 +1,81 @@
-# Product Requirements: Personal Vehicle Document Assistant
+# Product Requirements: Car Maintenance Document Assistant
 
 ## Context
 
-People constantly receive paper and digital documents: receipts, invoices,
-service reports, inspection reports, warranty documents, insurance policies,
-DMV notices, and emails. Over time those documents become scattered across
-mailboxes, file systems, cloud drives, apps, and physical storage.
-
-This makes it difficult to answer practical questions later:
-
-- Which documents belong to the same subject, such as one car or one house?
-- What information exists across all documents for that subject?
-- What maintenance, repairs, payments, renewals, or claims have happened over
-  time?
-- Can an answer be produced from the user's own records with enough evidence
-  to trust it?
-
-The initial product focus is vehicle ownership records, starting with car
-maintenance documents. This is a strong first use case because records are
-recurring, semi-structured, personally valuable, and often needed at decision
-time.
-
-Example user question:
-
-> The dealer says I should replace the brake fluid. Based on my records, when
-> was it replaced last, at what mileage, and is there enough evidence to decide?
-
-Tesla owners can access some maintenance records from the Tesla app, but those
-records may be PDFs or summaries that are still hard to search, aggregate, and
-reason over. The broader problem applies across many vehicle brands and service
-providers.
+Vehicle owners receive many records over the life of a car. The first version
+focuses on maintenance and repair documents, such as service invoices, repair
+orders, inspection notes, and receipts. These records are often scattered across
+email, file systems, photos, cloud storage, and paper folders.
 
 ## Product Thesis
 
-Users need a trusted personal document assistant that organizes vehicle records
-and answers questions using cited evidence from their own documents.
-
-The product should not simply store files. It should turn messy documents into
-a searchable, structured ownership history while keeping every important answer
-traceable to source documents.
+Users need a trusted assistant that organizes car maintenance documents,
+extracts key facts, and answers questions using cited evidence from the
+original records.
 
 ## Target User
 
-The first target user is a private car owner who wants a reliable history of
-maintenance and repairs across the life of a vehicle.
+The first target user is a private vehicle owner who wants a reliable
+maintenance history for one or more cars. Typical needs:
 
-Typical characteristics:
+- Keep car maintenance documents in one place.
+- Understand maintenance and repair history.
+- Get answers that cite the original source document.
+- Know when an answer is uncertain or unsupported.
 
-- Owns or leases one or more vehicles.
-- Receives service invoices, inspection reports, PDFs, photos, and emails.
-- Does not consistently organize these records manually.
-- Wants to make better maintenance decisions.
-- May need records for resale, warranty claims, insurance, or tax purposes.
+## Product Scope
 
-## Initial Use Case
+V1 supports car maintenance and repair documents only.
 
-The initial use case is car maintenance records.
+Supported v1 document categories:
 
-The product should help the user answer questions such as:
+- Maintenance and repair records.
+- Service invoices.
+- Repair orders.
+- Maintenance receipts.
+- Inspection reports that describe maintenance or repair work.
 
-- What maintenance has been done on this car?
-- When was a specific service last performed?
-- What was the mileage at the time of service?
-- Which shop performed the work?
-- How much did I spend on maintenance and repairs?
-- Which source document supports this answer?
-- Is the answer complete, uncertain, or unsupported by my records?
+Future versions may add other vehicle documents:
+
+- DMV registration.
+- Smog or emissions inspection.
+- Insurance policy and proof of insurance.
+- Title or ownership documents.
+- Warranty documents.
+- Recall notices.
+- Loan or lease documents.
 
 ## Goals
 
-- Let users add vehicle-related documents.
-- Extract important maintenance facts from those documents.
-- Group documents and extracted facts under a specific vehicle.
+- Let users create vehicle profiles.
+- Let users manually add maintenance-related PDFs and photos.
+- Extract key facts from maintenance records.
 - Provide a chronological maintenance timeline.
-- Support natural-language questions over the user's vehicle records.
-- Always cite source documents for factual answers.
-- Clearly communicate uncertainty when records are incomplete or ambiguous.
+- Support search and natural-language questions.
+- Cite source documents for factual answers.
+- Clearly communicate uncertainty.
 
 ## Non-Goals
 
-- Do not support every personal document category in v1.
-- Do not automatically ingest email in the first version.
-- Do not make unsupported recommendations without evidence.
-- Do not replace a mechanic, dealer, or manufacturer service schedule.
-- Do not guarantee that extracted data is correct without user review.
-- Do not optimize for business fleet management in the first version.
+- Do not support non-vehicle document categories in v1.
+- Do not support non-maintenance vehicle documents in v1.
+- Do not automatically ingest email in v1.
+- Do not replace a mechanic, dealer, insurer, DMV, or manufacturer.
+- Do not make unsupported recommendations.
+- Do not guarantee extracted data is correct without user review.
+- Do not optimize for business fleet management in v1.
 
 ## User Stories
 
-- As a car owner, I can create a vehicle profile so records are grouped under
-  the right car.
-- As a car owner, I can add a maintenance invoice or service report so the app
-  remembers what work was performed.
-- As a car owner, I can see a timeline of maintenance events for one vehicle.
-- As a car owner, I can ask when a specific service was last performed and get
-  an answer with citations to the original document.
-- As a car owner, I can see date, mileage, vendor, service items, and cost
-  extracted from a document.
-- As a car owner, I can correct extracted facts when the system is wrong.
-- As a car owner, I can tell when an answer is uncertain or unsupported by my
-  available records.
+- Create a vehicle profile and attach documents to the right car.
+- Add maintenance PDFs or photos so important records are stored in one place.
+- See maintenance and repair history as a timeline.
+- Ask when a service was last performed and get a cited answer.
+- Correct extracted facts when the system is wrong.
 
 ## MVP Requirements
 
 ### Vehicle Profiles
-
-The user can create and manage a vehicle profile.
 
 Required fields:
 
@@ -113,18 +83,16 @@ Required fields:
 - Make.
 - Model.
 - Year.
+- License plate.
 
 Optional fields:
 
 - VIN.
-- License plate.
 - Current mileage.
 
 ### Document Import
 
-The user can manually add documents to a vehicle.
-
-Supported v1 document inputs:
+Supported v1 inputs:
 
 - PDF files.
 - Images or photos of paper documents.
@@ -138,9 +106,8 @@ Deferred inputs:
 
 ### Document Processing
 
-For each imported document, the system should attempt to extract:
+For each imported maintenance document, the system should attempt to extract:
 
-- Document type.
 - Service date.
 - Vehicle mileage.
 - Vendor or service provider.
@@ -149,48 +116,33 @@ For each imported document, the system should attempt to extract:
 - Total cost.
 - Notes or recommendations from the provider.
 
-Each extracted field should retain a link back to the source document.
+Each extracted field should link back to the source document.
 
 ### Maintenance Timeline
 
-The user can view a chronological timeline for one vehicle.
-
-Each timeline item should show:
+Each item should show:
 
 - Date.
 - Mileage, if available.
 - Vendor, if available.
 - Summary of service performed.
 - Cost, if available.
-- Link to the source document.
+- Link to source document.
 
 ### Search And Questions
 
-The user can search and ask natural-language questions across one vehicle's
-documents.
-
-Example questions:
-
-- When was the brake fluid last replaced?
-- What repairs were done after 50,000 miles?
-- How much did I spend on tires?
-- Show me all oil changes.
-- Did any document mention a battery replacement?
-
 Answers should include:
 
-- A concise answer.
+- Concise answer.
 - Source citations.
 - Relevant dates and mileage.
-- Confidence or uncertainty notes.
-- A statement when the records do not contain enough information.
+- Uncertainty note when records are incomplete or ambiguous.
 
 ### User Correction
 
-The user can review and correct extracted facts.
+The user should be able to edit:
 
-At minimum, the user should be able to edit:
-
+- Document subtype.
 - Service date.
 - Mileage.
 - Vendor.
@@ -201,22 +153,13 @@ Corrected facts should be treated as user-verified data.
 
 ## Answer Quality Requirements
 
-Trust is the core product requirement.
-
 The product should:
 
-- Cite the source document for every factual answer.
-- Distinguish between facts found in user documents and inferred conclusions.
-- Avoid pretending the record set is complete.
-- Say when the answer is not supported by available documents.
-- Prefer a limited, well-supported answer over a broad unsupported answer.
-- Show conflicting records when two documents disagree.
-
-Example answer style:
-
-> Your records show brake fluid replacement on March 12, 2023 at 42,118 miles,
-> based on the invoice from Example Auto. I do not see a newer brake fluid
-> service in the documents currently added.
+- Cite the source document for factual answers.
+- Distinguish document facts from inferred conclusions.
+- Say when available records do not support an answer.
+- Show conflicting records when documents disagree.
+- Prefer a narrow supported answer over a broad unsupported answer.
 
 ## Data Model
 
@@ -224,106 +167,85 @@ Initial entities:
 
 - `Vehicle`: A user's car.
 - `Document`: A source file added by the user.
+- `DocumentFact`: A fact extracted from a document.
 - `MaintenanceEvent`: A dated service or repair event.
-- `ServiceItem`: A specific maintenance or repair item performed during an
-  event.
+- `ServiceItem`: A specific maintenance or repair item.
 - `OdometerReading`: Mileage associated with a document or event.
-- `Vendor`: Service provider, shop, dealer, or mechanic.
-- `Citation`: Link from an extracted fact or answer back to a source document.
+- `Vendor`: Service provider, repair shop, dealer, or mechanic.
+- `Citation`: Link from a fact or answer back to a source document.
 
 Important relationships:
 
 - A `Vehicle` has many `Document` records.
-- A `Document` may produce zero or more `MaintenanceEvent` records.
-- A `MaintenanceEvent` has one or more `ServiceItem` records.
-- A `MaintenanceEvent` may have one `OdometerReading`.
-- A factual answer should include one or more `Citation` records.
+- A `Document` may produce many `DocumentFact` records.
+- A `Document` may produce one or more `MaintenanceEvent` records.
+- A `MaintenanceEvent` may have service items, mileage, vendor, and cost.
+- A factual answer should include one or more citations.
 
 ## Success Metrics
 
-Product usage:
-
-- Number of users who create at least one vehicle profile.
-- Number of documents imported per vehicle.
-- Percentage of imported documents that produce useful extracted facts.
-- Number of timeline views per active user.
-- Number of questions asked per active user.
-
-Answer quality:
-
+- Users who create at least one vehicle profile.
+- Documents imported per vehicle.
+- Maintenance fact extraction success rate.
+- Timeline views per active user.
+- Questions asked per active user.
 - Percentage of answers with citations.
 - Percentage of answers marked uncertain or unsupported when appropriate.
 - User correction rate for extracted fields.
 - User-reported answer helpfulness.
-
-Retention and value:
-
-- Percentage of users who import more than one document.
-- Percentage of users who return after first import.
-- Percentage of users who use the product before or after a service visit.
+- Users who import more than one document.
+- Users who return after first import.
+- Users who use the product before or after a service visit.
 
 ## Key Risks
 
-- Extraction may be unreliable across varied invoice formats.
+- Document formats vary widely.
+- Extraction may be unreliable without user review.
 - Users may not trust answers without clear citations.
-- Maintenance terms can vary by vendor, such as "brake fluid flush" versus
-  "hydraulic fluid service."
-- Records may be incomplete, causing the system to miss prior service events.
-- Manufacturer service intervals may be hard to source and keep up to date.
-- Users may expect automatic email or app import earlier than the product can
-  support it.
+- Maintenance terms vary by vendor.
+- Records may be incomplete.
+- Manufacturer service intervals may be hard to source and keep current.
+- Users may expect automatic email or app import earlier than v1 supports.
 
 ## Open Questions
 
 - Should v1 be mobile-only, web-only, or both?
-- Should the first version support only manual import, or also photo capture
-  from the camera?
-- Should users be required to review extracted data before it appears in the
-  timeline?
-- Should manufacturer maintenance interval recommendations be part of v1, or
-  deferred until records extraction is reliable?
-- What level of privacy and local-device processing is required?
-- Should documents be stored in the cloud, locally on device, or both?
-- Should the product support multiple vehicles in v1?
-- What source of truth should be used for manufacturer service schedules?
+    - Answer: Mobile-only (Android first).
+- Should v1 support camera capture or only file upload?
+    - Answer: Only file upload.
+- Should users review extracted data before it appears in the timeline?
+    - Answer: Not necessary. But in the timeline it should mark it as '
+      unverified'.
+- Should manufacturer maintenance intervals be deferred until extraction is
+  reliable?
+- Should documents be stored locally, in the cloud, or both?
+    - Answer: For privacy concerns, ideally local only. But may depend on the
+      technical difficulties.
+- Should multiple vehicles be supported in v1?
+  - Answer: Yes.
+- What privacy guarantees are required?
+- Which non-maintenance vehicle documents should be prioritized after v1?
 
 ## Suggested Milestones
 
-### Milestone 1: Manual Record Organizer
-
-- Create vehicle profile.
-- Import PDF or image.
-- Store document under vehicle.
-- Display document list.
-
-### Milestone 2: Structured Maintenance Timeline
-
-- Extract service date, mileage, vendor, service items, and cost.
-- Create editable maintenance timeline.
-- Link each timeline item to source document.
-
-### Milestone 3: Cited Question Answering
-
-- Ask questions across one vehicle's records.
-- Return concise answers with citations.
-- Show uncertainty when records are incomplete.
-
-### Milestone 4: Maintenance Decision Support
-
-- Compare extracted maintenance history against known service intervals.
-- Explain whether a recommendation is supported by records.
-- Keep manufacturer interval sourcing explicit and reviewable.
+1. Maintenance document organizer: create vehicle, import file or photo, store
+   maintenance document under vehicle, and display document list.
+2. Maintenance timeline: extract service date, mileage, vendor, service items,
+   and cost; create editable timeline items linked to source documents.
+3. Cited question answering: answer questions across one vehicle's records with
+   citations and uncertainty handling.
+4. Decision support: compare maintenance history against known service
+   intervals with explicit service-interval sourcing.
 
 ## Recommendation
 
-Build the first prototype around a single high-value workflow:
+Build the first prototype around this workflow:
 
 1. Create a vehicle.
-2. Add one or more service documents.
+2. Add several maintenance documents.
 3. Extract maintenance facts.
-4. Show a timeline.
-5. Ask "when was this service last done?" and answer with citations.
+4. Show a maintenance timeline.
+5. Answer a factual question with citations.
 
-This sequence proves the hardest and most valuable product loop before adding
-broader document categories, automatic import, or service interval
-recommendations.
+This proves the core value before adding automatic import, broader document
+categories, or advanced recommendation logic.

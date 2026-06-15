@@ -63,7 +63,8 @@ Open prototype screen
   -> app shows selected image list
   -> app runs OCR for each image
   -> app displays OCR text and normalized rows
-  -> user accepts OCR results
+  -> user reviews OCR text and normalized rows
+  -> user taps Run Extraction for one image or Run Extraction For All
   -> app runs deterministic extractors
   -> app displays extracted facts and warnings
 ```
@@ -86,6 +87,7 @@ Each image result card should show:
 - Extractor elapsed time.
 - OCR full text in a selectable text area.
 - Normalized rows section for table debugging.
+- `Run Extraction` button enabled after OCR succeeds.
 - Extracted facts table.
 - Warnings/errors section.
 
@@ -129,20 +131,22 @@ Preferred API:
 
 ```kotlin
 rememberLauncherForActivityResult(
-    contract = ActivityResultContracts.PickMultipleVisualMedia(),
+    contract = ActivityResultContracts.PickMultipleVisualMedia(
+        mediaType = ActivityResultContracts.PickVisualMedia.ImageOnly
+    ),
 ) { uris: List<Uri> ->
     viewModel.onImagesSelected(uris)
 }
 ```
-
-For devices where the system photo picker is unavailable, use the AndroidX fallback behavior provided by the activity result contract.
 
 Work items:
 
 - Add required Activity Compose usage if not already present.
 - Accept multiple image URIs.
 - Create an in-memory `PrototypeImageJob` per URI.
-- Do not copy files into permanent storage for V0.1 unless needed for debugging.
+- Do not copy files into permanent storage for V0.1.
+- Treat selected URIs as session-only. If the app process is killed or the screen is recreated without retained state, the user can re-import the images.
+- Run OCR soon after selection while URI access is available.
 
 Acceptance criteria:
 
@@ -150,6 +154,7 @@ Acceptance criteria:
 - User can select multiple images.
 - Each image is processed independently.
 - Failures for one image do not block others.
+- Imported images are not persisted across app restarts.
 
 ### 3. OCR With ML Kit Text Recognition
 
@@ -211,6 +216,7 @@ Acceptance criteria:
 - Full recognized text is visible.
 - Blocks/lines are available to layout normalization.
 - OCR duration is visible.
+- Extraction does not run until the user reviews OCR output and taps `Run Extraction` or `Run Extraction For All`.
 
 ### 4. Layout Normalization For Table Debugging
 
@@ -238,10 +244,60 @@ Algorithm:
 ```text
 1. Flatten OCR blocks into lines.
 2. Sort by vertical center, then left coordinate.
-3. Group lines into same row when Y ranges overlap enough.
+3. Group lines into the same row when they are on the same visual band.
 4. Within each row, sort left to right.
 5. Join row text with visible spacing.
 ```
+
+Row grouping rule:
+
+```kotlin
+fun shouldMergeIntoSameRow(a: NormalizedLine, b: NormalizedLine): Boolean {
+    val ab = a.bounds ?: return false
+    val bb = b.bounds ?: return false
+
+    val verticalOverlap = minOf(ab.bottom, bb.bottom) - maxOf(ab.top, bb.top)
+    val minHeight = minOf(ab.height(), bb.height()).coerceAtLeast(1)
+    val overlapRatio = verticalOverlap.toFloat() / minHeight
+
+    val centerDistance = kotlin.math.abs(ab.centerY() - bb.centerY())
+    val maxCenterDistance = minHeight * 0.60f
+
+    return overlapRatio >= 0.35f || centerDistance <= maxCenterDistance
+}
+```
+
+Grouping implementation:
+
+```kotlin
+fun groupLinesIntoRows(lines: List<NormalizedLine>): List<NormalizedRow> {
+    val sorted = lines.sortedWith(
+        compareBy<NormalizedLine> { it.bounds?.centerY() ?: Int.MAX_VALUE }
+            .thenBy { it.bounds?.left ?: Int.MAX_VALUE }
+    )
+
+    val rows = mutableListOf<MutableList<NormalizedLine>>()
+    for (line in sorted) {
+        val currentRow = rows.lastOrNull()
+        if (currentRow != null && currentRow.any { shouldMergeIntoSameRow(it, line) }) {
+            currentRow.add(line)
+        } else {
+            rows.add(mutableListOf(line))
+        }
+    }
+
+    return rows.map { rowLines ->
+        val ordered = rowLines.sortedBy { it.bounds?.left ?: Int.MAX_VALUE }
+        NormalizedRow(
+            text = ordered.joinToString("  ") { it.text },
+            bounds = unionBounds(ordered.mapNotNull { it.bounds }),
+            lines = ordered,
+        )
+    }
+}
+```
+
+This should run for every image, not only detected tables. For non-table documents, most rows will contain one OCR line.
 
 Work items:
 
@@ -257,17 +313,20 @@ Acceptance criteria:
 
 ### 5. Deterministic Fact Extractors
 
-Implement the V0.1 deterministic extractors from `technical-design.md`.
+Implement a focused subset of deterministic extractors first. The goal is to quickly evaluate whether OCR output is good enough for useful maintenance extraction, not to complete every final extractor.
 
-Extractors:
+V0.1 initial extractors:
 
 - `DocumentSubtypeExtractor`
 - `ServiceDateExtractor`
 - `MileageExtractor`
-- `VendorExtractor`
 - `ServiceItemExtractor`
-- `PartFluidExtractor`
 - `TotalCostExtractor`
+
+V0.1 follow-up extractors if time allows:
+
+- `VendorExtractor`
+- `PartFluidExtractor`
 - `ProviderNoteExtractor`
 
 Candidate model:
@@ -300,9 +359,9 @@ enum class FactType {
 
 Work items:
 
-- Implement regex and vocabulary-based extractors.
+- Implement regex and vocabulary-based extractors for the initial extractor set.
 - Use normalized rows for service items, total cost, parts/fluids, and table-like data.
-- Use normalized lines for dates, mileage, vendor, and notes.
+- Use normalized lines for dates and mileage.
 - Add a simple `FactResolver` to remove duplicates and keep highest-confidence single-value facts.
 - Measure extraction elapsed time.
 
@@ -336,12 +395,13 @@ Work items:
 
 - Add `PrototypeDebugInfo` model.
 - Render debug info in each result card.
-- Optionally add `Copy Debug Report` button to copy text to clipboard.
+- Add `Copy Debug Report` button to copy image OCR, rows, extracted facts, timings, and device metadata to clipboard.
 
 Acceptance criteria:
 
 - Tester can compare results from multiple phones manually.
 - Debug output is visible without ADB/logcat.
+- Debug report can be copied from the app UI.
 
 ### 7. Manual Test Set
 

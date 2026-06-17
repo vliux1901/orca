@@ -131,12 +131,14 @@ Preferred API:
 
 ```kotlin
 rememberLauncherForActivityResult(
-    contract = ActivityResultContracts.PickMultipleVisualMedia(
-        mediaType = ActivityResultContracts.PickVisualMedia.ImageOnly
-    ),
+    contract = ActivityResultContracts.PickMultipleVisualMedia(),
 ) { uris: List<Uri> ->
     viewModel.onImagesSelected(uris)
 }
+
+photoPicker.launch(
+    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+)
 ```
 
 Work items:

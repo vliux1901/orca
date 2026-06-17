@@ -1,11 +1,10 @@
 # Project Context
 
-The `docs/` folder contains the authoritative project documentation.
+Project structure:
 
-Important documents:
-
-- `docs/prd.md`: Product requirements document. Read this before making product,
-  UX, architecture, or feature decisions.
+- The project follows the typical Android app structure created by Android Studio.
+- The `docs/` folder contains the authoritative project documentation. To find a
+specific document, read `docs/README.md`.
 
 Working rules:
 

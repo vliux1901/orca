@@ -480,6 +480,7 @@ data class PrototypeImageJob(
 enum class PrototypeStatus {
     Queued,
     OcrRunning,
+    OcrReady,
     Extracting,
     Done,
     Failed,

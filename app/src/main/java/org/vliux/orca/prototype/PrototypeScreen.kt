@@ -30,6 +30,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import java.util.UUID
 import kotlinx.coroutines.launch
+import org.vliux.orca.prototype.layout.LayoutNormalizer
 import org.vliux.orca.prototype.ocr.MlKitOcrEngine
 import org.vliux.orca.ui.theme.OrcaTheme
 
@@ -54,10 +55,12 @@ fun PrototypeScreen(
                 imageJobs.updateJob(job.id) { it.copy(status = PrototypeStatus.OcrRunning) }
                 runCatching { ocrEngine.recognize(uri) }
                     .onSuccess { result ->
+                        val normalizedRows = LayoutNormalizer.normalizeRows(result)
                         imageJobs.updateJob(job.id) {
                             it.copy(
                                 status = PrototypeStatus.OcrReady,
                                 ocrResult = result,
+                                normalizedRows = normalizedRows,
                                 errorMessage = null,
                             )
                         }
@@ -182,10 +185,24 @@ private fun SelectedImageRow(
             )
             job.ocrResult?.let { result ->
                 Text(
-                    text = "OCR: ${result.blocks.size} blocks in ${result.elapsedMs} ms",
+                    text = "OCR: ${result.blocks.size} blocks, ${job.normalizedRows.size} rows in ${result.elapsedMs} ms",
                     style = MaterialTheme.typography.bodySmall,
                 )
-                OcrTextPreview(text = result.fullText)
+                Text(
+                    text = "Full OCR Text",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                TextPreview(text = result.fullText)
+                Text(
+                    text = "Normalized Rows",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                TextPreview(
+                    text = job.normalizedRows.joinToString("\n") { row -> row.text },
+                    emptyText = "(No OCR rows recognized)",
+                )
             }
             job.errorMessage?.let { message ->
                 Text(
@@ -203,14 +220,15 @@ private fun SelectedImageRow(
 }
 
 @Composable
-private fun OcrTextPreview(
+private fun TextPreview(
     text: String,
+    emptyText: String = "(No text recognized)",
     modifier: Modifier = Modifier,
 ) {
     Card(modifier = modifier.fillMaxWidth()) {
         SelectionContainer {
             Text(
-                text = text.ifBlank { "(No text recognized)" },
+                text = text.ifBlank { emptyText },
                 modifier = Modifier.padding(12.dp),
                 style = MaterialTheme.typography.bodySmall,
             )

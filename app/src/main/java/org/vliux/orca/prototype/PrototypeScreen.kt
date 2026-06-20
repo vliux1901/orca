@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import java.util.UUID
 import kotlinx.coroutines.launch
 import org.vliux.orca.prototype.layout.LayoutNormalizer
+import org.vliux.orca.prototype.layout.MarkdownTableFormatter
 import org.vliux.orca.prototype.ocr.MlKitOcrEngine
 import org.vliux.orca.ui.theme.OrcaTheme
 
@@ -195,12 +196,12 @@ private fun SelectedImageRow(
                 )
                 TextPreview(text = result.fullText)
                 Text(
-                    text = "Normalized Rows",
+                    text = "Normalized Rows With Markdown Tables",
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
                 )
                 TextPreview(
-                    text = job.normalizedRows.joinToString("\n") { row -> row.text },
+                    text = MarkdownTableFormatter.format(job.normalizedRows),
                     emptyText = "(No OCR rows recognized)",
                 )
             }

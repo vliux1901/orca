@@ -305,13 +305,14 @@ Work items:
 
 - Implement `LayoutNormalizer`.
 - Expose normalized rows in UI.
-- Show both full OCR text and row-normalized text so table failures are obvious.
+- Show both full OCR text and row-normalized text, formatting only table-like row groups as Markdown tables so table failures are obvious and easy to copy.
 
 Acceptance criteria:
 
 - Table-like documents show row-based output.
 - Non-table receipts still show readable row output.
 - We can visually compare OCR full text vs normalized rows.
+- Table-like normalized rows are copyable as Markdown table text while non-table rows remain plain text.
 
 ### 5. Deterministic Fact Extractors
 

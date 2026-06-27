@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Database Schema Review Workspace</title>
+  <style>
+    :root {
+      --bg: #eef2ea;
+      --panel: #fcfff8;
+      --panel-strong: #edf4e7;
+      --ink: #1f2320;
+      --muted: #5c645a;
+      --line: #cfd8c8;
+      --accent: #245b66;
+      --accent-soft: #deeff2;
+      --warning: #8f4a16;
+      --highlight: #fff2a8;
+      --shadow: 0 18px 40px rgba(41, 56, 35, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(36, 91, 102, 0.10), transparent 28%),
+        linear-gradient(180deg, #f7faf4 0%, var(--bg) 100%);
+    }
+
+    .shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      gap: 24px;
+      padding: 24px;
+    }
+
+    .workspace,
+    .comment-panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+    }
+
+    .workspace { padding: 18px; }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .toolbar-left,
+    .toolbar-right {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .status {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    h1, h2, h3 { font-family: "IBM Plex Serif", Georgia, serif; margin: 0; }
+
+    button, textarea { font: inherit; }
+
+    button {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      border-radius: 12px;
+      padding: 10px 14px;
+      cursor: pointer;
+      transition: 120ms ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      border-color: var(--accent);
+    }
+
+    button.primary {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    button.ghost { background: transparent; }
+
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .tab-button[aria-selected="true"] {
+      background: var(--accent-soft);
+      color: var(--accent);
+      border-color: rgba(36, 91, 102, 0.25);
+      font-weight: 700;
+    }
+
+    .tab-panel {
+      display: none;
+      padding: 12px;
+      border-radius: 18px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.74), rgba(237,244,231,0.72));
+    }
+
+    .tab-panel.active { display: block; }
+
+    .content-card {
+      padding: 20px;
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid rgba(207, 216, 200, 0.9);
+      border-radius: 20px;
+    }
+
+    .content-card + .content-card { margin-top: 14px; }
+    .content-card h2 { font-size: 1.55rem; margin-bottom: 10px; }
+    .content-card h3 { font-size: 1.08rem; margin: 18px 0 8px; }
+    .content-card p, .content-card li { line-height: 1.65; }
+    ul { padding-left: 20px; margin: 10px 0; }
+
+    pre {
+      overflow-x: auto;
+      padding: 14px;
+      border-radius: 16px;
+      background: #f2f6ef;
+      border: 1px solid var(--line);
+      line-height: 1.5;
+    }
+
+    code { font-family: "IBM Plex Mono", "SFMono-Regular", monospace; }
+
+    .block { border-radius: 8px; }
+
+    mark.comment-highlight {
+      background: var(--highlight);
+      color: inherit;
+      border-radius: 4px;
+      padding: 0 1px;
+    }
+
+    .comment-panel {
+      position: sticky;
+      top: 24px;
+      padding: 18px;
+      align-self: start;
+    }
+
+    .comment-panel h2 { font-size: 1.4rem; margin-bottom: 8px; }
+    .comment-panel p, .comment-panel label { color: var(--muted); line-height: 1.55; }
+
+    .selection-box,
+    .comment-list,
+    .export-box {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+    }
+
+    .selection-preview,
+    .comment-quote,
+    .empty-state,
+    .export-help {
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: var(--panel-strong);
+      border: 1px solid rgba(207, 216, 200, 0.9);
+    }
+
+    .selection-preview,
+    .comment-quote {
+      color: var(--ink);
+      font-size: 14px;
+      white-space: pre-wrap;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 110px;
+      margin-top: 10px;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      resize: vertical;
+      background: #fff;
+    }
+
+    .selection-actions,
+    .export-actions,
+    .comment-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .comment-item {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #fff;
+    }
+
+    .comment-item + .comment-item { margin-top: 12px; }
+
+    .comment-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: baseline;
+      font-size: 13px;
+      margin-bottom: 10px;
+    }
+
+    .comment-meta strong { color: var(--accent); }
+    .comment-body { margin-top: 10px; white-space: pre-wrap; }
+    .comment-jump { color: var(--warning); font-size: 13px; margin-top: 8px; }
+    .small-note { font-size: 12px; color: var(--muted); margin-top: 10px; }
+
+    @media (max-width: 1080px) {
+      .shell { grid-template-columns: 1fr; }
+      .comment-panel { position: static; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <main class="main-column">
+      <section class="workspace">
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <strong>Database Schema Review Workspace</strong>
+            <span class="status" id="commentStatus">0 comments saved locally</span>
+          </div>
+          <div class="toolbar-right">
+            <button type="button" class="ghost" id="clearCommentsButton">Clear comments</button>
+          </div>
+        </div>
+
+        <div class="tabs" role="tablist" aria-label="Database schema sections">
+          <button type="button" class="tab-button" role="tab" aria-selected="true" aria-controls="tab-overview" id="tab-button-overview" data-tab="overview">Overview</button>
+          <button type="button" class="tab-button" role="tab" aria-selected="false" aria-controls="tab-storage" id="tab-button-storage" data-tab="storage">Storage</button>
+          <button type="button" class="tab-button" role="tab" aria-selected="false" aria-controls="tab-tables" id="tab-button-tables" data-tab="tables">Tables</button>
+          <button type="button" class="tab-button" role="tab" aria-selected="false" aria-controls="tab-rules" id="tab-button-rules" data-tab="rules">Rules</button>
+          <button type="button" class="tab-button" role="tab" aria-selected="false" aria-controls="tab-testing" id="tab-button-testing" data-tab="testing">Testing</button>
+        </div>
+
+        <section class="tab-panel active" id="tab-overview" role="tabpanel" aria-labelledby="tab-button-overview" data-tab-panel="overview">
+          <article class="content-card">
+            <h2>Scope</h2>
+            <p class="block" data-block-id="overview-1">This document defines the V1 local persistence schema for the Android app described in <code>docs/technical-design.html</code>. It covers Room entities, storage paths, relationships, and rules for persisting cloud-extracted maintenance data.</p>
+            <ul>
+              <li class="block" data-block-id="overview-2">Use Room as the authoritative local database.</li>
+              <li class="block" data-block-id="overview-3">Store original imported image and PDF files in app-private storage.</li>
+              <li class="block" data-block-id="overview-4">Treat one logical maintenance document as a container that may include multiple imported source files.</li>
+              <li class="block" data-block-id="overview-5">Persist raw extraction metadata needed for retries, review, citations, and audit, but not raw provider prompts or responses.</li>
+            </ul>
+          </article>
+
+          <article class="content-card">
+            <h2>Design Principles</h2>
+            <ul>
+              <li class="block" data-block-id="overview-6">Schema should preserve source provenance from logical document to specific imported file to cited page or file segment.</li>
+              <li class="block" data-block-id="overview-7">User corrections should supersede extracted values without destroying the original extraction record.</li>
+              <li class="block" data-block-id="overview-8">Status transitions should be explicit so imports, extraction runs, and user edits can recover safely after app restarts.</li>
+            </ul>
+          </article>
+        </section>
+
+        <section class="tab-panel" id="tab-storage" role="tabpanel" aria-labelledby="tab-button-storage" data-tab-panel="storage">
+          <article class="content-card">
+            <h2>File Layout</h2>
+            <p class="block" data-block-id="storage-1">The database stores metadata only. Binary source files stay in app-private storage and are referenced by stable relative paths from <code>document_sources</code>.</p>
+            <pre class="block" data-block-id="storage-2"><code>files/vehicles/{vehicleId}/documents/{documentId}/sources/source-001.{ext}
+files/vehicles/{vehicleId}/documents/{documentId}/sources/source-002.{ext}
+files/vehicles/{vehicleId}/documents/{documentId}/sources/source-003.{ext}</code></pre>
+            <ul>
+              <li class="block" data-block-id="storage-3"><code>vehicleId</code> is the owning vehicle UUID.</li>
+              <li class="block" data-block-id="storage-4"><code>documentId</code> is the logical document UUID.</li>
+              <li class="block" data-block-id="storage-5"><code>source-00N</code> preserves source ordering inside one logical document.</li>
+            </ul>
+          </article>
+
+          <article class="content-card">
+            <h2>File Metadata Rules</h2>
+            <ul>
+              <li class="block" data-block-id="storage-6">Store file size, mime type, display name, and checksum in the database for duplicate detection and troubleshooting.</li>
+              <li class="block" data-block-id="storage-7">Keep a relative file path rather than an absolute device path so backup/restore and app-private relocation remain possible.</li>
+              <li class="block" data-block-id="storage-8">Do not assume one page per file. A PDF source may contain multiple pages; an image source usually maps to one page-equivalent input.</li>
+            </ul>
+          </article>
+        </section>
+
+        <section class="tab-panel" id="tab-tables" role="tabpanel" aria-labelledby="tab-button-tables" data-tab-panel="tables">
+          <article class="content-card">
+            <h2>Table Summary</h2>
+            <ul>
+              <li class="block" data-block-id="tables-1"><code>vehicles</code>: vehicle identity and optional profile fields used to group maintenance records.</li>
+              <li class="block" data-block-id="tables-2"><code>documents</code>: one logical maintenance document and its processing lifecycle.</li>
+              <li class="block" data-block-id="tables-3"><code>document_sources</code>: one imported image or PDF file, ordered within a document.</li>
+              <li class="block" data-block-id="tables-4"><code>extraction_runs</code>: one provider/model attempt against a logical document.</li>
+              <li class="block" data-block-id="tables-5"><code>document_facts</code>: extracted or user-corrected facts with citations.</li>
+              <li class="block" data-block-id="tables-6"><code>maintenance_events</code>: normalized service events shown on the timeline.</li>
+              <li class="block" data-block-id="tables-7"><code>service_items</code>: itemized maintenance work attached to an event, with optional per-item cost.</li>
+              <li class="block" data-block-id="tables-8"><code>search_entries</code>: flattened search rows derived from facts, events, and evidence snippets.</li>
+            </ul>
+          </article>
+
+          <article class="content-card">
+            <h2>Core Room Shapes</h2>
+            <pre class="block" data-block-id="tables-9"><code>@Entity(tableName = "documents")
+data class DocumentEntity(
+    @PrimaryKey val documentId: String,
+    val vehicleId: String,
+    val title: String?,
+    val sourceCount: Int,
+    val importStatus: String,
+    val extractionStatus: String,
+    val latestRunId: String?,
+    val occurredAt: String?,
+    val createdAt: String,
+    val updatedAt: String,
+)
+
+@Entity(
+    tableName = "document_sources",
+    foreignKeys = [
+        ForeignKey(
+            entity = DocumentEntity::class,
+            parentColumns = ["documentId"],
+            childColumns = ["documentId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [Index("documentId", "sourceOrder", unique = true)]
+)
+data class DocumentSourceEntity(
+    @PrimaryKey val sourceId: String,
+    val documentId: String,
+    val sourceOrder: Int,
+    val fileName: String,
+    val mimeType: String,
+    val relativePath: String,
+    val byteSize: Long,
+    val checksumSha256: String?,
+    val pageCount: Int?,
+    val createdAt: String,
+)</code></pre>
+            <p class="block" data-block-id="tables-10"><code>sourceCount</code> on <code>documents</code> is denormalized for fast list rendering and should always match the actual number of child rows.</p>
+          </article>
+
+          <article class="content-card">
+            <h2>Extraction And Fact Tables</h2>
+            <pre class="block" data-block-id="tables-11"><code>@Entity(
+    tableName = "extraction_runs",
+    foreignKeys = [
+        ForeignKey(
+            entity = DocumentEntity::class,
+            parentColumns = ["documentId"],
+            childColumns = ["documentId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [Index("documentId"), Index("status"), Index("createdAt")]
+)
+data class ExtractionRunEntity(
+    @PrimaryKey val runId: String,
+    val documentId: String,
+    val backendType: String,
+    val providerName: String,
+    val modelName: String,
+    val promptVersion: String,
+    val status: String,
+    val errorCode: String?,
+    val startedAt: String?,
+    val completedAt: String?,
+    val createdAt: String,
+)
+
+@Entity(
+    tableName = "document_facts",
+    foreignKeys = [
+        ForeignKey(
+            entity = DocumentEntity::class,
+            parentColumns = ["documentId"],
+            childColumns = ["documentId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [Index("documentId"), Index("factType"), Index("isActive")]
+)
+data class DocumentFactEntity(
+    @PrimaryKey val factId: String,
+    val documentId: String,
+    val runId: String?,
+    val factType: String,
+    val valueText: String,
+    val normalizedValue: String?,
+    val currencyCode: String?,
+    val sourceId: String?,
+    val sourcePage: Int?,
+    val evidenceText: String?,
+    val confidence: Double?,
+    val isUserEdited: Boolean,
+    val replacesFactId: String?,
+    val isActive: Boolean,
+    val createdAt: String,
+)</code></pre>
+          </article>
+
+          <article class="content-card">
+            <h2>Timeline And Search Tables</h2>
+            <pre class="block" data-block-id="tables-12"><code>@Entity(
+    tableName = "maintenance_events",
+    foreignKeys = [
+        ForeignKey(
+            entity = DocumentEntity::class,
+            parentColumns = ["documentId"],
+            childColumns = ["documentId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [Index("vehicleId", "eventDate"), Index("documentId", unique = true)]
+)
+data class MaintenanceEventEntity(
+    @PrimaryKey val eventId: String,
+    val vehicleId: String,
+    val documentId: String,
+    val eventDate: String?,
+    val mileage: Int?,
+    val shopName: String?,
+    val totalCostMinor: Long?,
+    val currencyCode: String?,
+    val status: String,
+    val createdAt: String,
+    val updatedAt: String,
+)
+
+@Entity(
+    tableName = "service_items",
+    foreignKeys = [
+        ForeignKey(
+            entity = MaintenanceEventEntity::class,
+            parentColumns = ["eventId"],
+            childColumns = ["eventId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [Index("eventId"), Index("category")]
+)
+data class ServiceItemEntity(
+    @PrimaryKey val serviceItemId: String,
+    val eventId: String,
+    val category: String,
+    val label: String,
+    val notes: String?,
+    val costMinor: Long?,
+    val currencyCode: String?,
+    val sourceId: String?,
+    val sourcePage: Int?,
+    val createdAt: String,
+)
+
+@Entity(
+    tableName = "search_entries",
+    indices = [Index("vehicleId"), Index("documentId"), Index("entryType")]
+)
+data class SearchEntryEntity(
+    @PrimaryKey val entryId: String,
+    val vehicleId: String,
+    val documentId: String,
+    val entryType: String,
+    val title: String,
+    val body: String,
+    val sourceId: String?,
+    val sourcePage: Int?,
+    val createdAt: String,
+)</code></pre>
+          </article>
+        </section>
+
+        <section class="tab-panel" id="tab-rules" role="tabpanel" aria-labelledby="tab-button-rules" data-tab-panel="rules">
+          <article class="content-card">
+            <h2>Status And Integrity Rules</h2>
+            <ul>
+              <li class="block" data-block-id="rules-1"><code>documents.importStatus</code> should move through <code>pending</code>, <code>ready</code>, or <code>failed</code>.</li>
+              <li class="block" data-block-id="rules-2"><code>documents.extractionStatus</code> should move through <code>not_started</code>, <code>queued</code>, <code>running</code>, <code>succeeded</code>, or <code>failed</code>.</li>
+              <li class="block" data-block-id="rules-3">A successful extraction run may create facts and derived timeline rows in one transaction.</li>
+              <li class="block" data-block-id="rules-4">User edits create a new active fact and mark the replaced extracted fact inactive rather than updating history in place.</li>
+              <li class="block" data-block-id="rules-5">Deleting a document cascades to sources, extraction runs, facts, events, service items, and search entries.</li>
+            </ul>
+          </article>
+
+          <article class="content-card">
+            <h2>Indexes And Queries</h2>
+            <ul>
+              <li class="block" data-block-id="rules-6">Document list queries need indexes on <code>vehicleId</code>, <code>updatedAt</code>, and extraction status.</li>
+              <li class="block" data-block-id="rules-7">Timeline queries need an index on <code>maintenance_events(vehicleId, eventDate)</code>.</li>
+              <li class="block" data-block-id="rules-8">Source review screens need <code>document_sources(documentId, sourceOrder)</code>.</li>
+              <li class="block" data-block-id="rules-9">Fact review and replacement flows need <code>document_facts(documentId, factType, isActive)</code>.</li>
+            </ul>
+          </article>
+
+          <article class="content-card">
+            <h2>Cost Rules</h2>
+            <ul>
+              <li class="block" data-block-id="rules-9b"><code>maintenance_events.totalCostMinor</code> stores the whole-document total when available.</li>
+              <li class="block" data-block-id="rules-9c"><code>service_items.costMinor</code> stores an item-level amount when the document provides line-item pricing.</li>
+              <li class="block" data-block-id="rules-9d"><code>service_items.currencyCode</code> should usually match the parent event currency, but stays nullable so partial item pricing does not block persistence.</li>
+            </ul>
+          </article>
+
+          <article class="content-card">
+            <h2>Privacy Rules</h2>
+            <ul>
+              <li class="block" data-block-id="rules-10">Do not store raw provider prompts or raw provider responses in the database in V1.</li>
+              <li class="block" data-block-id="rules-11">Do not index filenames, VINs, license plates, or user questions into diagnostic logs.</li>
+              <li class="block" data-block-id="rules-12">If a later privacy mode adds local-model support, the schema should remain stable so backend choice changes only the extraction-run metadata, not the document model.</li>
+            </ul>
+          </article>
+        </section>
+
+        <section class="tab-panel" id="tab-testing" role="tabpanel" aria-labelledby="tab-button-testing" data-tab-panel="testing">
+          <article class="content-card">
+            <h2>DAO Boundaries</h2>
+            <ul>
+              <li class="block" data-block-id="testing-1"><code>VehicleDao</code>: vehicle list and profile updates.</li>
+              <li class="block" data-block-id="testing-2"><code>DocumentDao</code>: document list, detail aggregate queries, insert/delete, and status updates.</li>
+              <li class="block" data-block-id="testing-3"><code>ExtractionRunDao</code>: enqueue, retry, and status updates.</li>
+              <li class="block" data-block-id="testing-4"><code>FactDao</code>: active fact queries, replacement writes, and citation lookups.</li>
+              <li class="block" data-block-id="testing-5"><code>TimelineDao</code>: event and service item reads for the maintenance timeline.</li>
+            </ul>
+          </article>
+
+          <article class="content-card">
+            <h2>Migration And Test Cases</h2>
+            <ul>
+              <li class="block" data-block-id="testing-6">Add Room schema export and migration tests from version 1 onward.</li>
+              <li class="block" data-block-id="testing-7">Test multi-file imports, duplicate source ordering, cascade delete, failed extraction retries, and user fact replacement.</li>
+              <li class="block" data-block-id="testing-8">Use fixture databases for digital PDFs, scanned PDFs, receipts, rotated images, and mixed multi-file documents.</li>
+            </ul>
+          </article>
+        </section>
+      </section>
+    </main>
+
+    <aside class="side-column">
+      <section class="comment-panel">
+        <h2>Comments</h2>
+        <p>Select text inside a single paragraph, bullet, or code block, add a comment, then export your review notes as prompt-ready text.</p>
+
+        <div class="selection-box">
+          <label for="commentInput">New comment</label>
+          <div class="selection-preview" id="selectionPreview">Select text in the database schema to comment on it.</div>
+          <textarea id="commentInput" placeholder="What should change, clarify, or be discussed?"></textarea>
+          <div class="selection-actions">
+            <button type="button" class="primary" id="saveCommentButton">Save comment</button>
+            <button type="button" class="ghost" id="clearSelectionButton">Clear selection</button>
+          </div>
+          <p class="small-note">Commenting works on a single block at a time so the export stays precise.</p>
+        </div>
+
+        <div class="comment-list">
+          <h3>Saved review notes</h3>
+          <div id="commentList" class="empty-state">No comments yet.</div>
+        </div>
+
+        <div class="export-box">
+          <h3>Export</h3>
+          <div class="export-help">Export JSON if you want structured data. Export prompts if you want ready-to-paste review instructions for the next iteration.</div>
+          <div class="export-actions">
+            <button type="button" id="exportJsonButton">Export JSON</button>
+            <button type="button" id="exportPromptsButton">Export prompts</button>
+          </div>
+        </div>
+      </section>
+    </aside>
+  </div>
+
+  <script>
+    const storageKey = "orca-database-schema-review-comments";
+    const blocks = new Map();
+    const comments = [];
+    let activeSelection = null;
+
+    const tabButtons = Array.from(document.querySelectorAll(".tab-button"));
+    const tabPanels = Array.from(document.querySelectorAll(".tab-panel"));
+    const commentInput = document.getElementById("commentInput");
+    const selectionPreview = document.getElementById("selectionPreview");
+    const commentList = document.getElementById("commentList");
+    const commentStatus = document.getElementById("commentStatus");
+
+    document.querySelectorAll(".block").forEach((block) => {
+      blocks.set(block.dataset.blockId, block);
+    });
+
+    function activateTab(tabId) {
+      tabButtons.forEach((button) => {
+        const selected = button.dataset.tab === tabId;
+        button.setAttribute("aria-selected", String(selected));
+      });
+      tabPanels.forEach((panel) => {
+        panel.classList.toggle("active", panel.dataset.tabPanel === tabId);
+      });
+    }
+
+    tabButtons.forEach((button) => {
+      button.addEventListener("click", () => activateTab(button.dataset.tab));
+    });
+
+    function escapeHtml(value) {
+      return value
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    function clearDomHighlights() {
+      document.querySelectorAll("mark.comment-highlight").forEach((mark) => {
+        const parent = mark.parentNode;
+        parent.replaceChild(document.createTextNode(mark.textContent), mark);
+        parent.normalize();
+      });
+    }
+
+    function highlightRange(block, start, end) {
+      const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+      let index = 0;
+      let startNode = null;
+      let endNode = null;
+      let startOffset = 0;
+      let endOffset = 0;
+
+      while (walker.nextNode()) {
+        const node = walker.currentNode;
+        const nextIndex = index + node.textContent.length;
+
+        if (!startNode && start >= index && start <= nextIndex) {
+          startNode = node;
+          startOffset = start - index;
+        }
+
+        if (!endNode && end >= index && end <= nextIndex) {
+          endNode = node;
+          endOffset = end - index;
+        }
+
+        index = nextIndex;
+      }
+
+      if (!startNode || !endNode) return;
+
+      const range = document.createRange();
+      range.setStart(startNode, startOffset);
+      range.setEnd(endNode, endOffset);
+
+      const mark = document.createElement("mark");
+      mark.className = "comment-highlight";
+
+      try {
+        range.surroundContents(mark);
+      } catch (error) {
+        return;
+      }
+    }
+
+    function applyHighlights() {
+      clearDomHighlights();
+
+      const grouped = new Map();
+      comments.forEach((comment) => {
+        if (!grouped.has(comment.blockId)) grouped.set(comment.blockId, []);
+        grouped.get(comment.blockId).push(comment);
+      });
+
+      grouped.forEach((entries, blockId) => {
+        const block = blocks.get(blockId);
+        if (!block) return;
+        entries.slice().sort((a, b) => a.start - b.start).forEach((entry) => {
+          highlightRange(block, entry.start, entry.end);
+        });
+      });
+    }
+
+    function saveToStorage() {
+      localStorage.setItem(storageKey, JSON.stringify(comments));
+      updateStatus();
+    }
+
+    function updateStatus() {
+      const count = comments.length;
+      commentStatus.textContent = count === 1 ? "1 comment saved locally" : count + " comments saved locally";
+    }
+
+    function resetSelectionUi() {
+      activeSelection = null;
+      selectionPreview.textContent = "Select text in the database schema to comment on it.";
+      commentInput.value = "";
+      window.getSelection().removeAllRanges();
+    }
+
+    function getClosestBlock(node) {
+      if (!node) return null;
+      if (node.nodeType === Node.ELEMENT_NODE) return node.closest(".block");
+      return node.parentElement?.closest(".block") || null;
+    }
+
+    function makeCommentId() {
+      if (window.crypto && typeof window.crypto.randomUUID === "function") {
+        return window.crypto.randomUUID();
+      }
+      return "comment-" + Date.now() + "-" + Math.random().toString(16).slice(2);
+    }
+
+    function readCurrentSelection() {
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return null;
+
+      const range = selection.getRangeAt(0);
+      const startBlock = getClosestBlock(range.startContainer);
+      const endBlock = getClosestBlock(range.endContainer);
+
+      if (!startBlock || !endBlock || startBlock !== endBlock) {
+        return { error: "Select text inside a single paragraph, bullet, or code block." };
+      }
+
+      const block = startBlock;
+      const blockRange = document.createRange();
+      blockRange.selectNodeContents(block);
+      blockRange.setEnd(range.startContainer, range.startOffset);
+      const start = blockRange.toString().length;
+      const text = range.toString().trim();
+      if (!text) return null;
+
+      return {
+        blockId: block.dataset.blockId,
+        blockText: block.textContent,
+        selectedText: text,
+        start: start,
+        end: start + text.length,
+        tabId: block.closest(".tab-panel").dataset.tabPanel
+      };
+    }
+
+    function updateSelectionFromDocument() {
+      const selectionInfo = readCurrentSelection();
+      if (!selectionInfo) return;
+      if (selectionInfo.error) {
+        selectionPreview.textContent = selectionInfo.error;
+        return;
+      }
+      activeSelection = selectionInfo;
+      selectionPreview.textContent = selectionInfo.selectedText;
+    }
+
+    document.addEventListener("selectionchange", updateSelectionFromDocument);
+    document.querySelector(".workspace").addEventListener("mouseup", updateSelectionFromDocument);
+    document.querySelector(".workspace").addEventListener("keyup", updateSelectionFromDocument);
+
+    function renderComments() {
+      if (comments.length === 0) {
+        commentList.className = "empty-state";
+        commentList.textContent = "No comments yet.";
+        return;
+      }
+
+      commentList.className = "";
+      commentList.innerHTML = comments.map((comment) => {
+        const date = new Date(comment.createdAt).toLocaleString();
+        return `
+          <article class="comment-item">
+            <div class="comment-meta">
+              <strong>${escapeHtml(comment.tabLabel)}</strong>
+              <span>${escapeHtml(date)}</span>
+            </div>
+            <div class="comment-quote">${escapeHtml(comment.selectedText)}</div>
+            <div class="comment-body">${escapeHtml(comment.comment)}</div>
+            <div class="comment-jump">Block: ${escapeHtml(comment.blockId)}</div>
+            <div class="comment-actions">
+              <button type="button" data-jump-id="${escapeHtml(comment.id)}">Jump</button>
+              <button type="button" data-delete-id="${escapeHtml(comment.id)}">Delete</button>
+            </div>
+          </article>
+        `;
+      }).join("");
+
+      commentList.querySelectorAll("[data-delete-id]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const index = comments.findIndex((entry) => entry.id === button.dataset.deleteId);
+          if (index >= 0) {
+            comments.splice(index, 1);
+            saveToStorage();
+            renderComments();
+            applyHighlights();
+          }
+        });
+      });
+
+      commentList.querySelectorAll("[data-jump-id]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const comment = comments.find((entry) => entry.id === button.dataset.jumpId);
+          if (!comment) return;
+          activateTab(comment.tabId);
+          const block = blocks.get(comment.blockId);
+          if (!block) return;
+          block.scrollIntoView({ behavior: "smooth", block: "center" });
+        });
+      });
+    }
+
+    function makeFileDownload(filename, content, mimeType) {
+      const blob = new Blob([content], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function buildPromptExport() {
+      if (comments.length === 0) return "No comments saved.\n";
+      return comments.map((comment, index) => {
+        return [
+          `Prompt ${index + 1}`,
+          `Section: ${comment.tabLabel}`,
+          `Selected text: "${comment.selectedText}"`,
+          `Reviewer comment: ${comment.comment}`,
+          "Instruction: Update the database schema and related docs based on the selected text and reviewer comment. Preserve the cloud-vision-first product direction unless the comment explicitly changes it.",
+          ""
+        ].join("\n");
+      }).join("\n");
+    }
+
+    document.getElementById("saveCommentButton").addEventListener("click", () => {
+      if (!activeSelection) {
+        selectionPreview.textContent = "Select text first.";
+        return;
+      }
+
+      const commentText = commentInput.value.trim();
+      if (!commentText) {
+        commentInput.focus();
+        return;
+      }
+
+      const tabLabel = tabButtons.find((button) => button.dataset.tab === activeSelection.tabId)?.textContent || activeSelection.tabId;
+      comments.push({
+        id: makeCommentId(),
+        blockId: activeSelection.blockId,
+        blockText: activeSelection.blockText,
+        selectedText: activeSelection.selectedText,
+        start: activeSelection.start,
+        end: activeSelection.end,
+        tabId: activeSelection.tabId,
+        tabLabel,
+        comment: commentText,
+        createdAt: new Date().toISOString()
+      });
+
+      saveToStorage();
+      renderComments();
+      applyHighlights();
+      resetSelectionUi();
+    });
+
+    document.getElementById("clearSelectionButton").addEventListener("click", resetSelectionUi);
+
+    document.getElementById("clearCommentsButton").addEventListener("click", () => {
+      if (!comments.length) return;
+      comments.splice(0, comments.length);
+      localStorage.removeItem(storageKey);
+      renderComments();
+      applyHighlights();
+      resetSelectionUi();
+      updateStatus();
+    });
+
+    document.getElementById("exportJsonButton").addEventListener("click", () => {
+      makeFileDownload("database-schema-review-comments.json", JSON.stringify(comments, null, 2), "application/json");
+    });
+
+    document.getElementById("exportPromptsButton").addEventListener("click", () => {
+      makeFileDownload("database-schema-review-prompts.txt", buildPromptExport(), "text/plain");
+    });
+
+    function loadComments() {
+      const saved = localStorage.getItem(storageKey);
+      if (!saved) {
+        updateStatus();
+        renderComments();
+        return;
+      }
+
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) comments.push(...parsed);
+      } catch (error) {
+        localStorage.removeItem(storageKey);
+      }
+
+      updateStatus();
+      renderComments();
+      applyHighlights();
+    }
+
+    loadComments();
+  </script>
+</body>
+</html>

@@ -12,7 +12,7 @@ Working rules:
 - If code and docs disagree, surface the discrepancy instead of guessing.
 - Keep docs updated when product behavior or requirements change.
 - Generate new documents as HTML file(s) by default.
-- Do the following verifications every time product code change is changed:
+- Do the following verifications every time any product code is changed:
     - Run build.
     - Updated or added unit tests for the changes.
     - Run all the related tests.

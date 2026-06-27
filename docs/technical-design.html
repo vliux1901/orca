@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Technical Design Review Workspace</title>
+  <style>
+    :root {
+      --bg: #eef2ea;
+      --panel: #fcfff8;
+      --panel-strong: #edf4e7;
+      --ink: #1f2320;
+      --muted: #5c645a;
+      --line: #cfd8c8;
+      --accent: #245b66;
+      --accent-soft: #deeff2;
+      --warning: #8f4a16;
+      --highlight: #fff2a8;
+      --shadow: 0 18px 40px rgba(41, 56, 35, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(36, 91, 102, 0.10), transparent 28%),
+        linear-gradient(180deg, #f7faf4 0%, var(--bg) 100%);
+    }
+
+    .shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      gap: 24px;
+      padding: 24px;
+    }
+
+    .workspace,
+    .comment-panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+    }
+
+    .workspace { padding: 18px; }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .toolbar-left,
+    .toolbar-right {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .status {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    h1, h2, h3 { font-family: "IBM Plex Serif", Georgia, serif; margin: 0; }
+
+    button, textarea { font: inherit; }
+
+    button {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      border-radius: 12px;
+      padding: 10px 14px;
+      cursor: pointer;
+      transition: 120ms ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      border-color: var(--accent);
+    }
+
+    button.primary {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    button.ghost { background: transparent; }
+
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .tab-button[aria-selected="true"] {
+      background: var(--accent-soft);
+      color: var(--accent);
+      border-color: rgba(36, 91, 102, 0.25);
+      font-weight: 700;
+    }
+
+    .tab-panel {
+      display: none;
+      padding: 12px;
+      border-radius: 18px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.74), rgba(237,244,231,0.72));
+    }
+
+    .tab-panel.active { display: block; }
+
+    .content-card {
+      padding: 20px;
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid rgba(207, 216, 200, 0.9);
+      border-radius: 20px;
+    }
+
+    .content-card + .content-card { margin-top: 14px; }
+    .content-card h2 { font-size: 1.55rem; margin-bottom: 10px; }
+    .content-card h3 { font-size: 1.08rem; margin: 18px 0 8px; }
+    .content-card p, .content-card li { line-height: 1.65; }
+    ul { padding-left: 20px; margin: 10px 0; }
+
+    pre {
+      overflow-x: auto;
+      padding: 14px;
+      border-radius: 16px;
+      background: #f2f6ef;
+      border: 1px solid var(--line);
+      line-height: 1.5;
+    }
+
+    code { font-family: "IBM Plex Mono", "SFMono-Regular", monospace; }
+
+    .block { border-radius: 8px; }
+
+    mark.comment-highlight {
+      background: var(--highlight);
+      color: inherit;
+      border-radius: 4px;
+      padding: 0 1px;
+    }
+
+    .comment-panel {
+      position: sticky;
+      top: 24px;
+      padding: 18px;
+      align-self: start;
+    }
+
+    .comment-panel h2 { font-size: 1.4rem; margin-bottom: 8px; }
+    .comment-panel p, .comment-panel label { color: var(--muted); line-height: 1.55; }
+
+    .selection-box,
+    .comment-list,
+    .export-box {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+    }
+
+    .selection-preview,
+    .comment-quote,
+    .empty-state,
+    .export-help {
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: var(--panel-strong);
+      border: 1px solid rgba(207, 216, 200, 0.9);
+    }
+
+    .selection-preview,
+    .comment-quote {
+      color: var(--ink);
+      font-size: 14px;
+      white-space: pre-wrap;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 110px;
+      margin-top: 10px;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      resize: vertical;
+      background: #fff;
+    }
+
+    .selection-actions,
+    .export-actions,
+    .comment-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .comment-item {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #fff;
+    }
+
+    .comment-item + .comment-item { margin-top: 12px; }
+
+    .comment-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: baseline;
+      font-size: 13px;
+      margin-bottom: 10px;
+    }
+
+    .comment-meta strong { color: var(--accent); }
+    .comment-body { margin-top: 10px; white-space: pre-wrap; }
+    .comment-jump { color: var(--warning); font-size: 13px; margin-top: 8px; }
+    .small-note { font-size: 12px; color: var(--muted); margin-top: 10px; }
+
+    @media (max-width: 1080px) {
+      .shell { grid-template-columns: 1fr; }
+      .comment-panel { position: static; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <main class="main-column">
+      <section class="workspace">
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <strong>Technical Design Review Workspace</strong>
+            <span class="status" id="commentStatus">0 comments saved locally</span>
+          </div>
+          <div class="toolbar-right">
+            <button type="button" class="ghost" id="clearCommentsButton">Clear comments</button>
+          </div>
+        </div>
+
+        <div class="tabs" role="tablist" aria-label="Technical design sections">
+          <button type="button" class="tab-button" role="tab" aria-selected="true" aria-controls="tab-overview" id="tab-button-overview" data-tab="overview">Overview</button>
+          <button type="button" class="tab-button" role="tab" aria-selected="false" aria-controls="tab-architecture" id="tab-button-architecture" data-tab="architecture">Architecture</button>
+          <button type="button" class="tab-button" role="tab" aria-selected="false" aria-controls="tab-data" id="tab-button-data" data-tab="data">Data Model</button>
+          <button type="button" class="tab-button" role="tab" aria-selected="false" aria-controls="tab-extraction" id="tab-button-extraction" data-tab="extraction">Extraction</button>
+          <button type="button" class="tab-button" role="tab" aria-selected="false" aria-controls="tab-operations" id="tab-button-operations" data-tab="operations">Operations</button>
+        </div>
+
+        <section class="tab-panel active" id="tab-overview" role="tabpanel" aria-labelledby="tab-button-overview" data-tab-panel="overview">
+          <article class="content-card">
+            <h2>Purpose</h2>
+            <p class="block" data-block-id="overview-1">This document designs the V1 Android app from <code>docs/prd.html</code>: an Android app for organizing car maintenance documents, extracting key facts, showing a maintenance timeline, and answering simple factual questions from the user's records.</p>
+            <p class="block" data-block-id="overview-2">The key design change from earlier iterations is this: V1 is cloud vision AI first, V1 is not local OCR first, and local model execution is a later privacy-mode option.</p>
+            <p class="block" data-block-id="overview-3">The reason is product quality. Local OCR-first processing loses too much structure before extraction, especially for receipts, scanned invoices, tables, and messy photos.</p>
+          </article>
+
+          <article class="content-card">
+            <h2>V1 Boundaries</h2>
+            <h3>Supported</h3>
+            <ul>
+              <li class="block" data-block-id="boundary-1">Multiple vehicle profiles</li>
+              <li class="block" data-block-id="boundary-2">Manual import of PDFs and images</li>
+              <li class="block" data-block-id="boundary-3">Maintenance and repair documents only</li>
+              <li class="block" data-block-id="boundary-4">Cloud vision AI extraction from document images or PDF pages</li>
+              <li class="block" data-block-id="boundary-5">Unverified extracted facts, timeline, search, and simple factual QA</li>
+            </ul>
+            <h3>Not supported</h3>
+            <ul>
+              <li class="block" data-block-id="boundary-6">Email, cloud-drive, dealer, manufacturer, or background sync imports</li>
+              <li class="block" data-block-id="boundary-7">Non-maintenance vehicle documents</li>
+              <li class="block" data-block-id="boundary-8">Local on-device model execution in V1</li>
+              <li class="block" data-block-id="boundary-9">Local OCR-first extraction as the primary processing path</li>
+            </ul>
+          </article>
+
+          <article class="content-card">
+            <h2>Design Principles</h2>
+            <ul>
+              <li class="block" data-block-id="principle-1">Optimize for extraction quality over cheapest processing.</li>
+              <li class="block" data-block-id="principle-2">Preserve source documents locally even when cloud extraction is used.</li>
+              <li class="block" data-block-id="principle-3">Treat cloud AI as a provider behind app-owned interfaces.</li>
+              <li class="block" data-block-id="principle-4">Keep extracted facts unverified until the user confirms or corrects them.</li>
+              <li class="block" data-block-id="principle-5">Validate and normalize all AI output locally before saving.</li>
+            </ul>
+          </article>
+        </section>
+
+        <section class="tab-panel" id="tab-architecture" role="tabpanel" aria-labelledby="tab-button-architecture" data-tab-panel="architecture">
+          <article class="content-card">
+            <h2>Architecture Summary</h2>
+            <ul>
+              <li class="block" data-block-id="arch-1">UI: Compose screens for vehicles, import, documents, timeline, edit, and ask/search.</li>
+              <li class="block" data-block-id="arch-2">ViewModel: screen state and command handling.</li>
+              <li class="block" data-block-id="arch-3">Repository: local DB plus app-private file storage.</li>
+              <li class="block" data-block-id="arch-4">Processing: source-file preparation, cloud vision extraction, validation, normalization, event building, and indexing.</li>
+              <li class="block" data-block-id="arch-5">AI provider layer: request building, transport, retries, and response parsing.</li>
+            </ul>
+          </article>
+
+          <article class="content-card">
+            <h2>Primary V1 Flow</h2>
+            <pre class="block" data-block-id="arch-6"><code>User imports PDF/image
+  -&gt; app copies one or more source files to private storage
+  -&gt; document row is created with status = queued
+  -&gt; source rows are created in import order
+  -&gt; worker sends original source files to cloud vision AI
+  -&gt; AI returns strict structured JSON plus evidence snippets
+  -&gt; app validates and normalizes extracted fields locally
+  -&gt; facts and citations are persisted as extracted_unverified
+  -&gt; maintenance event is built from preferred facts
+  -&gt; search index is rebuilt
+  -&gt; timeline shows unverified extracted result
+  -&gt; user corrections create verified replacement values</code></pre>
+            <p class="block" data-block-id="arch-7">Future privacy mode keeps the same processing contract and only swaps the backend from cloud vision to local vision.</p>
+          </article>
+
+          <article class="content-card">
+            <h2>Dependencies</h2>
+            <ul>
+              <li class="block" data-block-id="arch-8">Use WorkManager for background processing.</li>
+              <li class="block" data-block-id="arch-9">Use Room for persistence.</li>
+              <li class="block" data-block-id="arch-10">Use Kotlin serialization for strict JSON parsing.</li>
+              <li class="block" data-block-id="arch-11">Use OkHttp or equivalent for provider transport.</li>
+              <li class="block" data-block-id="arch-12">Keep V1 simple: send original source files directly and defer local PDF rasterization unless later testing justifies it.</li>
+            </ul>
+          </article>
+        </section>
+
+        <section class="tab-panel" id="tab-data" role="tabpanel" aria-labelledby="tab-button-data" data-tab-panel="data">
+          <article class="content-card">
+            <h2>Storage Model</h2>
+            <p class="block" data-block-id="data-1">Use local app-private storage for source documents. Source documents stay local even when original image and PDF files are sent to a cloud AI provider for extraction.</p>
+            <pre class="block" data-block-id="data-2"><code>files/documents/{vehicleId}/{documentId}/sources/source-001.{ext}
+files/documents/{vehicleId}/{documentId}/sources/source-002.{ext}
+files/documents/{vehicleId}/{documentId}/sources/source-003.{ext}</code></pre>
+            <p class="block" data-block-id="data-2b">One logical document may contain multiple imported image and PDF files. Those source files are stored separately under <code>sources/</code> in document order.</p>
+            <p class="block" data-block-id="data-2c">In V1, the app sends original source files to the provider directly instead of generating local page-image artifacts first.</p>
+          </article>
+
+          <article class="content-card">
+            <h2>Core Tables</h2>
+            <ul>
+              <li class="block" data-block-id="data-3"><code>documents</code>: one logical maintenance document, processing mode, and status.</li>
+              <li class="block" data-block-id="data-4"><code>document_sources</code>: one imported file per row, with stable ordering inside the logical document.</li>
+              <li class="block" data-block-id="data-5"><code>extraction_runs</code>: backend, model, prompt version, status, and retry history.</li>
+              <li class="block" data-block-id="data-6"><code>document_facts</code>: extracted or corrected facts with citations and evidence snippets.</li>
+              <li class="block" data-block-id="data-7"><code>maintenance_events</code> and <code>service_items</code>: timeline model.</li>
+              <li class="block" data-block-id="data-8"><code>search_entries</code>: derived search rows from facts, events, and evidence.</li>
+            </ul>
+          </article>
+
+          <article class="content-card">
+            <h2>Data Rules</h2>
+            <ul>
+              <li class="block" data-block-id="data-9">Do not overwrite wrong extraction values. User edits create replacement facts.</li>
+              <li class="block" data-block-id="data-10">Keep page number and evidence text with extracted facts for citation and review.</li>
+              <li class="block" data-block-id="data-11">Do not log raw prompts, responses, VIN, license plate, filenames, service notes, or user questions.</li>
+            </ul>
+          </article>
+        </section>
+
+        <section class="tab-panel" id="tab-extraction" role="tabpanel" aria-labelledby="tab-button-extraction" data-tab-panel="extraction">
+          <article class="content-card">
+            <h2>Source-File Handling</h2>
+            <ul>
+              <li class="block" data-block-id="extract-1">Images: keep the original imported image file and send it directly to the provider.</li>
+              <li class="block" data-block-id="extract-2">PDFs: keep the original imported PDF file and send it directly to the provider.</li>
+              <li class="block" data-block-id="extract-3">This is the V1 choice because it is the simplest path and avoids premature tuning of local PDF rasterization parameters.</li>
+              <li class="block" data-block-id="extract-3b">Local PDF rasterization can be added later if testing shows a clear quality benefit.</li>
+            </ul>
+          </article>
+
+          <article class="content-card">
+            <h2>Provider Boundary</h2>
+            <pre class="block" data-block-id="extract-4"><code>interface MaintenanceExtractionEngine {
+    suspend fun extract(
+        document: DocumentEntity,
+        sources: List&lt;DocumentSourceEntity&gt;,
+    ): ExtractionResult
+}</code></pre>
+            <p class="block" data-block-id="extract-5">The rest of the app should not care whether extraction came from a cloud provider or a future local vision model.</p>
+          </article>
+
+          <article class="content-card">
+            <h2>Prompt And Response Contract</h2>
+            <ul>
+              <li class="block" data-block-id="extract-6">Prompt the model to mentally rotate the input upright before extraction when needed.</li>
+              <li class="block" data-block-id="extract-7">Prompt the model to preserve structural meaning, reconstruct tables conservatively, and return strict JSON only.</li>
+              <li class="block" data-block-id="extract-8">Require source-file reference, page number, and short evidence snippets for each extracted field.</li>
+              <li class="block" data-block-id="extract-9">Reject malformed JSON and locally validate dates, mileage, costs, and categories before persistence.</li>
+            </ul>
+          </article>
+
+          <article class="content-card">
+            <h2>Validation And Timeline</h2>
+            <ul>
+              <li class="block" data-block-id="extract-10">Reject malformed JSON and impossible values.</li>
+              <li class="block" data-block-id="extract-11">Normalize currency, dates, and categories locally.</li>
+              <li class="block" data-block-id="extract-12">Build one maintenance event per document in most V1 cases.</li>
+              <li class="block" data-block-id="extract-13">Keep all extracted facts and timeline values marked unverified until corrected or confirmed.</li>
+            </ul>
+          </article>
+        </section>
+
+        <section class="tab-panel" id="tab-operations" role="tabpanel" aria-labelledby="tab-button-operations" data-tab-panel="operations">
+          <article class="content-card">
+            <h2>UI And Error Handling</h2>
+            <ul>
+              <li class="block" data-block-id="ops-1">Show processing status per document.</li>
+              <li class="block" data-block-id="ops-2">Show source-file list, extracted facts, and unverified markers.</li>
+              <li class="block" data-block-id="ops-3">Disclose when cloud AI was used to process a document.</li>
+              <li class="block" data-block-id="ops-4">Fail safely on provider errors, malformed responses, render failures, and unsupported file types.</li>
+            </ul>
+          </article>
+
+          <article class="content-card">
+            <h2>Testing And Milestones</h2>
+            <ul>
+              <li class="block" data-block-id="ops-5">Test normalization, malformed JSON rejection, conflicting values, event building, and deterministic QA.</li>
+              <li class="block" data-block-id="ops-6">Use fixture tests for digital invoices, scanned invoices, receipts, rotated images, and multi-file logical documents.</li>
+              <li class="block" data-block-id="ops-7">Milestone 2 centers on cloud vision extraction and timeline creation.</li>
+              <li class="block" data-block-id="ops-8">Milestone 4 introduces privacy mode with a local backend behind the same interface.</li>
+            </ul>
+          </article>
+
+          <article class="content-card">
+            <h2>Risks And Open Decisions</h2>
+            <ul>
+              <li class="block" data-block-id="ops-9">Cloud AI raises privacy, cost, and latency concerns.</li>
+              <li class="block" data-block-id="ops-10">AI may still misread values, so local validation and user correction stay mandatory.</li>
+              <li class="block" data-block-id="ops-11">Open decisions include provider/model choice, page resizing policy, selected-pages versus all-pages sending, encryption needs, and backup behavior.</li>
+            </ul>
+          </article>
+        </section>
+      </section>
+    </main>
+
+    <aside class="side-column">
+      <section class="comment-panel">
+        <h2>Comments</h2>
+        <p>Select text inside a single paragraph, bullet, or code block, add a comment, then export your review notes as prompt-ready text.</p>
+
+        <div class="selection-box">
+          <label for="commentInput">New comment</label>
+          <div class="selection-preview" id="selectionPreview">Select text in the technical design to comment on it.</div>
+          <textarea id="commentInput" placeholder="What should change, clarify, or be discussed?"></textarea>
+          <div class="selection-actions">
+            <button type="button" class="primary" id="saveCommentButton">Save comment</button>
+            <button type="button" class="ghost" id="clearSelectionButton">Clear selection</button>
+          </div>
+          <p class="small-note">Commenting works on a single block at a time so the export stays precise.</p>
+        </div>
+
+        <div class="comment-list">
+          <h3>Saved review notes</h3>
+          <div id="commentList" class="empty-state">No comments yet.</div>
+        </div>
+
+        <div class="export-box">
+          <h3>Export</h3>
+          <div class="export-help">Export JSON if you want structured data. Export prompts if you want ready-to-paste review instructions for the next iteration.</div>
+          <div class="export-actions">
+            <button type="button" id="exportJsonButton">Export JSON</button>
+            <button type="button" id="exportPromptsButton">Export prompts</button>
+          </div>
+        </div>
+      </section>
+    </aside>
+  </div>
+
+  <script>
+    const storageKey = "orca-technical-design-review-comments";
+    const blocks = new Map();
+    const comments = [];
+    let activeSelection = null;
+
+    const tabButtons = Array.from(document.querySelectorAll(".tab-button"));
+    const tabPanels = Array.from(document.querySelectorAll(".tab-panel"));
+    const commentInput = document.getElementById("commentInput");
+    const selectionPreview = document.getElementById("selectionPreview");
+    const commentList = document.getElementById("commentList");
+    const commentStatus = document.getElementById("commentStatus");
+
+    document.querySelectorAll(".block").forEach((block) => {
+      blocks.set(block.dataset.blockId, block);
+    });
+
+    function activateTab(tabId) {
+      tabButtons.forEach((button) => {
+        const selected = button.dataset.tab === tabId;
+        button.setAttribute("aria-selected", String(selected));
+      });
+      tabPanels.forEach((panel) => {
+        panel.classList.toggle("active", panel.dataset.tabPanel === tabId);
+      });
+    }
+
+    tabButtons.forEach((button) => {
+      button.addEventListener("click", () => activateTab(button.dataset.tab));
+    });
+
+    function escapeHtml(value) {
+      return value
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    function clearDomHighlights() {
+      document.querySelectorAll("mark.comment-highlight").forEach((mark) => {
+        const parent = mark.parentNode;
+        parent.replaceChild(document.createTextNode(mark.textContent), mark);
+        parent.normalize();
+      });
+    }
+
+    function highlightRange(block, start, end) {
+      const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+      let index = 0;
+      let startNode = null;
+      let endNode = null;
+      let startOffset = 0;
+      let endOffset = 0;
+
+      while (walker.nextNode()) {
+        const node = walker.currentNode;
+        const nextIndex = index + node.textContent.length;
+
+        if (!startNode && start >= index && start <= nextIndex) {
+          startNode = node;
+          startOffset = start - index;
+        }
+
+        if (!endNode && end >= index && end <= nextIndex) {
+          endNode = node;
+          endOffset = end - index;
+        }
+
+        index = nextIndex;
+      }
+
+      if (!startNode || !endNode) return;
+
+      const range = document.createRange();
+      range.setStart(startNode, startOffset);
+      range.setEnd(endNode, endOffset);
+
+      const mark = document.createElement("mark");
+      mark.className = "comment-highlight";
+
+      try {
+        range.surroundContents(mark);
+      } catch (error) {
+        return;
+      }
+    }
+
+    function applyHighlights() {
+      clearDomHighlights();
+
+      const grouped = new Map();
+      comments.forEach((comment) => {
+        if (!grouped.has(comment.blockId)) grouped.set(comment.blockId, []);
+        grouped.get(comment.blockId).push(comment);
+      });
+
+      grouped.forEach((entries, blockId) => {
+        const block = blocks.get(blockId);
+        if (!block) return;
+        entries.slice().sort((a, b) => a.start - b.start).forEach((entry) => {
+          highlightRange(block, entry.start, entry.end);
+        });
+      });
+    }
+
+    function saveToStorage() {
+      localStorage.setItem(storageKey, JSON.stringify(comments));
+      updateStatus();
+    }
+
+    function updateStatus() {
+      const count = comments.length;
+      commentStatus.textContent = count === 1 ? "1 comment saved locally" : count + " comments saved locally";
+    }
+
+    function resetSelectionUi() {
+      activeSelection = null;
+      selectionPreview.textContent = "Select text in the technical design to comment on it.";
+      commentInput.value = "";
+      window.getSelection().removeAllRanges();
+    }
+
+    function getClosestBlock(node) {
+      if (!node) return null;
+      if (node.nodeType === Node.ELEMENT_NODE) return node.closest(".block");
+      return node.parentElement?.closest(".block") || null;
+    }
+
+    function makeCommentId() {
+      if (window.crypto && typeof window.crypto.randomUUID === "function") {
+        return window.crypto.randomUUID();
+      }
+      return "comment-" + Date.now() + "-" + Math.random().toString(16).slice(2);
+    }
+
+    function readCurrentSelection() {
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return null;
+
+      const range = selection.getRangeAt(0);
+      const startBlock = getClosestBlock(range.startContainer);
+      const endBlock = getClosestBlock(range.endContainer);
+
+      if (!startBlock || !endBlock || startBlock !== endBlock) {
+        return { error: "Select text inside a single paragraph, bullet, or code block." };
+      }
+
+      const block = startBlock;
+      const blockRange = document.createRange();
+      blockRange.selectNodeContents(block);
+      blockRange.setEnd(range.startContainer, range.startOffset);
+      const start = blockRange.toString().length;
+      const text = range.toString().trim();
+      if (!text) return null;
+
+      return {
+        blockId: block.dataset.blockId,
+        blockText: block.textContent,
+        selectedText: text,
+        start: start,
+        end: start + text.length,
+        tabId: block.closest(".tab-panel").dataset.tabPanel
+      };
+    }
+
+    function updateSelectionFromDocument() {
+      const selectionInfo = readCurrentSelection();
+      if (!selectionInfo) return;
+      if (selectionInfo.error) {
+        selectionPreview.textContent = selectionInfo.error;
+        return;
+      }
+      activeSelection = selectionInfo;
+      selectionPreview.textContent = selectionInfo.selectedText;
+    }
+
+    document.addEventListener("selectionchange", updateSelectionFromDocument);
+    document.querySelector(".workspace").addEventListener("mouseup", updateSelectionFromDocument);
+    document.querySelector(".workspace").addEventListener("keyup", updateSelectionFromDocument);
+
+    function renderComments() {
+      if (comments.length === 0) {
+        commentList.className = "empty-state";
+        commentList.textContent = "No comments yet.";
+        return;
+      }
+
+      commentList.className = "";
+      commentList.innerHTML = comments.map((comment) => {
+        const date = new Date(comment.createdAt).toLocaleString();
+        return `
+          <article class="comment-item">
+            <div class="comment-meta">
+              <strong>${escapeHtml(comment.tabLabel)}</strong>
+              <span>${escapeHtml(date)}</span>
+            </div>
+            <div class="comment-quote">${escapeHtml(comment.selectedText)}</div>
+            <div class="comment-body">${escapeHtml(comment.comment)}</div>
+            <div class="comment-jump">Block: ${escapeHtml(comment.blockId)}</div>
+            <div class="comment-actions">
+              <button type="button" data-jump-id="${escapeHtml(comment.id)}">Jump</button>
+              <button type="button" data-delete-id="${escapeHtml(comment.id)}">Delete</button>
+            </div>
+          </article>
+        `;
+      }).join("");
+
+      commentList.querySelectorAll("[data-delete-id]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const index = comments.findIndex((entry) => entry.id === button.dataset.deleteId);
+          if (index >= 0) {
+            comments.splice(index, 1);
+            saveToStorage();
+            renderComments();
+            applyHighlights();
+          }
+        });
+      });
+
+      commentList.querySelectorAll("[data-jump-id]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const comment = comments.find((entry) => entry.id === button.dataset.jumpId);
+          if (!comment) return;
+          activateTab(comment.tabId);
+          const block = blocks.get(comment.blockId);
+          if (!block) return;
+          block.scrollIntoView({ behavior: "smooth", block: "center" });
+        });
+      });
+    }
+
+    function makeFileDownload(filename, content, mimeType) {
+      const blob = new Blob([content], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function buildPromptExport() {
+      if (comments.length === 0) return "No comments saved.\n";
+      return comments.map((comment, index) => {
+        return [
+          `Prompt ${index + 1}`,
+          `Section: ${comment.tabLabel}`,
+          `Selected text: "${comment.selectedText}"`,
+          `Reviewer comment: ${comment.comment}`,
+          "Instruction: Update the technical design and related docs based on the selected text and reviewer comment. Preserve the cloud-vision-first product direction unless the comment explicitly changes it.",
+          ""
+        ].join("\n");
+      }).join("\n");
+    }
+
+    document.getElementById("saveCommentButton").addEventListener("click", () => {
+      if (!activeSelection) {
+        selectionPreview.textContent = "Select text first.";
+        return;
+      }
+
+      const commentText = commentInput.value.trim();
+      if (!commentText) {
+        commentInput.focus();
+        return;
+      }
+
+      const tabLabel = tabButtons.find((button) => button.dataset.tab === activeSelection.tabId)?.textContent || activeSelection.tabId;
+      comments.push({
+        id: makeCommentId(),
+        blockId: activeSelection.blockId,
+        blockText: activeSelection.blockText,
+        selectedText: activeSelection.selectedText,
+        start: activeSelection.start,
+        end: activeSelection.end,
+        tabId: activeSelection.tabId,
+        tabLabel,
+        comment: commentText,
+        createdAt: new Date().toISOString()
+      });
+
+      saveToStorage();
+      renderComments();
+      applyHighlights();
+      resetSelectionUi();
+    });
+
+    document.getElementById("clearSelectionButton").addEventListener("click", resetSelectionUi);
+
+    document.getElementById("clearCommentsButton").addEventListener("click", () => {
+      if (!comments.length) return;
+      comments.splice(0, comments.length);
+      localStorage.removeItem(storageKey);
+      renderComments();
+      applyHighlights();
+      resetSelectionUi();
+      updateStatus();
+    });
+
+    document.getElementById("exportJsonButton").addEventListener("click", () => {
+      makeFileDownload("technical-design-review-comments.json", JSON.stringify(comments, null, 2), "application/json");
+    });
+
+    document.getElementById("exportPromptsButton").addEventListener("click", () => {
+      makeFileDownload("technical-design-review-prompts.txt", buildPromptExport(), "text/plain");
+    });
+
+    function loadComments() {
+      const saved = localStorage.getItem(storageKey);
+      if (!saved) {
+        updateStatus();
+        renderComments();
+        return;
+      }
+
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) comments.push(...parsed);
+      } catch (error) {
+        localStorage.removeItem(storageKey);
+      }
+
+      updateStatus();
+      renderComments();
+      applyHighlights();
+    }
+
+    loadComments();
+  </script>
+</body>
+</html>

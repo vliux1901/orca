@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{DOCUMENT_TITLE}}</title>
+  <style>
+    :root {
+      --bg: #f4f1e8;
+      --panel: #fffaf0;
+      --panel-soft: #f6efde;
+      --ink: #1f2320;
+      --muted: #5f655f;
+      --line: #d9cfbc;
+      --accent: #1d5d52;
+      --highlight: #fff2a8;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: linear-gradient(180deg, #f9f5eb 0%, var(--bg) 100%);
+    }
+
+    .shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 340px;
+      gap: 24px;
+      padding: 24px;
+    }
+
+    .workspace,
+    .sidebar {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 18px;
+    }
+
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      padding-bottom: 14px;
+      margin-bottom: 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    button,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 14px;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .tab-button[aria-selected="true"] {
+      background: #dceee7;
+      color: var(--accent);
+      border-color: rgba(29, 93, 82, 0.25);
+      font-weight: 700;
+    }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    .card {
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 18px;
+    }
+
+    .card + .card { margin-top: 14px; }
+
+    .block { line-height: 1.65; }
+
+    mark.comment-highlight {
+      background: var(--highlight);
+      color: inherit;
+      border-radius: 4px;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 24px;
+      align-self: start;
+    }
+
+    .selection-preview,
+    .comment-item {
+      background: var(--panel-soft);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px 14px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 110px;
+      margin-top: 10px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px 14px;
+      resize: vertical;
+    }
+
+    @media (max-width: 1080px) {
+      .shell { grid-template-columns: 1fr; }
+      .sidebar { position: static; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <main class="workspace">
+      <div class="toolbar">
+        <strong>{{WORKSPACE_TITLE}}</strong>
+        <span id="commentStatus">0 comments saved locally</span>
+      </div>
+
+      <div class="tabs" role="tablist" aria-label="{{TABSET_LABEL}}">
+        {{TAB_BUTTONS}}
+      </div>
+
+      <nav aria-label="Related pages">
+        {{SUBPAGE_LINKS}}
+      </nav>
+
+      {{TAB_PANELS}}
+    </main>
+
+    <aside class="sidebar">
+      <h2>Comments</h2>
+      <div class="selection-preview" id="selectionPreview">Select text to comment on it.</div>
+      <textarea id="commentInput" placeholder="Add comment"></textarea>
+      <p>Save comments as JSON and prompt-ready text.</p>
+      <div id="commentList"></div>
+    </aside>
+  </div>
+</body>
+</html>

@@ -1,0 +1,4 @@
+interface:
+  display_name: "HTML Document Generation"
+  short_description: "Readable HTML docs with required review comments."
+  default_prompt: "Use $html-document-generation to convert an existing document or create a new one as reviewer-friendly HTML page(s) with tabs or sub-pages, plus built-in text-selection comments and export."

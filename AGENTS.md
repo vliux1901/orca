@@ -11,6 +11,7 @@ Working rules:
 - Before implementing or changing behavior, check relevant files in `docs/`.
 - If code and docs disagree, surface the discrepancy instead of guessing.
 - Keep docs updated when product behavior or requirements change.
+- Generate new documents as HTML file(s) by default.
 - Do the following verifications every time product code change is changed:
     - Run build.
     - Updated or added unit tests for the changes.

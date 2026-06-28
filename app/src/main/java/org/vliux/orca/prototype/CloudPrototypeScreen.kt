@@ -41,6 +41,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import org.vliux.orca.OrcaApplication
+import org.vliux.orca.prototype.cloudflow.PrototypeLog
 import org.vliux.orca.prototype.cloudflow.data.DocumentDetail
 import org.vliux.orca.prototype.cloudflow.importing.SourceImportRequest
 import org.vliux.orca.prototype.cloudflow.worker.PrototypeExtractionWorker
@@ -231,11 +232,15 @@ class CloudPrototypeViewModel(
                     )
                 }
                 val documentId = repository.importDocument(PROTOTYPE_VEHICLE_ID, requests)
+                PrototypeLog.info(
+                    "Imported ${uris.size} source file(s) for document=${documentId.takeLast(8)}; enqueueing extraction worker.",
+                )
                 selectedDocumentId.value = documentId
                 repository.markDocumentQueued(documentId)
                 workManager.enqueue(PrototypeExtractionWorker.buildRequest(documentId))
                 _statusMessage.value = "Imported ${uris.size} file(s). Extraction queued."
             }.onFailure { error ->
+                PrototypeLog.error("Import failed before worker enqueue.", error)
                 _statusMessage.value = "Import failed: ${error.message ?: error::class.java.simpleName}"
             }
         }

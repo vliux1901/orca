@@ -3,6 +3,7 @@ package org.vliux.orca.prototype.cloudflow.extraction
 import java.io.File
 import java.io.IOException
 import java.util.Base64
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -19,10 +20,16 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.vliux.orca.prototype.cloudflow.PrototypeLog
 
 class OpenAiCloudExtractionAdapter(
     private val config: CloudExtractionConfig,
-    private val client: OkHttpClient = OkHttpClient(),
+    private val client: OkHttpClient = OkHttpClient.Builder()
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .writeTimeout(120, TimeUnit.SECONDS)
+        .readTimeout(120, TimeUnit.SECONDS)
+        .callTimeout(180, TimeUnit.SECONDS)
+        .build(),
     private val json: Json = Json {
         explicitNulls = false
         ignoreUnknownKeys = true
@@ -35,6 +42,9 @@ class OpenAiCloudExtractionAdapter(
             }
 
             val body = buildRequestBody(request)
+            PrototypeLog.info(
+                "OpenAI request prepared for document=${request.document.documentId.takeLast(8)} model=${config.modelName} sources=${request.sources.size} bytes=${request.sources.sumOf { it.file.length() }}.",
+            )
 
             val httpRequest = Request.Builder()
                 .url(config.responsesUrl)
@@ -45,12 +55,18 @@ class OpenAiCloudExtractionAdapter(
 
             client.newCall(httpRequest).execute().use { response ->
                 val responseBody = response.body?.string().orEmpty()
+                PrototypeLog.info(
+                    "OpenAI HTTP response for document=${request.document.documentId.takeLast(8)} code=${response.code} bodyLength=${responseBody.length}.",
+                )
                 if (!response.isSuccessful) {
                     throw IOException("OpenAI extraction failed with HTTP ${response.code}: $responseBody")
                 }
 
                 val outputText = extractOutputText(responseBody)
                     ?: throw IOException("OpenAI response did not contain output_text.")
+                PrototypeLog.info(
+                    "OpenAI output_text extracted for document=${request.document.documentId.takeLast(8)} length=${outputText.length}.",
+                )
 
                 ProviderExtractionPayload(
                     backendType = "CLOUD_VISION",

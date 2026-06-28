@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import org.vliux.orca.prototype.cloudflow.PrototypeLog
 import org.vliux.orca.prototype.cloudflow.importing.AppFileStorage
 import org.vliux.orca.prototype.cloudflow.importing.DocumentImportPlanner
 import org.vliux.orca.prototype.cloudflow.importing.SourceImportPlanInput
@@ -58,6 +59,10 @@ class PrototypeDocumentRepository(
                 updatedAt = plan.document.updatedAt,
             )
         }
+
+        PrototypeLog.info(
+            "Stored document=${plan.document.documentId.takeLast(8)} locally with ${storedSources.size} source file(s).",
+        )
 
         return plan.document.documentId
     }
@@ -115,6 +120,7 @@ class PrototypeDocumentRepository(
             occurredAt = document.occurredAt,
             updatedAt = now,
         )
+        PrototypeLog.info("Marked document=${documentId.takeLast(8)} extraction as QUEUED.")
     }
 
     suspend fun createQueuedRun(
@@ -151,6 +157,9 @@ class PrototypeDocumentRepository(
                 updatedAt = now,
             )
         }
+        PrototypeLog.info(
+            "Created extraction run=${run.runId.takeLast(8)} for document=${documentId.takeLast(8)} model=$modelName.",
+        )
         return run
     }
 
@@ -176,6 +185,7 @@ class PrototypeDocumentRepository(
                 updatedAt = now,
             )
         }
+        PrototypeLog.info("Marked extraction run=${runId.takeLast(8)} as RUNNING.")
     }
 
     suspend fun markRunFailed(
@@ -203,6 +213,9 @@ class PrototypeDocumentRepository(
                 updatedAt = now,
             )
         }
+        PrototypeLog.error(
+            "Marked extraction run=${runId.takeLast(8)} as FAILED with errorCode=$errorCode.",
+        )
     }
 
     suspend fun finishRun(
@@ -269,6 +282,9 @@ class PrototypeDocumentRepository(
                 updatedAt = now,
             )
         }
+        PrototypeLog.info(
+            "Applied extraction result for document=${documentId.takeLast(8)} with ${result.facts.size} fact(s) and ${result.serviceItems.size} service item(s).",
+        )
     }
 }
 

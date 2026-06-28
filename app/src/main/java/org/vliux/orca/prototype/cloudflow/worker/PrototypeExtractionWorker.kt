@@ -6,6 +6,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import org.vliux.orca.OrcaApplication
+import org.vliux.orca.prototype.cloudflow.PrototypeLog
 import org.vliux.orca.prototype.cloudflow.extraction.ExtractionRequest
 import org.vliux.orca.prototype.cloudflow.extraction.SourcePayload
 
@@ -17,6 +18,7 @@ class PrototypeExtractionWorker(
 
     override suspend fun doWork(): Result {
         val documentId = inputData.getString(KEY_DOCUMENT_ID) ?: return Result.failure()
+        PrototypeLog.info("Worker started for document=${documentId.takeLast(8)}.")
         val bundle = graph.repository.getDocumentBundle(documentId) ?: return Result.failure()
         val run = graph.repository.createQueuedRun(
             documentId = documentId,
@@ -36,7 +38,13 @@ class PrototypeExtractionWorker(
                 },
                 promptVersion = PROMPT_VERSION,
             )
+            PrototypeLog.info(
+                "Sending ${request.sources.size} source file(s) to OpenAI for document=${documentId.takeLast(8)}.",
+            )
             val parsed = graph.extractionEngine.extract(request)
+            PrototypeLog.info(
+                "Received structured extraction payload for document=${documentId.takeLast(8)} with ${parsed.response.facts.size} fact(s).",
+            )
             val normalized = graph.extractionNormalizer.normalize(
                 documentId = bundle.document.documentId,
                 vehicleId = bundle.document.vehicleId,
@@ -49,8 +57,13 @@ class PrototypeExtractionWorker(
                 runId = run.runId,
                 result = normalized,
             )
+            PrototypeLog.info("Worker finished successfully for document=${documentId.takeLast(8)}.")
             Result.success()
         }.getOrElse { error ->
+            PrototypeLog.error(
+                "Worker failed for document=${documentId.takeLast(8)} with ${error::class.java.simpleName}: ${error.message}",
+                error,
+            )
             graph.repository.markRunFailed(
                 runId = run.runId,
                 errorCode = error::class.java.simpleName,

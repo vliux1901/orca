@@ -17,6 +17,9 @@ val localProperties = Properties().apply {
 
 fun localProperty(name: String): String? = localProperties.getProperty(name)?.takeIf { it.isNotBlank() }
 
+fun firstConfiguredValue(vararg values: String?): String =
+    values.firstOrNull { !it.isNullOrBlank() } ?: ""
+
 fun ApplicationExtension.stringBuildConfigField(name: String, value: String) {
     defaultConfig {
         buildConfigField("String", name, "\"${value.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
@@ -60,24 +63,29 @@ android {
 
 android.stringBuildConfigField(
     name = "CLOUD_EXTRACTION_API_KEY",
-    value = providers.gradleProperty("orcaCloudExtractionApiKey")
-        .orElse(localProperty("orca.cloudExtractionApiKey") ?: "")
-        .orElse(System.getenv("ORCA_CLOUD_EXTRACTION_API_KEY") ?: "")
-        .get(),
+    value = firstConfiguredValue(
+        providers.gradleProperty("orcaCloudExtractionApiKey").orNull,
+        localProperty("orca.cloudExtractionApiKey"),
+        System.getenv("ORCA_CLOUD_EXTRACTION_API_KEY"),
+    ),
 )
 android.stringBuildConfigField(
     name = "OPENAI_RESPONSES_URL",
-    value = providers.gradleProperty("orcaOpenAiResponsesUrl")
-        .orElse(localProperty("orca.openAiResponsesUrl") ?: "")
-        .orElse(System.getenv("ORCA_OPENAI_RESPONSES_URL") ?: "https://api.openai.com/v1/responses")
-        .get(),
+    value = firstConfiguredValue(
+        providers.gradleProperty("orcaOpenAiResponsesUrl").orNull,
+        localProperty("orca.openAiResponsesUrl"),
+        System.getenv("ORCA_OPENAI_RESPONSES_URL"),
+        "https://api.openai.com/v1/responses",
+    ),
 )
 android.stringBuildConfigField(
     name = "CLOUD_EXTRACTION_MODEL",
-    value = providers.gradleProperty("orcaCloudExtractionModel")
-        .orElse(localProperty("orca.cloudExtractionModel") ?: "")
-        .orElse(System.getenv("ORCA_CLOUD_EXTRACTION_MODEL") ?: "gpt-5.4")
-        .get(),
+    value = firstConfiguredValue(
+        providers.gradleProperty("orcaCloudExtractionModel").orNull,
+        localProperty("orca.cloudExtractionModel"),
+        System.getenv("ORCA_CLOUD_EXTRACTION_MODEL"),
+        "gpt-5.4",
+    ),
 )
 
 dependencies {

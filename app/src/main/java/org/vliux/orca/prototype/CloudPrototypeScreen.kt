@@ -120,9 +120,9 @@ private fun HeaderCard(
             )
             Text(
                 text = if (extractionConfigured) {
-                    "Cloud extraction endpoint configured."
+                    "OpenAI extraction is configured."
                 } else {
-                    "Cloud extraction endpoint not configured. Set ORCA_CLOUD_EXTRACTION_URL before testing real extraction."
+                    "OpenAI extraction is not configured. Set ORCA_CLOUD_EXTRACTION_API_KEY before testing real extraction."
                 },
                 color = if (extractionConfigured) {
                     MaterialTheme.colorScheme.primary
@@ -232,6 +232,7 @@ class CloudPrototypeViewModel(
                 }
                 val documentId = repository.importDocument(PROTOTYPE_VEHICLE_ID, requests)
                 selectedDocumentId.value = documentId
+                repository.markDocumentQueued(documentId)
                 workManager.enqueue(PrototypeExtractionWorker.buildRequest(documentId))
                 _statusMessage.value = "Imported ${uris.size} file(s). Extraction queued."
             }.onFailure { error ->

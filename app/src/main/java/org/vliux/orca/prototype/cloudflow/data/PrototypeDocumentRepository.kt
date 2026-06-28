@@ -103,6 +103,20 @@ class PrototypeDocumentRepository(
         )
     }
 
+    suspend fun markDocumentQueued(documentId: String) {
+        val document = requireNotNull(dao.getDocument(documentId))
+        val now = Instant.now().toString()
+        dao.updateDocumentState(
+            documentId = documentId,
+            sourceCount = document.sourceCount,
+            importStatus = document.importStatus,
+            extractionStatus = ExtractionStatus.QUEUED.name,
+            latestRunId = document.latestRunId,
+            occurredAt = document.occurredAt,
+            updatedAt = now,
+        )
+    }
+
     suspend fun createQueuedRun(
         documentId: String,
         providerName: String,

@@ -49,27 +49,21 @@ android {
 }
 
 android.stringBuildConfigField(
-    name = "CLOUD_EXTRACTION_URL",
-    value = providers.gradleProperty("orcaCloudExtractionUrl")
-        .orElse(System.getenv("ORCA_CLOUD_EXTRACTION_URL") ?: "")
-        .get(),
-)
-android.stringBuildConfigField(
     name = "CLOUD_EXTRACTION_API_KEY",
     value = providers.gradleProperty("orcaCloudExtractionApiKey")
         .orElse(System.getenv("ORCA_CLOUD_EXTRACTION_API_KEY") ?: "")
         .get(),
 )
 android.stringBuildConfigField(
-    name = "CLOUD_EXTRACTION_PROVIDER",
-    value = providers.gradleProperty("orcaCloudExtractionProvider")
-        .orElse(System.getenv("ORCA_CLOUD_EXTRACTION_PROVIDER") ?: "generic")
+    name = "OPENAI_RESPONSES_URL",
+    value = providers.gradleProperty("orcaOpenAiResponsesUrl")
+        .orElse(System.getenv("ORCA_OPENAI_RESPONSES_URL") ?: "https://api.openai.com/v1/responses")
         .get(),
 )
 android.stringBuildConfigField(
     name = "CLOUD_EXTRACTION_MODEL",
     value = providers.gradleProperty("orcaCloudExtractionModel")
-        .orElse(System.getenv("ORCA_CLOUD_EXTRACTION_MODEL") ?: "prototype-vision")
+        .orElse(System.getenv("ORCA_CLOUD_EXTRACTION_MODEL") ?: "gpt-5.4")
         .get(),
 )
 

@@ -7,7 +7,7 @@ import java.io.File
 import org.vliux.orca.prototype.cloudflow.data.PrototypeDatabase
 import org.vliux.orca.prototype.cloudflow.data.PrototypeDocumentRepository
 import org.vliux.orca.prototype.cloudflow.extraction.CloudExtractionConfig
-import org.vliux.orca.prototype.cloudflow.extraction.HttpCloudExtractionAdapter
+import org.vliux.orca.prototype.cloudflow.extraction.OpenAiCloudExtractionAdapter
 import org.vliux.orca.prototype.cloudflow.extraction.PrototypeExtractionEngine
 import org.vliux.orca.prototype.cloudflow.extraction.StrictJsonExtractionParser
 import org.vliux.orca.prototype.cloudflow.importing.AppFileStorage
@@ -48,7 +48,7 @@ class PrototypeGraph(
     val repository: PrototypeDocumentRepository = repositoryFactory(database)
     private val fileStorage = AppFileStorage(app.applicationContext)
     private val parser = StrictJsonExtractionParser()
-    private val adapter = HttpCloudExtractionAdapter(extractionConfig)
+    private val adapter = OpenAiCloudExtractionAdapter(extractionConfig)
     val extractionNormalizer = ExtractionNormalizer()
     val extractionEngine = PrototypeExtractionEngine(adapter, parser)
     val extractionEngineProviderName: String = extractionConfig.providerName

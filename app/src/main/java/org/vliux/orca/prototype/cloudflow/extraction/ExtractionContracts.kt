@@ -53,19 +53,19 @@ class PrototypeExtractionEngine(
 }
 
 data class CloudExtractionConfig(
-    val baseUrl: String,
+    val responsesUrl: String,
     val apiKey: String,
     val providerName: String,
     val modelName: String,
 ) {
-    fun isConfigured(): Boolean = baseUrl.isNotBlank()
+    fun isConfigured(): Boolean = apiKey.isNotBlank()
 
     companion object {
         fun fromBuildConfig(): CloudExtractionConfig {
             return CloudExtractionConfig(
-                baseUrl = BuildConfig.CLOUD_EXTRACTION_URL,
+                responsesUrl = BuildConfig.OPENAI_RESPONSES_URL,
                 apiKey = BuildConfig.CLOUD_EXTRACTION_API_KEY,
-                providerName = BuildConfig.CLOUD_EXTRACTION_PROVIDER,
+                providerName = "openai",
                 modelName = BuildConfig.CLOUD_EXTRACTION_MODEL,
             )
         }

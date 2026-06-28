@@ -33,6 +33,33 @@ interface PrototypeDocumentDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertServiceItems(items: List<ServiceItemEntity>)
 
+    @Query("DELETE FROM document_facts WHERE documentId = :documentId")
+    suspend fun deleteFactsByDocument(documentId: String)
+
+    @Query("DELETE FROM maintenance_events WHERE documentId = :documentId")
+    suspend fun deleteEventByDocument(documentId: String)
+
+    @Query("DELETE FROM service_items WHERE eventId = :eventId")
+    suspend fun deleteServiceItemsByEvent(eventId: String)
+
+    @Query(
+        """
+        UPDATE extraction_runs
+        SET status = :status,
+            errorCode = :errorCode,
+            startedAt = COALESCE(:startedAt, startedAt),
+            completedAt = :completedAt
+        WHERE runId = :runId
+        """,
+    )
+    suspend fun updateExtractionRun(
+        runId: String,
+        status: String,
+        errorCode: String?,
+        startedAt: String?,
+        completedAt: String?,
+    )
+
     @Query(
         """
         UPDATE documents
@@ -83,6 +110,12 @@ interface PrototypeDocumentDao {
 
     @Query("SELECT * FROM extraction_runs WHERE documentId = :documentId ORDER BY createdAt DESC LIMIT 1")
     suspend fun getLatestRun(documentId: String): ExtractionRunEntity?
+
+    @Query("SELECT * FROM extraction_runs WHERE runId = :runId")
+    suspend fun getRun(runId: String): ExtractionRunEntity?
+
+    @Query("SELECT * FROM maintenance_events WHERE documentId = :documentId LIMIT 1")
+    suspend fun getEvent(documentId: String): MaintenanceEventEntity?
 
     @Query("SELECT * FROM document_facts WHERE documentId = :documentId AND isActive = 1 ORDER BY createdAt ASC")
     fun observeActiveFacts(documentId: String): Flow<List<DocumentFactEntity>>

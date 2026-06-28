@@ -1,8 +1,16 @@
+import com.android.build.api.dsl.ApplicationExtension
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.ksp)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.kotlin.compose)
+}
+
+fun ApplicationExtension.stringBuildConfigField(name: String, value: String) {
+    defaultConfig {
+        buildConfigField("String", name, "\"${value.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
+    }
 }
 
 android {
@@ -39,6 +47,31 @@ android {
         buildConfig = true
     }
 }
+
+android.stringBuildConfigField(
+    name = "CLOUD_EXTRACTION_URL",
+    value = providers.gradleProperty("orcaCloudExtractionUrl")
+        .orElse(System.getenv("ORCA_CLOUD_EXTRACTION_URL") ?: "")
+        .get(),
+)
+android.stringBuildConfigField(
+    name = "CLOUD_EXTRACTION_API_KEY",
+    value = providers.gradleProperty("orcaCloudExtractionApiKey")
+        .orElse(System.getenv("ORCA_CLOUD_EXTRACTION_API_KEY") ?: "")
+        .get(),
+)
+android.stringBuildConfigField(
+    name = "CLOUD_EXTRACTION_PROVIDER",
+    value = providers.gradleProperty("orcaCloudExtractionProvider")
+        .orElse(System.getenv("ORCA_CLOUD_EXTRACTION_PROVIDER") ?: "generic")
+        .get(),
+)
+android.stringBuildConfigField(
+    name = "CLOUD_EXTRACTION_MODEL",
+    value = providers.gradleProperty("orcaCloudExtractionModel")
+        .orElse(System.getenv("ORCA_CLOUD_EXTRACTION_MODEL") ?: "prototype-vision")
+        .get(),
+)
 
 dependencies {
     implementation(platform(libs.androidx.compose.bom))

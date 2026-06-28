@@ -35,6 +35,14 @@ set APP_HOME=%DIRNAME%
 @rem Resolve any "." and ".." in APP_HOME to make it shorter.
 for %%i in ("%APP_HOME%") do set APP_HOME=%%~fi
 
+if not defined GRADLE_USER_HOME set GRADLE_USER_HOME=%APP_HOME%\.gradle-local
+if not defined ANDROID_USER_HOME set ANDROID_USER_HOME=%APP_HOME%\.android-user
+if not defined MAVEN_OPTS (
+  set MAVEN_OPTS=-Dmaven.repo.local=%APP_HOME%\.m2-local
+) else (
+  set MAVEN_OPTS=%MAVEN_OPTS% -Dmaven.repo.local=%APP_HOME%\.m2-local
+)
+
 @rem Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
 set DEFAULT_JVM_OPTS="-Xmx64m" "-Xms64m"
 

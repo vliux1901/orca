@@ -88,6 +88,23 @@ APP_BASE_NAME=${0##*/}
 # Discard cd standard output in case $CDPATH is set (https://github.com/gradle/gradle/issues/25036)
 APP_HOME=$( cd -P "${APP_HOME:-./}" > /dev/null && printf '%s\n' "$PWD" ) || exit
 
+if [ -z "$GRADLE_USER_HOME" ] ; then
+    GRADLE_USER_HOME="$APP_HOME/.gradle-local"
+    export GRADLE_USER_HOME
+fi
+
+if [ -z "$ANDROID_USER_HOME" ] ; then
+    ANDROID_USER_HOME="$APP_HOME/.android-user"
+    export ANDROID_USER_HOME
+fi
+
+if [ -z "$MAVEN_OPTS" ] ; then
+    MAVEN_OPTS="-Dmaven.repo.local=$APP_HOME/.m2-local"
+else
+    MAVEN_OPTS="$MAVEN_OPTS -Dmaven.repo.local=$APP_HOME/.m2-local"
+fi
+export MAVEN_OPTS
+
 # Use the maximum available, or set MAX_FD != -1 to use that value.
 MAX_FD=maximum
 

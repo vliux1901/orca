@@ -1,4 +1,5 @@
 import com.android.build.api.dsl.ApplicationExtension
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
@@ -6,6 +7,15 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.kotlin.compose)
 }
+
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) {
+        file.inputStream().use(::load)
+    }
+}
+
+fun localProperty(name: String): String? = localProperties.getProperty(name)?.takeIf { it.isNotBlank() }
 
 fun ApplicationExtension.stringBuildConfigField(name: String, value: String) {
     defaultConfig {
@@ -51,18 +61,21 @@ android {
 android.stringBuildConfigField(
     name = "CLOUD_EXTRACTION_API_KEY",
     value = providers.gradleProperty("orcaCloudExtractionApiKey")
+        .orElse(localProperty("orca.cloudExtractionApiKey") ?: "")
         .orElse(System.getenv("ORCA_CLOUD_EXTRACTION_API_KEY") ?: "")
         .get(),
 )
 android.stringBuildConfigField(
     name = "OPENAI_RESPONSES_URL",
     value = providers.gradleProperty("orcaOpenAiResponsesUrl")
+        .orElse(localProperty("orca.openAiResponsesUrl") ?: "")
         .orElse(System.getenv("ORCA_OPENAI_RESPONSES_URL") ?: "https://api.openai.com/v1/responses")
         .get(),
 )
 android.stringBuildConfigField(
     name = "CLOUD_EXTRACTION_MODEL",
     value = providers.gradleProperty("orcaCloudExtractionModel")
+        .orElse(localProperty("orca.cloudExtractionModel") ?: "")
         .orElse(System.getenv("ORCA_CLOUD_EXTRACTION_MODEL") ?: "gpt-5.4")
         .get(),
 )

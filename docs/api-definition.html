@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API Definition Review Workspace</title>
+  <style>
+    :root {
+      --bg: #eef2ea;
+      --panel: #fcfff8;
+      --panel-strong: #edf4e7;
+      --ink: #1f2320;
+      --muted: #5c645a;
+      --line: #cfd8c8;
+      --accent: #245b66;
+      --accent-soft: #deeff2;
+      --warning: #8f4a16;
+      --highlight: #fff2a8;
+      --shadow: 0 18px 40px rgba(41, 56, 35, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(36, 91, 102, 0.10), transparent 28%),
+        linear-gradient(180deg, #f7faf4 0%, var(--bg) 100%);
+    }
+
+    .shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      gap: 24px;
+      padding: 24px;
+    }
+
+    .workspace,
+    .comment-panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+    }
+
+    .workspace { padding: 18px; }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .toolbar-left,
+    .toolbar-right {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .status {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    h1, h2, h3 { font-family: "IBM Plex Serif", Georgia, serif; margin: 0; }
+
+    button, textarea { font: inherit; }
+
+    button {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      border-radius: 12px;
+      padding: 10px 14px;
+      cursor: pointer;
+      transition: 120ms ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      border-color: var(--accent);
+    }
+
+    button.primary {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    button.ghost { background: transparent; }
+
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .tab-button[aria-selected="true"] {
+      background: var(--accent-soft);
+      color: var(--accent);
+      border-color: rgba(36, 91, 102, 0.25);
+      font-weight: 700;
+    }
+
+    .tab-panel {
+      display: none;
+      padding: 12px;
+      border-radius: 18px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.74), rgba(237,244,231,0.72));
+    }
+
+    .tab-panel.active { display: block; }
+
+    .content-card {
+      padding: 20px;
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid rgba(207, 216, 200, 0.9);
+      border-radius: 20px;
+    }
+
+    .content-card + .content-card { margin-top: 14px; }
+    .content-card h2 { font-size: 1.55rem; margin-bottom: 10px; }
+    .content-card h3 { font-size: 1.08rem; margin: 18px 0 8px; }
+    .content-card p, .content-card li { line-height: 1.65; }
+    ul { padding-left: 20px; margin: 10px 0; }
+
+    pre {
+      overflow-x: auto;
+      padding: 14px;
+      border-radius: 16px;
+      background: #f2f6ef;
+      border: 1px solid var(--line);
+      line-height: 1.5;
+    }
+
+    code { font-family: "IBM Plex Mono", "SFMono-Regular", monospace; }
+
+    .block { border-radius: 8px; }
+
+    mark.comment-highlight {
+      background: var(--highlight);
+      color: inherit;
+      border-radius: 4px;
+      padding: 0 1px;
+    }
+
+    .comment-panel {
+      position: sticky;
+      top: 24px;
+      padding: 18px;
+      align-self: start;
+    }
+
+    .comment-panel h2 { font-size: 1.4rem; margin-bottom: 8px; }
+    .comment-panel p, .comment-panel label { color: var(--muted); line-height: 1.55; }
+
+    .selection-box,
+    .comment-list,
+    .export-box {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+    }
+
+    .selection-preview,
+    .comment-quote,
+    .empty-state,
+    .export-help {
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: var(--panel-strong);
+      border: 1px solid rgba(207, 216, 200, 0.9);
+    }
+
+    .selection-preview,
+    .comment-quote {
+      color: var(--ink);
+      font-size: 14px;
+      white-space: pre-wrap;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 110px;
+      margin-top: 10px;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      resize: vertical;
+      background: #fff;
+    }
+
+    .selection-actions,
+    .export-actions,
+    .comment-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .comment-item {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #fff;
+    }
+
+    .comment-item + .comment-item { margin-top: 12px; }
+
+    .comment-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: baseline;
+      font-size: 13px;
+      margin-bottom: 10px;
+    }
+
+    .comment-meta strong { color: var(--accent); }
+    .comment-body { margin-top: 10px; white-space: pre-wrap; }
+    .comment-jump { color: var(--warning); font-size: 13px; margin-top: 8px; }
+    .small-note { font-size: 12px; color: var(--muted); margin-top: 10px; }
+
+    @media (max-width: 1080px) {
+      .shell { grid-template-columns: 1fr; }
+      .comment-panel { position: static; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <main class="main-column">
+      <section class="workspace">
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <strong>API Definition Review Workspace</strong>
+            <span class="status" id="commentStatus">0 comments saved locally</span>
+          </div>
+          <div class="toolbar-right">
+            <button type="button" class="ghost" id="clearCommentsButton">Clear comments</button>
+          </div>
+        </div>
+
+        <div class="tabs" role="tablist" aria-label="API definition sections">
+          <button type="button" class="tab-button" role="tab" aria-selected="true" aria-controls="tab-overview" id="tab-button-overview" data-tab="overview">Overview</button>
+          <button type="button" class="tab-button" role="tab" aria-selected="false" aria-controls="tab-entities" id="tab-button-entities" data-tab="entities">Entities</button>
+          <button type="button" class="tab-button" role="tab" aria-selected="false" aria-controls="tab-repositories" id="tab-button-repositories" data-tab="repositories">Repositories</button>
+          <button type="button" class="tab-button" role="tab" aria-selected="false" aria-controls="tab-extraction" id="tab-button-extraction" data-tab="extraction">Extraction API</button>
+          <button type="button" class="tab-button" role="tab" aria-selected="false" aria-controls="tab-contracts" id="tab-button-contracts" data-tab="contracts">Contracts</button>
+        </div>
+
+        <section class="tab-panel active" id="tab-overview" role="tabpanel" aria-labelledby="tab-button-overview" data-tab-panel="overview">
+          <article class="content-card">
+            <h2>Scope</h2>
+            <p class="block" data-block-id="overview-1">This document defines the app-owned Kotlin API contracts around documents, sources, extraction, and timeline persistence. The goal is to keep UI, repositories, Room, and cloud-provider adapters aligned behind stable internal types.</p>
+            <ul>
+              <li class="block" data-block-id="overview-2">These are internal app contracts, not public network APIs.</li>
+              <li class="block" data-block-id="overview-3">The same contracts should support cloud extraction in V1 and a later local privacy-mode backend.</li>
+              <li class="block" data-block-id="overview-4">Entities should carry enough provenance for source-file review and fact citations.</li>
+            </ul>
+          </article>
+
+          <article class="content-card">
+            <h2>Layering</h2>
+            <ul>
+              <li class="block" data-block-id="overview-5">Room entities model persistence shape.</li>
+              <li class="block" data-block-id="overview-6">Domain models combine entity graphs for screen and worker use.</li>
+              <li class="block" data-block-id="overview-7">Provider DTOs are adapter-local and should not leak into repositories or UI state.</li>
+            </ul>
+          </article>
+        </section>
+
+        <section class="tab-panel" id="tab-entities" role="tabpanel" aria-labelledby="tab-button-entities" data-tab-panel="entities">
+          <article class="content-card">
+            <h2>Room Entities</h2>
+            <pre class="block" data-block-id="entities-1"><code>data class DocumentEntity(
+    val documentId: String,
+    val vehicleId: String,
+    val title: String?,
+    val sourceCount: Int,
+    val importStatus: DocumentImportStatus,
+    val extractionStatus: ExtractionStatus,
+    val latestRunId: String?,
+    val occurredAt: Instant?,
+    val createdAt: Instant,
+    val updatedAt: Instant,
+)
+
+data class DocumentSourceEntity(
+    val sourceId: String,
+    val documentId: String,
+    val sourceOrder: Int,
+    val fileName: String,
+    val mimeType: String,
+    val relativePath: String,
+    val byteSize: Long,
+    val checksumSha256: String?,
+    val pageCount: Int?,
+    val createdAt: Instant,
+)</code></pre>
+            <p class="block" data-block-id="entities-2"><code>DocumentEntity</code> represents one logical maintenance document. <code>DocumentSourceEntity</code> represents one imported file that belongs to that document.</p>
+          </article>
+
+          <article class="content-card">
+            <h2>Aggregate Models</h2>
+            <pre class="block" data-block-id="entities-3"><code>data class DocumentAggregate(
+    val document: DocumentEntity,
+    val sources: List&lt;DocumentSourceEntity&gt;,
+    val latestRun: ExtractionRunEntity?,
+    val facts: List&lt;DocumentFactEntity&gt;,
+    val event: MaintenanceEventEntity?,
+    val serviceItems: List&lt;ServiceItemEntity&gt;,
+)</code></pre>
+            <ul>
+              <li class="block" data-block-id="entities-4">Use aggregates for detail screens and worker pipelines so each use case reads one coherent graph.</li>
+              <li class="block" data-block-id="entities-5">Do not expose bare Room relations directly to Compose screens.</li>
+            </ul>
+          </article>
+
+          <article class="content-card">
+            <h2>State Enums</h2>
+            <pre class="block" data-block-id="entities-6"><code>enum class DocumentImportStatus { PENDING, READY, FAILED }
+enum class ExtractionStatus { NOT_STARTED, QUEUED, RUNNING, SUCCEEDED, FAILED }
+enum class ExtractionBackendType { CLOUD_VISION, LOCAL_VISION }
+enum class FactType { SERVICE_DATE, ODOMETER, TOTAL_COST, SHOP_NAME, VIN, LINE_ITEM, NOTE }</code></pre>
+            <p class="block" data-block-id="entities-7">Keep enums app-owned even if providers use different labels.</p>
+          </article>
+        </section>
+
+        <section class="tab-panel" id="tab-repositories" role="tabpanel" aria-labelledby="tab-button-repositories" data-tab-panel="repositories">
+          <article class="content-card">
+            <h2>Repository Interfaces</h2>
+            <pre class="block" data-block-id="repos-1"><code>interface DocumentRepository {
+    suspend fun createDocument(
+        vehicleId: String,
+        title: String?,
+        imports: List&lt;SourceImport&gt;,
+    ): String
+
+    fun observeDocumentList(vehicleId: String): Flow&lt;List&lt;DocumentListItem&gt;&gt;
+
+    fun observeDocument(documentId: String): Flow&lt;DocumentAggregate?&gt;
+
+    suspend fun deleteDocument(documentId: String)
+
+    suspend fun markExtractionQueued(documentId: String, runId: String)
+}
+
+interface FactRepository {
+    suspend fun replaceFact(
+        documentId: String,
+        replacedFactId: String,
+        replacement: FactReplacement,
+    )
+}</code></pre>
+          </article>
+
+          <article class="content-card">
+            <h2>Input Models</h2>
+            <pre class="block" data-block-id="repos-2"><code>data class SourceImport(
+    val displayName: String,
+    val mimeType: String,
+    val inputUri: String,
+)
+
+data class FactReplacement(
+    val factType: FactType,
+    val valueText: String,
+    val normalizedValue: String?,
+    val note: String?,
+)</code></pre>
+            <p class="block" data-block-id="repos-3">Use simple repository inputs so import and correction flows stay independent from provider-specific payload shapes.</p>
+          </article>
+        </section>
+
+        <section class="tab-panel" id="tab-extraction" role="tabpanel" aria-labelledby="tab-button-extraction" data-tab-panel="extraction">
+          <article class="content-card">
+            <h2>Worker Boundary</h2>
+            <pre class="block" data-block-id="extract-1"><code>interface MaintenanceExtractionEngine {
+    suspend fun extract(
+        request: ExtractionRequest,
+    ): ExtractionResult
+}
+
+data class ExtractionRequest(
+    val document: DocumentEntity,
+    val sources: List&lt;DocumentSourceEntity&gt;,
+    val vehicleContext: VehicleContext?,
+    val promptVersion: String,
+)</code></pre>
+            <p class="block" data-block-id="extract-2">The worker should assemble one app-owned request and pass it to either the cloud adapter or a later local adapter.</p>
+          </article>
+
+          <article class="content-card">
+            <h2>Provider Adapter Boundary</h2>
+            <pre class="block" data-block-id="extract-3"><code>interface CloudExtractionAdapter {
+    suspend fun extract(
+        request: ExtractionRequest,
+    ): ProviderExtractionPayload
+}
+
+data class ProviderExtractionPayload(
+    val backendType: ExtractionBackendType,
+    val providerName: String,
+    val modelName: String,
+    val rawJson: String,
+)</code></pre>
+            <p class="block" data-block-id="extract-4">Only the adapter knows provider transport details. The worker owns validation and conversion into app-level facts and events.</p>
+          </article>
+        </section>
+
+        <section class="tab-panel" id="tab-contracts" role="tabpanel" aria-labelledby="tab-button-contracts" data-tab-panel="contracts">
+          <article class="content-card">
+            <h2>Extraction Result Contract</h2>
+            <pre class="block" data-block-id="contracts-1"><code>data class ExtractionResult(
+    val run: ExtractionRunEntity,
+    val facts: List&lt;ExtractedFact&gt;,
+    val eventDraft: MaintenanceEventDraft?,
+    val serviceItems: List&lt;ServiceItemDraft&gt;,
+    val warnings: List&lt;ExtractionWarning&gt;,
+)
+
+data class ExtractedFact(
+    val factType: FactType,
+    val valueText: String,
+    val normalizedValue: String?,
+    val currencyCode: String?,
+    val sourceId: String?,
+    val sourcePage: Int?,
+    val evidenceText: String?,
+    val confidence: Double?,
+)
+
+data class ServiceItemDraft(
+    val category: String,
+    val label: String,
+    val notes: String?,
+    val costMinor: Long?,
+    val currencyCode: String?,
+    val sourceId: String?,
+    val sourcePage: Int?,
+)</code></pre>
+          </article>
+
+          <article class="content-card">
+            <h2>Document List And Detail View Models</h2>
+            <pre class="block" data-block-id="contracts-2"><code>data class DocumentListItem(
+    val documentId: String,
+    val title: String,
+    val occurredAt: Instant?,
+    val extractionStatus: ExtractionStatus,
+    val sourceCount: Int,
+    val totalCostLabel: String?,
+)
+
+data class DocumentDetailModel(
+    val aggregate: DocumentAggregate,
+    val sourcePreviews: List&lt;SourcePreview&gt;,
+    val activeFacts: List&lt;FactViewModel&gt;,
+    val warnings: List&lt;String&gt;,
+)</code></pre>
+            <p class="block" data-block-id="contracts-3">Keep screen models separate from Room entities so formatting and UI-only fields do not leak back into persistence.</p>
+          </article>
+
+          <article class="content-card">
+            <h2>Validation Rules</h2>
+            <ul>
+              <li class="block" data-block-id="contracts-4">Reject malformed provider JSON before writing any facts.</li>
+              <li class="block" data-block-id="contracts-5">Require citations to use app-owned <code>sourceId</code> and page number when available.</li>
+              <li class="block" data-block-id="contracts-6">Normalize dates, costs, and mileage locally before persistence.</li>
+              <li class="block" data-block-id="contracts-7">Allow missing low-confidence optional fields, but do not invent values to make the contract look complete.</li>
+            </ul>
+          </article>
+
+          <article class="content-card">
+            <h2>Cost Contract</h2>
+            <ul>
+              <li class="block" data-block-id="contracts-7b"><code>MaintenanceEventEntity.totalCostMinor</code> represents the overall document total.</li>
+              <li class="block" data-block-id="contracts-7c"><code>ServiceItemDraft.costMinor</code> and <code>ServiceItemEntity.costMinor</code> represent optional item-level pricing.</li>
+              <li class="block" data-block-id="contracts-7d">If the provider returns only a total and no reliable line-item prices, leave item-level cost null.</li>
+            </ul>
+          </article>
+        </section>
+      </section>
+    </main>
+
+    <aside class="side-column">
+      <section class="comment-panel">
+        <h2>Comments</h2>
+        <p>Select text inside a single paragraph, bullet, or code block, add a comment, then export your review notes as prompt-ready text.</p>
+
+        <div class="selection-box">
+          <label for="commentInput">New comment</label>
+          <div class="selection-preview" id="selectionPreview">Select text in the API definition to comment on it.</div>
+          <textarea id="commentInput" placeholder="What should change, clarify, or be discussed?"></textarea>
+          <div class="selection-actions">
+            <button type="button" class="primary" id="saveCommentButton">Save comment</button>
+            <button type="button" class="ghost" id="clearSelectionButton">Clear selection</button>
+          </div>
+          <p class="small-note">Commenting works on a single block at a time so the export stays precise.</p>
+        </div>
+
+        <div class="comment-list">
+          <h3>Saved review notes</h3>
+          <div id="commentList" class="empty-state">No comments yet.</div>
+        </div>
+
+        <div class="export-box">
+          <h3>Export</h3>
+          <div class="export-help">Export JSON if you want structured data. Export prompts if you want ready-to-paste review instructions for the next iteration.</div>
+          <div class="export-actions">
+            <button type="button" id="exportJsonButton">Export JSON</button>
+            <button type="button" id="exportPromptsButton">Export prompts</button>
+          </div>
+        </div>
+      </section>
+    </aside>
+  </div>
+
+  <script>
+    const storageKey = "orca-api-definition-review-comments";
+    const blocks = new Map();
+    const comments = [];
+    let activeSelection = null;
+
+    const tabButtons = Array.from(document.querySelectorAll(".tab-button"));
+    const tabPanels = Array.from(document.querySelectorAll(".tab-panel"));
+    const commentInput = document.getElementById("commentInput");
+    const selectionPreview = document.getElementById("selectionPreview");
+    const commentList = document.getElementById("commentList");
+    const commentStatus = document.getElementById("commentStatus");
+
+    document.querySelectorAll(".block").forEach((block) => {
+      blocks.set(block.dataset.blockId, block);
+    });
+
+    function activateTab(tabId) {
+      tabButtons.forEach((button) => {
+        const selected = button.dataset.tab === tabId;
+        button.setAttribute("aria-selected", String(selected));
+      });
+      tabPanels.forEach((panel) => {
+        panel.classList.toggle("active", panel.dataset.tabPanel === tabId);
+      });
+    }
+
+    tabButtons.forEach((button) => {
+      button.addEventListener("click", () => activateTab(button.dataset.tab));
+    });
+
+    function escapeHtml(value) {
+      return value
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    function clearDomHighlights() {
+      document.querySelectorAll("mark.comment-highlight").forEach((mark) => {
+        const parent = mark.parentNode;
+        parent.replaceChild(document.createTextNode(mark.textContent), mark);
+        parent.normalize();
+      });
+    }
+
+    function highlightRange(block, start, end) {
+      const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+      let index = 0;
+      let startNode = null;
+      let endNode = null;
+      let startOffset = 0;
+      let endOffset = 0;
+
+      while (walker.nextNode()) {
+        const node = walker.currentNode;
+        const nextIndex = index + node.textContent.length;
+
+        if (!startNode && start >= index && start <= nextIndex) {
+          startNode = node;
+          startOffset = start - index;
+        }
+
+        if (!endNode && end >= index && end <= nextIndex) {
+          endNode = node;
+          endOffset = end - index;
+        }
+
+        index = nextIndex;
+      }
+
+      if (!startNode || !endNode) return;
+
+      const range = document.createRange();
+      range.setStart(startNode, startOffset);
+      range.setEnd(endNode, endOffset);
+
+      const mark = document.createElement("mark");
+      mark.className = "comment-highlight";
+
+      try {
+        range.surroundContents(mark);
+      } catch (error) {
+        return;
+      }
+    }
+
+    function applyHighlights() {
+      clearDomHighlights();
+
+      const grouped = new Map();
+      comments.forEach((comment) => {
+        if (!grouped.has(comment.blockId)) grouped.set(comment.blockId, []);
+        grouped.get(comment.blockId).push(comment);
+      });
+
+      grouped.forEach((entries, blockId) => {
+        const block = blocks.get(blockId);
+        if (!block) return;
+        entries.slice().sort((a, b) => a.start - b.start).forEach((entry) => {
+          highlightRange(block, entry.start, entry.end);
+        });
+      });
+    }
+
+    function saveToStorage() {
+      localStorage.setItem(storageKey, JSON.stringify(comments));
+      updateStatus();
+    }
+
+    function updateStatus() {
+      const count = comments.length;
+      commentStatus.textContent = count === 1 ? "1 comment saved locally" : count + " comments saved locally";
+    }
+
+    function resetSelectionUi() {
+      activeSelection = null;
+      selectionPreview.textContent = "Select text in the API definition to comment on it.";
+      commentInput.value = "";
+      window.getSelection().removeAllRanges();
+    }
+
+    function getClosestBlock(node) {
+      if (!node) return null;
+      if (node.nodeType === Node.ELEMENT_NODE) return node.closest(".block");
+      return node.parentElement?.closest(".block") || null;
+    }
+
+    function makeCommentId() {
+      if (window.crypto && typeof window.crypto.randomUUID === "function") {
+        return window.crypto.randomUUID();
+      }
+      return "comment-" + Date.now() + "-" + Math.random().toString(16).slice(2);
+    }
+
+    function readCurrentSelection() {
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return null;
+
+      const range = selection.getRangeAt(0);
+      const startBlock = getClosestBlock(range.startContainer);
+      const endBlock = getClosestBlock(range.endContainer);
+
+      if (!startBlock || !endBlock || startBlock !== endBlock) {
+        return { error: "Select text inside a single paragraph, bullet, or code block." };
+      }
+
+      const block = startBlock;
+      const blockRange = document.createRange();
+      blockRange.selectNodeContents(block);
+      blockRange.setEnd(range.startContainer, range.startOffset);
+      const start = blockRange.toString().length;
+      const text = range.toString().trim();
+      if (!text) return null;
+
+      return {
+        blockId: block.dataset.blockId,
+        blockText: block.textContent,
+        selectedText: text,
+        start: start,
+        end: start + text.length,
+        tabId: block.closest(".tab-panel").dataset.tabPanel
+      };
+    }
+
+    function updateSelectionFromDocument() {
+      const selectionInfo = readCurrentSelection();
+      if (!selectionInfo) return;
+      if (selectionInfo.error) {
+        selectionPreview.textContent = selectionInfo.error;
+        return;
+      }
+      activeSelection = selectionInfo;
+      selectionPreview.textContent = selectionInfo.selectedText;
+    }
+
+    document.addEventListener("selectionchange", updateSelectionFromDocument);
+    document.querySelector(".workspace").addEventListener("mouseup", updateSelectionFromDocument);
+    document.querySelector(".workspace").addEventListener("keyup", updateSelectionFromDocument);
+
+    function renderComments() {
+      if (comments.length === 0) {
+        commentList.className = "empty-state";
+        commentList.textContent = "No comments yet.";
+        return;
+      }
+
+      commentList.className = "";
+      commentList.innerHTML = comments.map((comment) => {
+        const date = new Date(comment.createdAt).toLocaleString();
+        return `
+          <article class="comment-item">
+            <div class="comment-meta">
+              <strong>${escapeHtml(comment.tabLabel)}</strong>
+              <span>${escapeHtml(date)}</span>
+            </div>
+            <div class="comment-quote">${escapeHtml(comment.selectedText)}</div>
+            <div class="comment-body">${escapeHtml(comment.comment)}</div>
+            <div class="comment-jump">Block: ${escapeHtml(comment.blockId)}</div>
+            <div class="comment-actions">
+              <button type="button" data-jump-id="${escapeHtml(comment.id)}">Jump</button>
+              <button type="button" data-delete-id="${escapeHtml(comment.id)}">Delete</button>
+            </div>
+          </article>
+        `;
+      }).join("");
+
+      commentList.querySelectorAll("[data-delete-id]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const index = comments.findIndex((entry) => entry.id === button.dataset.deleteId);
+          if (index >= 0) {
+            comments.splice(index, 1);
+            saveToStorage();
+            renderComments();
+            applyHighlights();
+          }
+        });
+      });
+
+      commentList.querySelectorAll("[data-jump-id]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const comment = comments.find((entry) => entry.id === button.dataset.jumpId);
+          if (!comment) return;
+          activateTab(comment.tabId);
+          const block = blocks.get(comment.blockId);
+          if (!block) return;
+          block.scrollIntoView({ behavior: "smooth", block: "center" });
+        });
+      });
+    }
+
+    function makeFileDownload(filename, content, mimeType) {
+      const blob = new Blob([content], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function buildPromptExport() {
+      if (comments.length === 0) return "No comments saved.\n";
+      return comments.map((comment, index) => {
+        return [
+          `Prompt ${index + 1}`,
+          `Section: ${comment.tabLabel}`,
+          `Selected text: "${comment.selectedText}"`,
+          `Reviewer comment: ${comment.comment}`,
+          "Instruction: Update the API definition and related docs based on the selected text and reviewer comment. Preserve the cloud-vision-first product direction unless the comment explicitly changes it.",
+          ""
+        ].join("\n");
+      }).join("\n");
+    }
+
+    document.getElementById("saveCommentButton").addEventListener("click", () => {
+      if (!activeSelection) {
+        selectionPreview.textContent = "Select text first.";
+        return;
+      }
+
+      const commentText = commentInput.value.trim();
+      if (!commentText) {
+        commentInput.focus();
+        return;
+      }
+
+      const tabLabel = tabButtons.find((button) => button.dataset.tab === activeSelection.tabId)?.textContent || activeSelection.tabId;
+      comments.push({
+        id: makeCommentId(),
+        blockId: activeSelection.blockId,
+        blockText: activeSelection.blockText,
+        selectedText: activeSelection.selectedText,
+        start: activeSelection.start,
+        end: activeSelection.end,
+        tabId: activeSelection.tabId,
+        tabLabel,
+        comment: commentText,
+        createdAt: new Date().toISOString()
+      });
+
+      saveToStorage();
+      renderComments();
+      applyHighlights();
+      resetSelectionUi();
+    });
+
+    document.getElementById("clearSelectionButton").addEventListener("click", resetSelectionUi);
+
+    document.getElementById("clearCommentsButton").addEventListener("click", () => {
+      if (!comments.length) return;
+      comments.splice(0, comments.length);
+      localStorage.removeItem(storageKey);
+      renderComments();
+      applyHighlights();
+      resetSelectionUi();
+      updateStatus();
+    });
+
+    document.getElementById("exportJsonButton").addEventListener("click", () => {
+      makeFileDownload("api-definition-review-comments.json", JSON.stringify(comments, null, 2), "application/json");
+    });
+
+    document.getElementById("exportPromptsButton").addEventListener("click", () => {
+      makeFileDownload("api-definition-review-prompts.txt", buildPromptExport(), "text/plain");
+    });
+
+    function loadComments() {
+      const saved = localStorage.getItem(storageKey);
+      if (!saved) {
+        updateStatus();
+        renderComments();
+        return;
+      }
+
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) comments.push(...parsed);
+      } catch (error) {
+        localStorage.removeItem(storageKey);
+      }
+
+      updateStatus();
+      renderComments();
+      applyHighlights();
+    }
+
+    loadComments();
+  </script>
+</body>
+</html>

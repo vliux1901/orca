@@ -2,21 +2,19 @@ package org.vliux.orca.prototype.cloudflow.worker
 
 import android.content.Context
 import androidx.work.CoroutineWorker
-import androidx.work.ListenableWorker
 import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkerFactory
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
-import org.vliux.orca.PrototypeGraph
+import org.vliux.orca.OrcaApplication
 import org.vliux.orca.prototype.cloudflow.extraction.ExtractionRequest
 import org.vliux.orca.prototype.cloudflow.extraction.SourcePayload
-import org.vliux.orca.prototype.cloudflow.model.ExtractionStatus
 
 class PrototypeExtractionWorker(
     appContext: Context,
     workerParameters: WorkerParameters,
-    private val graph: PrototypeGraph,
 ) : CoroutineWorker(appContext, workerParameters) {
+    private val graph = (appContext.applicationContext as OrcaApplication).graph
+
     override suspend fun doWork(): Result {
         val documentId = inputData.getString(KEY_DOCUMENT_ID) ?: return Result.failure()
         val bundle = graph.repository.getDocumentBundle(documentId) ?: return Result.failure()
@@ -68,23 +66,5 @@ class PrototypeExtractionWorker(
         fun buildRequest(documentId: String) = OneTimeWorkRequestBuilder<PrototypeExtractionWorker>()
             .setInputData(workDataOf(KEY_DOCUMENT_ID to documentId))
             .build()
-    }
-}
-
-class PrototypeWorkerFactory(
-    private val graph: PrototypeGraph,
-) : WorkerFactory() {
-    override fun createWorker(
-        appContext: Context,
-        workerClassName: String,
-        workerParameters: WorkerParameters,
-    ): ListenableWorker? {
-        return when (workerClassName) {
-            PrototypeExtractionWorker::class.java.name -> {
-                PrototypeExtractionWorker(appContext, workerParameters, graph)
-            }
-
-            else -> null
-        }
     }
 }

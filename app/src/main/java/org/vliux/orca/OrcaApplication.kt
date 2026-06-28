@@ -2,7 +2,6 @@ package org.vliux.orca
 
 import android.app.Application
 import androidx.room.Room
-import androidx.work.Configuration
 import java.io.File
 import org.vliux.orca.prototype.cloudflow.data.PrototypeDatabase
 import org.vliux.orca.prototype.cloudflow.data.PrototypeDocumentRepository
@@ -12,9 +11,8 @@ import org.vliux.orca.prototype.cloudflow.extraction.PrototypeExtractionEngine
 import org.vliux.orca.prototype.cloudflow.extraction.StrictJsonExtractionParser
 import org.vliux.orca.prototype.cloudflow.importing.AppFileStorage
 import org.vliux.orca.prototype.cloudflow.normalization.ExtractionNormalizer
-import org.vliux.orca.prototype.cloudflow.worker.PrototypeWorkerFactory
 
-class OrcaApplication : Application(), Configuration.Provider {
+class OrcaApplication : Application() {
     val graph: PrototypeGraph by lazy {
         PrototypeGraph(
             app = this,
@@ -32,11 +30,6 @@ class OrcaApplication : Application(), Configuration.Provider {
             extractionConfig = CloudExtractionConfig.fromBuildConfig(),
         )
     }
-
-    override val workManagerConfiguration: Configuration
-        get() = Configuration.Builder()
-            .setWorkerFactory(PrototypeWorkerFactory(graph))
-            .build()
 }
 
 class PrototypeGraph(

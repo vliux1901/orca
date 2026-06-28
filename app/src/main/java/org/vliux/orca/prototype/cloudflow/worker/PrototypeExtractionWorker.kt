@@ -3,9 +3,10 @@ package org.vliux.orca.prototype.cloudflow.worker
 import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.ListenableWorker
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkerFactory
 import androidx.work.WorkerParameters
-import java.time.Instant
+import androidx.work.workDataOf
 import org.vliux.orca.PrototypeGraph
 import org.vliux.orca.prototype.cloudflow.extraction.ExtractionRequest
 import org.vliux.orca.prototype.cloudflow.extraction.SourcePayload
@@ -37,11 +38,18 @@ class PrototypeExtractionWorker(
                 },
                 promptVersion = PROMPT_VERSION,
             )
-            graph.extractionEngine.extract(request)
-            graph.repository.finishRun(
+            val parsed = graph.extractionEngine.extract(request)
+            val normalized = graph.extractionNormalizer.normalize(
+                documentId = bundle.document.documentId,
+                vehicleId = bundle.document.vehicleId,
                 runId = run.runId,
-                status = ExtractionStatus.SUCCEEDED.name,
-                occurredAt = bundle.document.occurredAt,
+                response = parsed.response,
+                sources = bundle.sources,
+            )
+            graph.repository.applyExtractionResult(
+                documentId = documentId,
+                runId = run.runId,
+                result = normalized,
             )
             Result.success()
         }.getOrElse { error ->
@@ -56,6 +64,10 @@ class PrototypeExtractionWorker(
     companion object {
         const val KEY_DOCUMENT_ID = "document_id"
         const val PROMPT_VERSION = "prototype-v1"
+
+        fun buildRequest(documentId: String) = OneTimeWorkRequestBuilder<PrototypeExtractionWorker>()
+            .setInputData(workDataOf(KEY_DOCUMENT_ID to documentId))
+            .build()
     }
 }
 

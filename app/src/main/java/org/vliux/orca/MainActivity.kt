@@ -4,7 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import org.vliux.orca.prototype.PrototypeScreen
+import org.vliux.orca.prototype.CloudPrototypeScreen
 import org.vliux.orca.ui.theme.OrcaTheme
 
 class MainActivity : ComponentActivity() {
@@ -13,7 +13,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             OrcaTheme {
-                PrototypeScreen()
+                CloudPrototypeScreen()
             }
         }
     }

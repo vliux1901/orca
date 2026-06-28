@@ -11,6 +11,7 @@ import org.vliux.orca.prototype.cloudflow.extraction.HttpCloudExtractionAdapter
 import org.vliux.orca.prototype.cloudflow.extraction.PrototypeExtractionEngine
 import org.vliux.orca.prototype.cloudflow.extraction.StrictJsonExtractionParser
 import org.vliux.orca.prototype.cloudflow.importing.AppFileStorage
+import org.vliux.orca.prototype.cloudflow.normalization.ExtractionNormalizer
 import org.vliux.orca.prototype.cloudflow.worker.PrototypeWorkerFactory
 
 class OrcaApplication : Application(), Configuration.Provider {
@@ -48,9 +49,11 @@ class PrototypeGraph(
     private val fileStorage = AppFileStorage(app.applicationContext)
     private val parser = StrictJsonExtractionParser()
     private val adapter = HttpCloudExtractionAdapter(extractionConfig)
+    val extractionNormalizer = ExtractionNormalizer()
     val extractionEngine = PrototypeExtractionEngine(adapter, parser)
     val extractionEngineProviderName: String = extractionConfig.providerName
     val extractionEngineModelName: String = extractionConfig.modelName
+    val extractionConfigured: Boolean = extractionConfig.isConfigured()
 
     fun resolveSourceFile(relativePath: String): File = fileStorage.resolveFile(relativePath)
 }

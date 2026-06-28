@@ -3,17 +3,25 @@ package org.vliux.orca.prototype.cloudflow.data
 import androidx.room.withTransaction
 import java.time.Instant
 import java.util.UUID
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import org.vliux.orca.prototype.cloudflow.importing.AppFileStorage
 import org.vliux.orca.prototype.cloudflow.importing.DocumentImportPlanner
 import org.vliux.orca.prototype.cloudflow.importing.SourceImportPlanInput
 import org.vliux.orca.prototype.cloudflow.importing.SourceImportRequest
+import org.vliux.orca.prototype.cloudflow.model.DocumentFactEntity
 import org.vliux.orca.prototype.cloudflow.model.DocumentEntity
 import org.vliux.orca.prototype.cloudflow.model.DocumentImportStatus
 import org.vliux.orca.prototype.cloudflow.model.DocumentListItem
 import org.vliux.orca.prototype.cloudflow.model.DocumentSourceEntity
 import org.vliux.orca.prototype.cloudflow.model.ExtractionRunEntity
 import org.vliux.orca.prototype.cloudflow.model.ExtractionStatus
+import org.vliux.orca.prototype.cloudflow.model.MaintenanceEventEntity
+import org.vliux.orca.prototype.cloudflow.model.ServiceItemEntity
+import org.vliux.orca.prototype.cloudflow.normalization.NormalizedExtractionResult
 
 class PrototypeDocumentRepository(
     private val database: PrototypeDatabase,
@@ -56,6 +64,30 @@ class PrototypeDocumentRepository(
 
     fun observeDocumentList(vehicleId: String): Flow<List<DocumentListItem>> =
         dao.observeDocumentList(vehicleId)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun observeDocumentDetail(documentId: String): Flow<DocumentDetail?> {
+        val eventFlow = dao.observeEvent(documentId)
+        return combine(
+            dao.observeDocument(documentId),
+            dao.observeSources(documentId),
+            dao.observeActiveFacts(documentId),
+            eventFlow,
+            eventFlow.flatMapLatest { event ->
+                event?.let { dao.observeServiceItems(it.eventId) } ?: flowOf(emptyList())
+            },
+        ) { document, sources, facts, event, serviceItems ->
+            document?.let {
+                DocumentDetail(
+                    document = it,
+                    sources = sources,
+                    facts = facts,
+                    event = event,
+                    serviceItems = serviceItems,
+                )
+            }
+        }
+    }
 
     suspend fun getDocument(documentId: String): DocumentEntity? =
         dao.getDocument(documentId)
@@ -185,9 +217,56 @@ class PrototypeDocumentRepository(
             )
         }
     }
+
+    suspend fun applyExtractionResult(
+        documentId: String,
+        runId: String,
+        result: NormalizedExtractionResult,
+    ) {
+        val run = requireNotNull(dao.getRun(runId))
+        val document = requireNotNull(dao.getDocument(documentId))
+        val now = Instant.now().toString()
+        database.withTransaction {
+            dao.updateExtractionRun(
+                runId = runId,
+                status = ExtractionStatus.SUCCEEDED.name,
+                errorCode = null,
+                startedAt = run.startedAt,
+                completedAt = now,
+            )
+            dao.deleteFactsByDocument(documentId)
+            dao.getEvent(documentId)?.let { existingEvent ->
+                dao.deleteServiceItemsByEvent(existingEvent.eventId)
+            }
+            dao.deleteEventByDocument(documentId)
+            if (result.facts.isNotEmpty()) {
+                dao.insertFacts(result.facts)
+            }
+            result.event?.let { dao.insertEvent(it) }
+            if (result.serviceItems.isNotEmpty()) {
+                dao.insertServiceItems(result.serviceItems)
+            }
+            dao.updateDocumentExtractionResult(
+                documentId = documentId,
+                title = result.title ?: document.title,
+                extractionStatus = ExtractionStatus.SUCCEEDED.name,
+                latestRunId = runId,
+                occurredAt = result.event?.eventDate,
+                updatedAt = now,
+            )
+        }
+    }
 }
 
 data class DocumentBundle(
     val document: DocumentEntity,
     val sources: List<DocumentSourceEntity>,
+)
+
+data class DocumentDetail(
+    val document: DocumentEntity,
+    val sources: List<DocumentSourceEntity>,
+    val facts: List<DocumentFactEntity>,
+    val event: MaintenanceEventEntity?,
+    val serviceItems: List<ServiceItemEntity>,
 )

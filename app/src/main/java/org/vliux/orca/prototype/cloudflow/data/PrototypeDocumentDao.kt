@@ -105,8 +105,14 @@ interface PrototypeDocumentDao {
     @Query("SELECT * FROM documents WHERE documentId = :documentId")
     suspend fun getDocument(documentId: String): DocumentEntity?
 
+    @Query("SELECT * FROM documents WHERE documentId = :documentId")
+    fun observeDocument(documentId: String): Flow<DocumentEntity?>
+
     @Query("SELECT * FROM document_sources WHERE documentId = :documentId ORDER BY sourceOrder ASC")
     suspend fun getSources(documentId: String): List<DocumentSourceEntity>
+
+    @Query("SELECT * FROM document_sources WHERE documentId = :documentId ORDER BY sourceOrder ASC")
+    fun observeSources(documentId: String): Flow<List<DocumentSourceEntity>>
 
     @Query("SELECT * FROM extraction_runs WHERE documentId = :documentId ORDER BY createdAt DESC LIMIT 1")
     suspend fun getLatestRun(documentId: String): ExtractionRunEntity?

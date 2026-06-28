@@ -70,6 +70,10 @@ class ExtractionNormalizerTest {
         assertEquals("USD", result.event?.currencyCode)
         assertEquals(1, result.serviceItems.size)
         assertEquals("BRAKES", result.serviceItems.first().category)
+        assertEquals("documents.title", result.debugReport.titleDecision.savedTo)
+        assertEquals("document_facts", result.debugReport.factDecisions.first().savedTo)
+        assertEquals("maintenance_events", result.debugReport.eventDecision.savedTo)
+        assertEquals("service_items", result.debugReport.serviceItemDecisions.first().savedTo)
     }
 
     @Test
@@ -97,6 +101,13 @@ class ExtractionNormalizerTest {
         assertNull(result.facts.single().normalizedValue)
         assertNull(result.facts.single().sourceId)
         assertNull(result.event)
+        org.junit.Assert.assertTrue(
+            result.debugReport.factDecisions.single().reason.contains("normalized_value was rejected because it failed service_date validation."),
+        )
+        assertEquals(
+            "No usable event fields survived normalization.",
+            result.debugReport.eventDecision.reason,
+        )
     }
 
     private fun source(sourceId: String) = DocumentSourceEntity(

@@ -15,6 +15,12 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Orca">
         <activity
+            android:name=".prototype.DocumentDebugActivity"
+            android:exported="false"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.Orca"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"

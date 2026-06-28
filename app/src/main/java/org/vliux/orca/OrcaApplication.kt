@@ -20,7 +20,7 @@ class OrcaApplication : Application() {
                 applicationContext,
                 PrototypeDatabase::class.java,
                 "prototype.db",
-            ).build(),
+            ).addMigrations(PrototypeDatabase.MIGRATION_1_2).build(),
             repositoryFactory = {
                 PrototypeDocumentRepository(
                     database = it,

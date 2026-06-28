@@ -26,28 +26,30 @@ class OpenAiCloudExtractionAdapterTest {
             writeText("fake pdf bytes")
         }
 
-        val body = adapter.buildRequestBody(
-            ExtractionRequest(
-                document = document(),
-                sources = listOf(
-                    sourcePayload(
-                        sourceId = "src-1",
-                        fileName = "receipt.jpg",
-                        mimeType = "image/jpeg",
-                        file = imageFile,
-                    ),
-                    sourcePayload(
-                        sourceId = "src-2",
-                        fileName = "invoice.pdf",
-                        mimeType = "application/pdf",
-                        file = pdfFile,
-                    ),
+        val request = ExtractionRequest(
+            document = document(),
+            sources = listOf(
+                sourcePayload(
+                    sourceId = "src-1",
+                    fileName = "receipt.jpg",
+                    mimeType = "image/jpeg",
+                    file = imageFile,
                 ),
-                promptVersion = "prototype-v1",
+                sourcePayload(
+                    sourceId = "src-2",
+                    fileName = "invoice.pdf",
+                    mimeType = "application/pdf",
+                    file = pdfFile,
+                ),
             ),
+            promptVersion = "prototype-v1",
         )
+        val prompt = adapter.buildPrompt(request)
+        val body = adapter.buildRequestBody(request, prompt)
 
         val bodyLower = body.lowercase()
+        assertTrue(prompt.contains("document_id=doc-1"))
+        assertTrue(prompt.contains("source_id=src-1"))
         assertTrue(body.contains("\"model\":\"gpt-5.4\""))
         assertTrue(body.contains("\"type\":\"input_text\""))
         assertTrue(bodyLower.contains("rotate each page or image upright"))

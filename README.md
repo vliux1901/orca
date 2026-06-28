@@ -43,7 +43,11 @@ JAVA_HOME=/path/to/jdk ./gradlew :app:assembleDebug
 2. Confirm the header says `OpenAI extraction is configured.`
 3. Import one or more images or PDFs.
 4. Wait for the document status to move through `QUEUED` -> `RUNNING` -> `SUCCEEDED` or `FAILED`.
-5. Open the document card to inspect extracted facts, evidence snippets, and service items.
+5. Tap a document row to open the standalone detail screen.
+6. In the detail screen, review:
+   - which response fields were saved into which DB table
+   - the saved `documents`, `document_sources`, `extraction_runs`, `document_facts`, `maintenance_events`, and `service_items` rows
+   - expandable debug sections for the prompt sent to AI, the raw OpenAI response envelope, the structured output JSON, and the app’s normalization report
 
 ## Debugging
 
@@ -59,4 +63,4 @@ Useful command:
 adb logcat -s OrcaPrototype
 ```
 
-The logs intentionally avoid raw document text, raw prompts, raw model responses, and API keys.
+The logs intentionally avoid raw document text, raw prompts, raw model responses, and API keys. Those richer debug artifacts are stored on successful extraction runs and are visible only in the in-app detail screen.

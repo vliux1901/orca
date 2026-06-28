@@ -55,6 +55,7 @@ class PrototypeExtractionWorker(
             graph.repository.applyExtractionResult(
                 documentId = documentId,
                 runId = run.runId,
+                parsed = parsed,
                 result = normalized,
             )
             PrototypeLog.info("Worker finished successfully for document=${documentId.takeLast(8)}.")

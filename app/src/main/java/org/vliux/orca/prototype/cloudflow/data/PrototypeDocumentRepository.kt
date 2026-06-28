@@ -8,7 +8,10 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.vliux.orca.prototype.cloudflow.PrototypeLog
+import org.vliux.orca.prototype.cloudflow.extraction.ParsedExtractionPayload
 import org.vliux.orca.prototype.cloudflow.importing.AppFileStorage
 import org.vliux.orca.prototype.cloudflow.importing.DocumentImportPlanner
 import org.vliux.orca.prototype.cloudflow.importing.SourceImportPlanInput
@@ -30,6 +33,7 @@ class PrototypeDocumentRepository(
     private val planner: DocumentImportPlanner = DocumentImportPlanner(),
 ) {
     private val dao = database.documentDao()
+    private val json = Json { prettyPrint = true; explicitNulls = false }
 
     suspend fun importDocument(
         vehicleId: String,
@@ -73,19 +77,30 @@ class PrototypeDocumentRepository(
     @OptIn(ExperimentalCoroutinesApi::class)
     fun observeDocumentDetail(documentId: String): Flow<DocumentDetail?> {
         val eventFlow = dao.observeEvent(documentId)
-        return combine(
+        val documentBundleFlow = combine(
             dao.observeDocument(documentId),
             dao.observeSources(documentId),
+            dao.observeLatestRun(documentId),
+        ) { document, sources, latestRun ->
+            Triple(document, sources, latestRun)
+        }
+        val extractionFlow = combine(
             dao.observeActiveFacts(documentId),
             eventFlow,
             eventFlow.flatMapLatest { event ->
                 event?.let { dao.observeServiceItems(it.eventId) } ?: flowOf(emptyList())
             },
-        ) { document, sources, facts, event, serviceItems ->
+        ) { facts, event, serviceItems ->
+            Triple(facts, event, serviceItems)
+        }
+        return combine(documentBundleFlow, extractionFlow) { documentBundle, extractionBundle ->
+            val (document, sources, latestRun) = documentBundle
+            val (facts, event, serviceItems) = extractionBundle
             document?.let {
                 DocumentDetail(
                     document = it,
                     sources = sources,
+                    latestRun = latestRun,
                     facts = facts,
                     event = event,
                     serviceItems = serviceItems,
@@ -140,6 +155,10 @@ class PrototypeDocumentRepository(
             promptVersion = promptVersion,
             status = ExtractionStatus.QUEUED.name,
             errorCode = null,
+            requestPrompt = null,
+            responseEnvelopeJson = null,
+            responseOutputJson = null,
+            normalizationDebugJson = null,
             startedAt = null,
             completedAt = null,
             createdAt = now,
@@ -248,12 +267,20 @@ class PrototypeDocumentRepository(
     suspend fun applyExtractionResult(
         documentId: String,
         runId: String,
+        parsed: ParsedExtractionPayload,
         result: NormalizedExtractionResult,
     ) {
         val run = requireNotNull(dao.getRun(runId))
         val document = requireNotNull(dao.getDocument(documentId))
         val now = Instant.now().toString()
         database.withTransaction {
+            dao.updateExtractionRunDebugArtifacts(
+                runId = runId,
+                requestPrompt = parsed.provider.promptText,
+                responseEnvelopeJson = parsed.provider.responseEnvelopeJson,
+                responseOutputJson = parsed.provider.responseOutputJson,
+                normalizationDebugJson = json.encodeToString(result.debugReport),
+            )
             dao.updateExtractionRun(
                 runId = runId,
                 status = ExtractionStatus.SUCCEEDED.name,
@@ -296,6 +323,7 @@ data class DocumentBundle(
 data class DocumentDetail(
     val document: DocumentEntity,
     val sources: List<DocumentSourceEntity>,
+    val latestRun: ExtractionRunEntity?,
     val facts: List<DocumentFactEntity>,
     val event: MaintenanceEventEntity?,
     val serviceItems: List<ServiceItemEntity>,

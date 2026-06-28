@@ -41,7 +41,8 @@ class OpenAiCloudExtractionAdapter(
                 "OpenAI extraction is not configured. Set ORCA_CLOUD_EXTRACTION_API_KEY."
             }
 
-            val body = buildRequestBody(request)
+            val promptText = buildPrompt(request)
+            val body = buildRequestBody(request, promptText)
             PrototypeLog.info(
                 "OpenAI request prepared for document=${request.document.documentId.takeLast(8)} model=${config.modelName} sources=${request.sources.size} bytes=${request.sources.sumOf { it.file.length() }}.",
             )
@@ -72,12 +73,17 @@ class OpenAiCloudExtractionAdapter(
                     backendType = "CLOUD_VISION",
                     providerName = config.providerName,
                     modelName = config.modelName,
-                    rawJson = outputText,
+                    promptText = promptText,
+                    responseEnvelopeJson = responseBody,
+                    responseOutputJson = outputText,
                 )
             }
         }
 
-    internal fun buildRequestBody(request: ExtractionRequest): String =
+    internal fun buildRequestBody(
+        request: ExtractionRequest,
+        promptText: String = buildPrompt(request),
+    ): String =
         json.encodeToString(
             OpenAiResponsesRequest.serializer(),
             OpenAiResponsesRequest(
@@ -85,7 +91,7 @@ class OpenAiCloudExtractionAdapter(
                 input = listOf(
                     OpenAiInputMessage(
                         role = "user",
-                        content = buildContent(request),
+                        content = buildContent(request, promptText),
                     ),
                 ),
                 text = OpenAiTextConfig(
@@ -100,11 +106,14 @@ class OpenAiCloudExtractionAdapter(
             ),
         )
 
-    private fun buildContent(request: ExtractionRequest): List<OpenAiInputContent> {
+    private fun buildContent(
+        request: ExtractionRequest,
+        promptText: String,
+    ): List<OpenAiInputContent> {
         val parts = mutableListOf<OpenAiInputContent>()
         parts += OpenAiInputContent(
             type = "input_text",
-            text = buildPrompt(request),
+            text = promptText,
         )
         request.sources.forEach { source ->
             parts += when {
@@ -125,7 +134,7 @@ class OpenAiCloudExtractionAdapter(
         return parts
     }
 
-    private fun buildPrompt(request: ExtractionRequest): String {
+    internal fun buildPrompt(request: ExtractionRequest): String {
         val sourceList = request.sources.joinToString(separator = "\n") { source ->
             "- source_id=${source.source.sourceId}, order=${source.source.sourceOrder}, file_name=${source.source.fileName}, mime_type=${source.source.mimeType}"
         }

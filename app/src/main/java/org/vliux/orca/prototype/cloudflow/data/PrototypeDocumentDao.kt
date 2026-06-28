@@ -62,6 +62,24 @@ interface PrototypeDocumentDao {
 
     @Query(
         """
+        UPDATE extraction_runs
+        SET requestPrompt = :requestPrompt,
+            responseEnvelopeJson = :responseEnvelopeJson,
+            responseOutputJson = :responseOutputJson,
+            normalizationDebugJson = :normalizationDebugJson
+        WHERE runId = :runId
+        """,
+    )
+    suspend fun updateExtractionRunDebugArtifacts(
+        runId: String,
+        requestPrompt: String?,
+        responseEnvelopeJson: String?,
+        responseOutputJson: String?,
+        normalizationDebugJson: String?,
+    )
+
+    @Query(
+        """
         UPDATE documents
         SET sourceCount = :sourceCount,
             importStatus = :importStatus,
@@ -116,6 +134,9 @@ interface PrototypeDocumentDao {
 
     @Query("SELECT * FROM extraction_runs WHERE documentId = :documentId ORDER BY createdAt DESC LIMIT 1")
     suspend fun getLatestRun(documentId: String): ExtractionRunEntity?
+
+    @Query("SELECT * FROM extraction_runs WHERE documentId = :documentId ORDER BY createdAt DESC LIMIT 1")
+    fun observeLatestRun(documentId: String): Flow<ExtractionRunEntity?>
 
     @Query("SELECT * FROM extraction_runs WHERE runId = :runId")
     suspend fun getRun(runId: String): ExtractionRunEntity?

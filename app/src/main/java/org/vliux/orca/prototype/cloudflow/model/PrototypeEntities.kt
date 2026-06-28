@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 
 @Entity(
     tableName = "documents",
@@ -76,11 +77,16 @@ data class ExtractionRunEntity(
     val promptVersion: String,
     val status: String,
     val errorCode: String?,
+    val requestPrompt: String?,
+    val responseEnvelopeJson: String?,
+    val responseOutputJson: String?,
+    val normalizationDebugJson: String?,
     val startedAt: String?,
     val completedAt: String?,
     val createdAt: String,
 )
 
+@Serializable
 @Entity(
     tableName = "document_facts",
     foreignKeys = [
@@ -115,6 +121,7 @@ data class DocumentFactEntity(
     val createdAt: String,
 )
 
+@Serializable
 @Entity(
     tableName = "maintenance_events",
     foreignKeys = [
@@ -144,6 +151,7 @@ data class MaintenanceEventEntity(
     val updatedAt: String,
 )
 
+@Serializable
 @Entity(
     tableName = "service_items",
     foreignKeys = [

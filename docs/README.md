@@ -8,5 +8,6 @@ New documents should be generated as HTML file(s) by default.
 - `technical-design.html`: The high level technical design.
 - `database-schema.html`: Database schema design for Room tables, storage paths, integrity rules, and migration/testing notes.
 - `api-definition.html`: App-owned API and entity definitions for documents, sources, repositories, and extraction contracts.
+- `execution-plan.html`: Implementation sequence, phase exit criteria, testing strategy, and delivery risks for building V1.
 - `prototype.md`: V0.1 prototype plan for OCR and deterministic extraction validation.
 - `backlogs.md`: TODO backlog for known product and prototype follow-up work.

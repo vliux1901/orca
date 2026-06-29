@@ -112,7 +112,7 @@ private fun HeaderCard(
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                text = "Import one or more images/PDFs. The app copies them to private storage, queues a worker, sends the original files to the configured cloud extraction endpoint, then persists normalized facts and maintenance events.",
+                text = "Import one or more images/PDFs as one logical document. The app copies them to private storage, orders the source files, queues a worker, sends the original files to OpenAI, then persists normalized facts and maintenance events.",
                 style = MaterialTheme.typography.bodyMedium,
             )
             Text(
@@ -129,7 +129,7 @@ private fun HeaderCard(
                 style = MaterialTheme.typography.bodySmall,
             )
             Button(onClick = onImportClick, modifier = Modifier.fillMaxWidth()) {
-                Text("Import Images Or PDFs")
+                Text("Import One Or More Files")
             }
             statusMessage?.let {
                 Text(text = it, style = MaterialTheme.typography.bodySmall)

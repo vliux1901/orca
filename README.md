@@ -42,6 +42,8 @@ JAVA_HOME=/path/to/jdk ./gradlew :app:assembleDebug
 1. Launch the app.
 2. Confirm the header says `OpenAI extraction is configured.`
 3. Import one or more images or PDFs.
+   - The app groups that selection into one logical document.
+   - Source files are ordered before upload, and the model is told to use that order as the default reading sequence.
 4. Wait for the document status to move through `QUEUED` -> `RUNNING` -> `SUCCEEDED` or `FAILED`.
 5. Tap a document row to open the standalone detail screen.
 6. In the detail screen, review:

@@ -142,11 +142,15 @@ class OpenAiCloudExtractionAdapter(
             You extract maintenance information from uploaded images and PDF files.
 
             Instructions:
+            - Treat all uploaded source files as one logical maintenance document.
+            - Use source order ascending as the default reading order across files.
+            - When the files appear to be out of sequence, use visible page numbers, filenames, and textual continuation cues to infer the most likely reading order before extracting.
             - Before extraction, mentally rotate each page or image upright if needed.
             - Preserve structural meaning.
             - Reconstruct tables conservatively.
             - Do not invent values that are not supported by the document.
             - Return strict JSON only matching the required schema.
+            - Keep citations tied to the original source_id even if you infer a different reading order.
             - Each extracted fact should cite the best matching source_id, page number when available, and a short evidence_text snippet.
             - Use these fact_type values only when applicable: SERVICE_DATE, ODOMETER, TOTAL_COST, SHOP_NAME, VIN, LINE_ITEM, NOTE.
             - If a field is not present or is uncertain, return null or omit it where allowed instead of guessing.

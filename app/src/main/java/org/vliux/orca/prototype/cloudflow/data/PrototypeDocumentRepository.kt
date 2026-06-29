@@ -15,6 +15,7 @@ import org.vliux.orca.prototype.cloudflow.extraction.ParsedExtractionPayload
 import org.vliux.orca.prototype.cloudflow.importing.AppFileStorage
 import org.vliux.orca.prototype.cloudflow.importing.DocumentImportPlanner
 import org.vliux.orca.prototype.cloudflow.importing.SourceImportPlanInput
+import org.vliux.orca.prototype.cloudflow.importing.SourceImportOrdering
 import org.vliux.orca.prototype.cloudflow.importing.SourceImportRequest
 import org.vliux.orca.prototype.cloudflow.model.DocumentFactEntity
 import org.vliux.orca.prototype.cloudflow.model.DocumentEntity
@@ -40,13 +41,14 @@ class PrototypeDocumentRepository(
         imports: List<SourceImportRequest>,
     ): String {
         require(imports.isNotEmpty()) { "At least one import is required." }
+        val orderedImports = SourceImportOrdering.order(imports)
 
         val plan = planner.plan(
             vehicleId = vehicleId,
-            imports = imports.map { SourceImportPlanInput(it.displayName, it.mimeType) },
+            imports = orderedImports.map { SourceImportPlanInput(it.displayName, it.mimeType) },
         )
 
-        val storedSources = plan.sources.zip(imports).map { (sourcePlan, request) ->
+        val storedSources = plan.sources.zip(orderedImports).map { (sourcePlan, request) ->
             fileStorage.copySource(sourcePlan.source, request)
         }
 
@@ -65,7 +67,7 @@ class PrototypeDocumentRepository(
         }
 
         PrototypeLog.info(
-            "Stored document=${plan.document.documentId.takeLast(8)} locally with ${storedSources.size} source file(s).",
+            "Stored document=${plan.document.documentId.takeLast(8)} locally with ${storedSources.size} ordered source file(s).",
         )
 
         return plan.document.documentId

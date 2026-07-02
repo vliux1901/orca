@@ -6,17 +6,14 @@ Build prerequisites:
 
 The Gradle wrapper defaults `GRADLE_USER_HOME` and `ANDROID_USER_HOME` to project-local folders so builds do not depend on machine-global cache directories.
 
-## Prototype Setup
+## Current Status
 
-The current prototype is a cloud-first document extraction flow:
-- import one or more images or PDFs
-- copy them to app-private storage
-- enqueue a `WorkManager` job
-- send the original source files to OpenAI Responses API
-- parse strict JSON
-- normalize and persist extracted facts and maintenance events locally
+The app is currently at the Phase 0 foundation stage:
+- reusable Room/data/importing/extraction foundations are in app-owned packages
+- prototype-only UI and debug entry points have been removed
+- the launcher screen is a neutral status shell until later phases wire product flows
 
-Local OpenAI prototype config:
+Local provider config:
 - Add these entries to `local.properties` for Android Studio-friendly local testing:
   - `orca.cloudExtractionApiKey=YOUR_OPENAI_API_KEY`
   - `orca.cloudExtractionModel=gpt-5.4`
@@ -37,32 +34,24 @@ Build and install:
 JAVA_HOME=/path/to/jdk ./gradlew :app:assembleDebug
 ```
 
-## Prototype Use
+## App Use
 
 1. Launch the app.
-2. Confirm the header says `OpenAI extraction is configured.`
-3. Import one or more images or PDFs.
-   - The app groups that selection into one logical document.
-   - Source files are ordered before upload, and the model is told to use that order as the default reading sequence.
-4. Wait for the document status to move through `QUEUED` -> `RUNNING` -> `SUCCEEDED` or `FAILED`.
-5. Tap a document row to open the standalone detail screen.
-6. In the detail screen, review:
-   - which response fields were saved into which DB table
-   - the saved `documents`, `document_sources`, `extraction_runs`, `document_facts`, `maintenance_events`, and `service_items` rows
-   - expandable debug sections for the prompt sent to AI, the raw OpenAI response envelope, the structured output JSON, and the app’s normalization report
+2. Review the foundation status screen.
+3. Use build/test flows to verify backend progress until later phases add import and review screens.
 
 ## Debugging
 
-Prototype runtime logs use the logcat tag:
+Runtime logs use the logcat tag:
 
 ```text
-OrcaPrototype
+OrcaApp
 ```
 
 Useful command:
 
 ```bash
-adb logcat -s OrcaPrototype
+adb logcat -s OrcaApp
 ```
 
-The logs intentionally avoid raw document text, raw prompts, raw model responses, and API keys. Those richer debug artifacts are stored on successful extraction runs and are visible only in the in-app detail screen.
+The logs intentionally avoid raw document text and API keys.

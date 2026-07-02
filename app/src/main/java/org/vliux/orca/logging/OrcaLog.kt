@@ -2,7 +2,7 @@ package org.vliux.orca.logging
 
 import android.util.Log
 
-private const val TAG = "OrcaPrototype"
+private const val TAG = "OrcaApp"
 
 object OrcaLog {
     fun info(message: String) {

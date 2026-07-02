@@ -21,7 +21,7 @@ import org.vliux.orca.prototype.cloudflow.model.ServiceItemEntity
         ServiceItemEntity::class,
     ],
     version = 2,
-    exportSchema = false,
+    exportSchema = true,
 )
 abstract class PrototypeDatabase : RoomDatabase() {
     abstract fun documentDao(): PrototypeDocumentDao

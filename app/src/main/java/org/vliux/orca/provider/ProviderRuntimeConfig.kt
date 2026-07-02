@@ -1,7 +1,7 @@
 package org.vliux.orca.provider
 
 import org.vliux.orca.BuildConfig
-import org.vliux.orca.prototype.cloudflow.extraction.CloudExtractionConfig
+import org.vliux.orca.extraction.CloudExtractionConfig
 
 data class ProviderRuntimeConfig(
     val providerName: String,

@@ -40,7 +40,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import org.vliux.orca.OrcaApplication
-import org.vliux.orca.prototype.cloudflow.data.DocumentDetail
+import org.vliux.orca.data.DocumentDetail
 import org.vliux.orca.ui.theme.OrcaTheme
 
 class DocumentDebugActivity : ComponentActivity() {

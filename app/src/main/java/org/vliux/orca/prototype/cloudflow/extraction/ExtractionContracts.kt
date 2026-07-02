@@ -3,7 +3,6 @@ package org.vliux.orca.prototype.cloudflow.extraction
 import java.io.File
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import org.vliux.orca.BuildConfig
 import org.vliux.orca.prototype.cloudflow.model.DocumentEntity
 import org.vliux.orca.prototype.cloudflow.model.DocumentSourceEntity
 import org.vliux.orca.prototype.cloudflow.model.ExtractionRunEntity
@@ -39,11 +38,17 @@ interface CloudExtractionAdapter {
     ): ProviderExtractionPayload
 }
 
+interface MaintenanceExtractionEngine {
+    suspend fun extract(
+        request: ExtractionRequest,
+    ): ParsedExtractionPayload
+}
+
 class PrototypeExtractionEngine(
     private val adapter: CloudExtractionAdapter,
     private val parser: StrictJsonExtractionParser,
-) {
-    suspend fun extract(
+) : MaintenanceExtractionEngine {
+    override suspend fun extract(
         request: ExtractionRequest,
     ): ParsedExtractionPayload {
         val providerPayload = adapter.extract(request)
@@ -61,17 +66,6 @@ data class CloudExtractionConfig(
     val modelName: String,
 ) {
     fun isConfigured(): Boolean = apiKey.isNotBlank()
-
-    companion object {
-        fun fromBuildConfig(): CloudExtractionConfig {
-            return CloudExtractionConfig(
-                responsesUrl = BuildConfig.OPENAI_RESPONSES_URL,
-                apiKey = BuildConfig.CLOUD_EXTRACTION_API_KEY,
-                providerName = "openai",
-                modelName = BuildConfig.CLOUD_EXTRACTION_MODEL,
-            )
-        }
-    }
 }
 
 @Serializable

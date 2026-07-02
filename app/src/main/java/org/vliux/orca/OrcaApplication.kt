@@ -3,9 +3,11 @@ package org.vliux.orca
 import android.app.Application
 import androidx.room.Room
 import java.io.File
+import org.vliux.orca.provider.ProviderRuntimeConfig
+import org.vliux.orca.provider.ProviderRuntimeConfigResolver
 import org.vliux.orca.prototype.cloudflow.data.PrototypeDatabase
 import org.vliux.orca.prototype.cloudflow.data.PrototypeDocumentRepository
-import org.vliux.orca.prototype.cloudflow.extraction.CloudExtractionConfig
+import org.vliux.orca.prototype.cloudflow.extraction.MaintenanceExtractionEngine
 import org.vliux.orca.prototype.cloudflow.extraction.OpenAiCloudExtractionAdapter
 import org.vliux.orca.prototype.cloudflow.extraction.PrototypeExtractionEngine
 import org.vliux.orca.prototype.cloudflow.extraction.StrictJsonExtractionParser
@@ -27,7 +29,7 @@ class OrcaApplication : Application() {
                     fileStorage = AppFileStorage(applicationContext),
                 )
             },
-            extractionConfig = CloudExtractionConfig.fromBuildConfig(),
+            providerConfig = ProviderRuntimeConfigResolver.fromBuildConfig(),
         )
     }
 }
@@ -36,17 +38,18 @@ class PrototypeGraph(
     app: Application,
     database: PrototypeDatabase,
     repositoryFactory: (PrototypeDatabase) -> PrototypeDocumentRepository,
-    private val extractionConfig: CloudExtractionConfig,
+    private val providerConfig: ProviderRuntimeConfig,
 ) {
     val repository: PrototypeDocumentRepository = repositoryFactory(database)
     private val fileStorage = AppFileStorage(app.applicationContext)
     private val parser = StrictJsonExtractionParser()
-    private val adapter = OpenAiCloudExtractionAdapter(extractionConfig)
+    private val adapter = OpenAiCloudExtractionAdapter(providerConfig.toCloudExtractionConfig())
     val extractionNormalizer = ExtractionNormalizer()
-    val extractionEngine = PrototypeExtractionEngine(adapter, parser)
-    val extractionEngineProviderName: String = extractionConfig.providerName
-    val extractionEngineModelName: String = extractionConfig.modelName
-    val extractionConfigured: Boolean = extractionConfig.isConfigured()
+    val extractionEngine: MaintenanceExtractionEngine = PrototypeExtractionEngine(adapter, parser)
+    val extractionEngineProviderName: String = providerConfig.providerName
+    val extractionEngineModelName: String = providerConfig.modelName
+    val extractionConfigured: Boolean = providerConfig.isConfigured()
+    val providerAuthSource = providerConfig.authSource
 
     fun resolveSourceFile(relativePath: String): File = fileStorage.resolveFile(relativePath)
 }

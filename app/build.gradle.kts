@@ -20,6 +20,26 @@ fun localProperty(name: String): String? = localProperties.getProperty(name)?.ta
 fun firstConfiguredValue(vararg values: String?): String =
     values.firstOrNull { !it.isNullOrBlank() } ?: ""
 
+data class ConfiguredValue(
+    val value: String,
+    val source: String,
+)
+
+fun configuredValue(vararg values: Pair<String, String?>): ConfiguredValue {
+    val configured = values.firstOrNull { !it.second.isNullOrBlank() }
+    return if (configured != null) {
+        ConfiguredValue(
+            value = configured.second.orEmpty(),
+            source = configured.first,
+        )
+    } else {
+        ConfiguredValue(
+            value = "",
+            source = "none",
+        )
+    }
+}
+
 fun ApplicationExtension.stringBuildConfigField(name: String, value: String) {
     defaultConfig {
         buildConfigField("String", name, "\"${value.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
@@ -70,6 +90,10 @@ android.stringBuildConfigField(
     ),
 )
 android.stringBuildConfigField(
+    name = "CLOUD_EXTRACTION_PROVIDER_NAME",
+    value = "openai",
+)
+android.stringBuildConfigField(
     name = "OPENAI_RESPONSES_URL",
     value = firstConfiguredValue(
         providers.gradleProperty("orcaOpenAiResponsesUrl").orNull,
@@ -86,6 +110,14 @@ android.stringBuildConfigField(
         System.getenv("ORCA_CLOUD_EXTRACTION_MODEL"),
         "gpt-5.4",
     ),
+)
+android.stringBuildConfigField(
+    name = "CLOUD_EXTRACTION_AUTH_SOURCE",
+    value = configuredValue(
+        "gradle_property" to providers.gradleProperty("orcaCloudExtractionApiKey").orNull,
+        "local_properties" to localProperty("orca.cloudExtractionApiKey"),
+        "environment" to System.getenv("ORCA_CLOUD_EXTRACTION_API_KEY"),
+    ).source,
 )
 
 dependencies {

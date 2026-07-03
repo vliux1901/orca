@@ -11,7 +11,7 @@ import org.junit.Test
 
 class SchemaContractTest {
     @Test
-    fun version1SchemaDefinesSourceForeignKeysForFactsAndServiceItems() {
+    fun version1SchemaDefinesPhase1CoreRelationships() {
         val schemaFile = sequenceOf(
             File("schemas/org.vliux.orca.data.OrcaDatabase/1.json"),
             File("app/schemas/org.vliux.orca.data.OrcaDatabase/1.json"),
@@ -24,14 +24,31 @@ class SchemaContractTest {
         val documentFacts = entities.first { entity ->
             entity.jsonObject.getValue("tableName").jsonPrimitive.content == "document_facts"
         }.jsonObject
+        val documents = entities.first { entity ->
+            entity.jsonObject.getValue("tableName").jsonPrimitive.content == "documents"
+        }.jsonObject
+        val searchEntries = entities.first { entity ->
+            entity.jsonObject.getValue("tableName").jsonPrimitive.content == "search_entries"
+        }.jsonObject
         val serviceItems = entities.first { entity ->
             entity.jsonObject.getValue("tableName").jsonPrimitive.content == "service_items"
         }.jsonObject
+        val vehicles = entities.first { entity ->
+            entity.jsonObject.getValue("tableName").jsonPrimitive.content == "vehicles"
+        }.jsonObject
 
+        assertHasForeignKey(documents, childColumn = "vehicleId", parentTable = "vehicles", onDelete = "CASCADE")
         assertHasForeignKey(documentFacts, childColumn = "sourceId", parentTable = "document_sources", onDelete = "SET NULL")
+        assertHasForeignKey(searchEntries, childColumn = "documentId", parentTable = "documents", onDelete = "CASCADE")
+        assertHasForeignKey(searchEntries, childColumn = "sourceId", parentTable = "document_sources", onDelete = "SET NULL")
         assertHasForeignKey(serviceItems, childColumn = "sourceId", parentTable = "document_sources", onDelete = "SET NULL")
+        assertHasIndex(documents, "index_documents_vehicleId")
         assertHasIndex(documentFacts, "index_document_facts_sourceId")
+        assertHasIndex(searchEntries, "index_search_entries_vehicleId")
+        assertHasIndex(searchEntries, "index_search_entries_sourceId")
         assertHasIndex(serviceItems, "index_service_items_sourceId")
+        assertHasColumn(vehicles, "licensePlate")
+        assertHasColumn(vehicles, "vin")
     }
 
     private fun assertHasForeignKey(
@@ -60,5 +77,15 @@ class SchemaContractTest {
             index.jsonObject.getValue("name").jsonPrimitive.content
         }
         assertTrue("Expected index $indexName", indexNames.contains(indexName))
+    }
+
+    private fun assertHasColumn(
+        entity: JsonObject,
+        columnName: String,
+    ) {
+        val fields = entity.getValue("fields").jsonArray.map { field ->
+            field.jsonObject.getValue("fieldPath").jsonPrimitive.content
+        }
+        assertTrue("Expected column $columnName", fields.contains(columnName))
     }
 }

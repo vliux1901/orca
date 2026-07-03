@@ -26,6 +26,7 @@ import org.vliux.orca.data.model.DocumentSourceEntity
 import org.vliux.orca.data.model.ExtractionRunEntity
 import org.vliux.orca.data.model.ExtractionStatus
 import org.vliux.orca.data.model.MaintenanceEventEntity
+import org.vliux.orca.data.model.SearchEntryEntity
 import org.vliux.orca.data.model.ServiceItemEntity
 import org.vliux.orca.normalization.NormalizedExtractionResult
 
@@ -124,6 +125,18 @@ class DocumentRepository(
             document = document,
             sources = dao.getSources(documentId),
         )
+    }
+
+    suspend fun replaceSearchEntries(
+        documentId: String,
+        entries: List<SearchEntryEntity>,
+    ) {
+        database.withTransaction {
+            dao.deleteSearchEntriesByDocument(documentId)
+            if (entries.isNotEmpty()) {
+                dao.insertSearchEntries(entries)
+            }
+        }
     }
 
     suspend fun markDocumentQueued(documentId: String) {

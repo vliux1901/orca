@@ -7,6 +7,7 @@ import org.vliux.orca.provider.ProviderRuntimeConfig
 import org.vliux.orca.provider.ProviderRuntimeConfigResolver
 import org.vliux.orca.data.OrcaDatabase
 import org.vliux.orca.data.DocumentRepository
+import org.vliux.orca.data.VehicleRepository
 import org.vliux.orca.extraction.MaintenanceExtractionEngine
 import org.vliux.orca.extraction.OpenAiCloudExtractionAdapter
 import org.vliux.orca.extraction.DefaultMaintenanceExtractionEngine
@@ -41,6 +42,7 @@ class AppGraph(
     private val providerConfig: ProviderRuntimeConfig,
 ) {
     val repository: DocumentRepository = repositoryFactory(database)
+    val vehicleRepository: VehicleRepository = VehicleRepository(database.vehicleDao())
     private val fileStorage = AppFileStorage(app.applicationContext)
     private val parser = StrictJsonExtractionParser()
     private val adapter = OpenAiCloudExtractionAdapter(providerConfig.toCloudExtractionConfig())

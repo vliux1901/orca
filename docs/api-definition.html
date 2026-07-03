@@ -285,7 +285,20 @@
         <section class="tab-panel" id="tab-entities" role="tabpanel" aria-labelledby="tab-button-entities" data-tab-panel="entities">
           <article class="content-card">
             <h2>Room Entities</h2>
-            <pre class="block" data-block-id="entities-1"><code>data class DocumentEntity(
+            <pre class="block" data-block-id="entities-1"><code>data class VehicleEntity(
+    val vehicleId: String,
+    val displayName: String,
+    val make: String,
+    val model: String,
+    val year: Int,
+    val licensePlate: String,
+    val vin: String?,
+    val currentMileage: Int?,
+    val createdAt: Instant,
+    val updatedAt: Instant,
+)
+
+data class DocumentEntity(
     val documentId: String,
     val vehicleId: String,
     val title: String?,
@@ -311,7 +324,7 @@ data class DocumentSourceEntity(
     val pageCount: Int?,
     val createdAt: Instant,
 )</code></pre>
-            <p class="block" data-block-id="entities-2"><code>DocumentEntity</code> represents one logical maintenance document. <code>DocumentSourceEntity</code> represents one imported file that belongs to that document. Audit timestamps use <code>Instant</code>, while <code>occurredOn</code> and <code>eventDate</code> use <code>LocalDate</code> because they represent service dates rather than exact moments.</p>
+            <p class="block" data-block-id="entities-2"><code>VehicleEntity</code> stores the user-managed car profile that owns documents. <code>DocumentEntity</code> represents one logical maintenance document. <code>DocumentSourceEntity</code> represents one imported file that belongs to that document. Audit timestamps use <code>Instant</code>, while <code>occurredOn</code> and <code>eventDate</code> use <code>LocalDate</code> because they represent service dates rather than exact moments.</p>
           </article>
 
           <article class="content-card">
@@ -343,7 +356,18 @@ enum class FactType { SERVICE_DATE, ODOMETER, TOTAL_COST, SHOP_NAME, VIN, LINE_I
         <section class="tab-panel" id="tab-repositories" role="tabpanel" aria-labelledby="tab-button-repositories" data-tab-panel="repositories">
           <article class="content-card">
             <h2>Repository Interfaces</h2>
-            <pre class="block" data-block-id="repos-1"><code>interface DocumentRepository {
+            <pre class="block" data-block-id="repos-1"><code>interface VehicleRepository {
+    suspend fun createVehicle(request: SaveVehicleRequest): String
+
+    suspend fun updateVehicle(
+        vehicleId: String,
+        request: SaveVehicleRequest,
+    )
+
+    fun observeVehicles(): Flow&lt;List&lt;VehicleEntity&gt;&gt;
+}
+
+interface DocumentRepository {
     suspend fun createDocument(
         vehicleId: String,
         title: String?,
@@ -357,6 +381,11 @@ enum class FactType { SERVICE_DATE, ODOMETER, TOTAL_COST, SHOP_NAME, VIN, LINE_I
     suspend fun deleteDocument(documentId: String)
 
     suspend fun markExtractionQueued(documentId: String, runId: String)
+
+    suspend fun replaceSearchEntries(
+        documentId: String,
+        entries: List&lt;SearchEntryEntity&gt;,
+    )
 }
 
 interface FactRepository {
@@ -370,7 +399,17 @@ interface FactRepository {
 
           <article class="content-card">
             <h2>Input Models</h2>
-            <pre class="block" data-block-id="repos-2"><code>data class SourceImport(
+            <pre class="block" data-block-id="repos-2"><code>data class SaveVehicleRequest(
+    val displayName: String,
+    val make: String,
+    val model: String,
+    val year: Int,
+    val licensePlate: String,
+    val vin: String?,
+    val currentMileage: Int?,
+)
+
+data class SourceImport(
     val displayName: String,
     val mimeType: String,
     val inputUri: String,

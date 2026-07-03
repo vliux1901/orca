@@ -2,6 +2,7 @@ package org.vliux.orca.data.model
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import java.time.Instant
@@ -9,6 +10,14 @@ import java.time.LocalDate
 
 @Entity(
     tableName = "documents",
+    foreignKeys = [
+        ForeignKey(
+            entity = VehicleEntity::class,
+            parentColumns = ["vehicleId"],
+            childColumns = ["vehicleId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
     indices = [
         Index("vehicleId"),
         Index("extractionStatus"),

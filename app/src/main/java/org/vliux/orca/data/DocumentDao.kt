@@ -13,6 +13,7 @@ import org.vliux.orca.data.model.DocumentListItem
 import org.vliux.orca.data.model.DocumentSourceEntity
 import org.vliux.orca.data.model.ExtractionRunEntity
 import org.vliux.orca.data.model.MaintenanceEventEntity
+import org.vliux.orca.data.model.SearchEntryEntity
 import org.vliux.orca.data.model.ServiceItemEntity
 
 @Dao
@@ -35,6 +36,9 @@ interface DocumentDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertServiceItems(items: List<ServiceItemEntity>)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSearchEntries(entries: List<SearchEntryEntity>)
+
     @Query("DELETE FROM document_facts WHERE documentId = :documentId")
     suspend fun deleteFactsByDocument(documentId: String)
 
@@ -43,6 +47,9 @@ interface DocumentDao {
 
     @Query("DELETE FROM service_items WHERE eventId = :eventId")
     suspend fun deleteServiceItemsByEvent(eventId: String)
+
+    @Query("DELETE FROM search_entries WHERE documentId = :documentId")
+    suspend fun deleteSearchEntriesByDocument(documentId: String)
 
     @Query(
         """

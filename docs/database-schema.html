@@ -323,8 +323,40 @@ files/vehicles/{vehicleId}/documents/{documentId}/sources/source-003.{ext}</code
           </article>
 
           <article class="content-card">
+            <h2>Vehicle Table</h2>
+            <pre class="block" data-block-id="tables-8a"><code>@Entity(
+    tableName = "vehicles",
+    indices = [Index("updatedAt")]
+)
+data class VehicleEntity(
+    @PrimaryKey val vehicleId: String,
+    val displayName: String,
+    val make: String,
+    val model: String,
+    val year: Int,
+    val licensePlate: String,
+    val vin: String?,
+    val currentMileage: Int?,
+    val createdAt: Instant,
+    val updatedAt: Instant,
+)</code></pre>
+            <p class="block" data-block-id="tables-8b"><code>vehicles</code> stores the user-managed profile fields that group documents and later provide optional extraction context.</p>
+          </article>
+
+          <article class="content-card">
             <h2>Core Room Shapes</h2>
-            <pre class="block" data-block-id="tables-9"><code>@Entity(tableName = "documents")
+            <pre class="block" data-block-id="tables-9"><code>@Entity(
+    tableName = "documents",
+    foreignKeys = [
+        ForeignKey(
+            entity = VehicleEntity::class,
+            parentColumns = ["vehicleId"],
+            childColumns = ["vehicleId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [Index("vehicleId"), Index("extractionStatus"), Index("updatedAt")]
+)
 data class DocumentEntity(
     @PrimaryKey val documentId: String,
     val vehicleId: String,
@@ -492,7 +524,21 @@ data class ServiceItemEntity(
 
 @Entity(
     tableName = "search_entries",
-    indices = [Index("vehicleId"), Index("documentId"), Index("entryType")]
+    foreignKeys = [
+        ForeignKey(
+            entity = DocumentEntity::class,
+            parentColumns = ["documentId"],
+            childColumns = ["documentId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+        ForeignKey(
+            entity = DocumentSourceEntity::class,
+            parentColumns = ["sourceId"],
+            childColumns = ["sourceId"],
+            onDelete = ForeignKey.SET_NULL,
+        ),
+    ],
+    indices = [Index("vehicleId"), Index("documentId"), Index("entryType"), Index("sourceId")]
 )
 data class SearchEntryEntity(
     @PrimaryKey val entryId: String,
@@ -503,7 +549,7 @@ data class SearchEntryEntity(
     val body: String,
     val sourceId: String?,
     val sourcePage: Int?,
-    val createdAt: String,
+    val createdAt: Instant,
 )</code></pre>
           </article>
         </section>

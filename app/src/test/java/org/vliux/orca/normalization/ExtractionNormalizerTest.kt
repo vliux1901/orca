@@ -1,8 +1,11 @@
 package org.vliux.orca.normalization
 
 import java.time.Instant
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.vliux.orca.extraction.AiExtractedFact
 import org.vliux.orca.extraction.AiExtractionResponse
@@ -68,12 +71,18 @@ class ExtractionNormalizerTest {
         assertEquals("2026-05-01", result.event?.eventDate)
         assertEquals(32100, result.event?.mileage)
         assertEquals("USD", result.event?.currencyCode)
+        assertEquals(Instant.parse("2026-06-28T12:00:00Z"), result.facts.first().createdAt)
+        assertEquals(Instant.parse("2026-06-28T12:00:00Z"), result.event?.createdAt)
         assertEquals(1, result.serviceItems.size)
         assertEquals("BRAKES", result.serviceItems.first().category)
+        assertEquals(Instant.parse("2026-06-28T12:00:00Z"), result.serviceItems.first().createdAt)
         assertEquals("documents.title", result.debugReport.titleDecision.savedTo)
         assertEquals("document_facts", result.debugReport.factDecisions.first().savedTo)
         assertEquals("maintenance_events", result.debugReport.eventDecision.savedTo)
         assertEquals("service_items", result.debugReport.serviceItemDecisions.first().savedTo)
+        assertTrue(
+            Json.encodeToString(result.debugReport).contains("\"createdAt\":\"2026-06-28T12:00:00Z\""),
+        )
     }
 
     @Test
@@ -120,6 +129,6 @@ class ExtractionNormalizerTest {
         byteSize = 100,
         checksumSha256 = null,
         pageCount = null,
-        createdAt = "2026-06-28T12:00:00Z",
+        createdAt = Instant.parse("2026-06-28T12:00:00Z"),
     )
 }

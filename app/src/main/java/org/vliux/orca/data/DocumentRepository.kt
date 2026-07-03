@@ -127,7 +127,7 @@ class DocumentRepository(
 
     suspend fun markDocumentQueued(documentId: String) {
         val document = requireNotNull(dao.getDocument(documentId))
-        val now = Instant.now().toString()
+        val now = Instant.now()
         dao.updateDocumentState(
             documentId = documentId,
             sourceCount = document.sourceCount,
@@ -147,7 +147,7 @@ class DocumentRepository(
         promptVersion: String,
     ): ExtractionRunEntity {
         val document = requireNotNull(dao.getDocument(documentId))
-        val now = Instant.now().toString()
+        val now = Instant.now()
         val run = ExtractionRunEntity(
             runId = UUID.randomUUID().toString(),
             documentId = documentId,
@@ -187,7 +187,7 @@ class DocumentRepository(
     suspend fun markRunRunning(runId: String) {
         val run = requireNotNull(dao.getRun(runId))
         val document = requireNotNull(dao.getDocument(run.documentId))
-        val now = Instant.now().toString()
+        val now = Instant.now()
         database.withTransaction {
             dao.updateExtractionRun(
                 runId = runId,
@@ -215,7 +215,7 @@ class DocumentRepository(
     ) {
         val run = requireNotNull(dao.getRun(runId))
         val document = requireNotNull(dao.getDocument(run.documentId))
-        val now = Instant.now().toString()
+        val now = Instant.now()
         database.withTransaction {
             dao.updateExtractionRun(
                 runId = runId,
@@ -246,7 +246,7 @@ class DocumentRepository(
     ) {
         val run = requireNotNull(dao.getRun(runId))
         val document = requireNotNull(dao.getDocument(run.documentId))
-        val now = Instant.now().toString()
+        val now = Instant.now()
         database.withTransaction {
             dao.updateExtractionRun(
                 runId = runId,
@@ -274,7 +274,7 @@ class DocumentRepository(
     ) {
         val run = requireNotNull(dao.getRun(runId))
         val document = requireNotNull(dao.getDocument(documentId))
-        val now = Instant.now().toString()
+        val now = Instant.now()
         database.withTransaction {
             dao.updateExtractionRunDebugArtifacts(
                 runId = runId,

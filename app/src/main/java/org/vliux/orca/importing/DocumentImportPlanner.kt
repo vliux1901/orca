@@ -33,7 +33,7 @@ class DocumentImportPlanner(
     ): DocumentImportPlan {
         require(imports.isNotEmpty()) { "At least one source file is required." }
 
-        val now = nowProvider().toString()
+        val now = nowProvider()
         val documentId = idProvider()
         val title = buildTitle(imports)
         val sourcePlans = imports.mapIndexed { index, input ->

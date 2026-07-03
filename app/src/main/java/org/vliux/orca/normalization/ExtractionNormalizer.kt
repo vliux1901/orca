@@ -128,7 +128,7 @@ class ExtractionNormalizer(
             isUserEdited = false,
             replacesFactId = null,
             isActive = true,
-            createdAt = nowProvider().toString(),
+            createdAt = nowProvider(),
             ),
             savedTo = "document_facts",
             reason = buildString {
@@ -171,7 +171,7 @@ class ExtractionNormalizer(
             return null
         }
 
-        val now = nowProvider().toString()
+        val now = nowProvider()
         return MaintenanceEventEntity(
             eventId = idProvider(),
             vehicleId = vehicleId,
@@ -224,7 +224,7 @@ class ExtractionNormalizer(
             currencyCode = item.currencyCode?.trim()?.uppercase()?.takeIf { it.isNotEmpty() },
             sourceId = sanitizedSourceId,
             sourcePage = sanitizedSourcePage,
-            createdAt = nowProvider().toString(),
+            createdAt = nowProvider(),
             ),
             savedTo = "service_items",
             reason = buildString {

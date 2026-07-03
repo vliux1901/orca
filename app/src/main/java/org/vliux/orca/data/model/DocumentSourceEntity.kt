@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import java.time.Instant
 
 @Entity(
     tableName = "document_sources",
@@ -27,5 +28,5 @@ data class DocumentSourceEntity(
     val byteSize: Long,
     val checksumSha256: String?,
     val pageCount: Int?,
-    val createdAt: String,
+    val createdAt: Instant,
 )

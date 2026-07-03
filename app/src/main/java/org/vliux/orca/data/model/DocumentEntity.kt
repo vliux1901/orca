@@ -3,6 +3,7 @@ package org.vliux.orca.data.model
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import java.time.Instant
 
 @Entity(
     tableName = "documents",
@@ -21,6 +22,6 @@ data class DocumentEntity(
     val extractionStatus: String,
     val latestRunId: String?,
     val occurredAt: String?,
-    val createdAt: String,
-    val updatedAt: String,
+    val createdAt: Instant,
+    val updatedAt: Instant,
 )

@@ -28,6 +28,8 @@ class DocumentImportPlannerTest {
         assertEquals("receipt.png +1 more", plan.document.title)
         assertEquals(DocumentImportStatus.PENDING.name, plan.document.importStatus)
         assertEquals(ExtractionStatus.NOT_STARTED.name, plan.document.extractionStatus)
+        assertEquals(Instant.parse("2026-06-28T12:00:00Z"), plan.document.createdAt)
+        assertEquals(Instant.parse("2026-06-28T12:00:00Z"), plan.document.updatedAt)
         assertEquals(
             listOf(
                 "documents/vehicle-123/id-0/sources/source-001.png",
@@ -36,6 +38,13 @@ class DocumentImportPlannerTest {
             plan.sources.map { it.source.relativePath },
         )
         assertEquals(listOf(0, 1), plan.sources.map { it.source.sourceOrder })
+        assertEquals(
+            listOf(
+                Instant.parse("2026-06-28T12:00:00Z"),
+                Instant.parse("2026-06-28T12:00:00Z"),
+            ),
+            plan.sources.map { it.source.createdAt },
+        )
     }
 
     @Test

@@ -4,7 +4,9 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import java.time.Instant
 import kotlinx.serialization.Serializable
+import org.vliux.orca.serialization.InstantIso8601Serializer
 
 @Serializable
 @Entity(
@@ -38,5 +40,6 @@ data class DocumentFactEntity(
     val isUserEdited: Boolean,
     val replacesFactId: String?,
     val isActive: Boolean,
-    val createdAt: String,
+    @Serializable(with = InstantIso8601Serializer::class)
+    val createdAt: Instant,
 )

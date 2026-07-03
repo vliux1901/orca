@@ -4,7 +4,9 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import java.time.Instant
 import kotlinx.serialization.Serializable
+import org.vliux.orca.serialization.InstantIso8601Serializer
 
 @Serializable
 @Entity(
@@ -32,5 +34,6 @@ data class ServiceItemEntity(
     val currencyCode: String?,
     val sourceId: String?,
     val sourcePage: Int?,
-    val createdAt: String,
+    @Serializable(with = InstantIso8601Serializer::class)
+    val createdAt: Instant,
 )

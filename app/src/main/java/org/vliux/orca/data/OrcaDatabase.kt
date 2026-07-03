@@ -2,6 +2,7 @@ package org.vliux.orca.data
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import org.vliux.orca.data.model.DocumentEntity
@@ -23,6 +24,7 @@ import org.vliux.orca.data.model.ServiceItemEntity
     version = 2,
     exportSchema = true,
 )
+@TypeConverters(InstantTypeConverters::class)
 abstract class OrcaDatabase : RoomDatabase() {
     abstract fun documentDao(): DocumentDao
 

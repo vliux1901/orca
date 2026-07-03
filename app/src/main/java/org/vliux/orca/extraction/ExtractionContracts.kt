@@ -127,7 +127,7 @@ data class AiServiceItem(
 )
 
 fun ExtractionRunEntity.asCompleted(status: String, errorCode: String? = null): ExtractionRunEntity {
-    val now = java.time.Instant.now().toString()
+    val now = java.time.Instant.now()
     return copy(
         status = status,
         errorCode = errorCode,

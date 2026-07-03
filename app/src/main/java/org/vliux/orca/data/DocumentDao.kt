@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import java.time.Instant
 import kotlinx.coroutines.flow.Flow
 import org.vliux.orca.data.model.DocumentEntity
 import org.vliux.orca.data.model.DocumentFactEntity
@@ -56,8 +57,8 @@ interface DocumentDao {
         runId: String,
         status: String,
         errorCode: String?,
-        startedAt: String?,
-        completedAt: String?,
+        startedAt: Instant?,
+        completedAt: Instant?,
     )
 
     @Query(
@@ -97,7 +98,7 @@ interface DocumentDao {
         extractionStatus: String,
         latestRunId: String?,
         occurredAt: String?,
-        updatedAt: String,
+        updatedAt: Instant,
     )
 
     @Query(
@@ -117,7 +118,7 @@ interface DocumentDao {
         extractionStatus: String,
         latestRunId: String?,
         occurredAt: String?,
-        updatedAt: String,
+        updatedAt: Instant,
     )
 
     @Query("SELECT * FROM documents WHERE documentId = :documentId")

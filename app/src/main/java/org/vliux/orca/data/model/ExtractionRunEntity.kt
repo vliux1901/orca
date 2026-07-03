@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import java.time.Instant
 
 @Entity(
     tableName = "extraction_runs",
@@ -34,7 +35,7 @@ data class ExtractionRunEntity(
     val responseEnvelopeJson: String?,
     val responseOutputJson: String?,
     val normalizationDebugJson: String?,
-    val startedAt: String?,
-    val completedAt: String?,
-    val createdAt: String,
+    val startedAt: Instant?,
+    val completedAt: Instant?,
+    val createdAt: Instant,
 )

@@ -334,8 +334,8 @@ data class DocumentEntity(
     val extractionStatus: String,
     val latestRunId: String?,
     val occurredAt: String?,
-    val createdAt: String,
-    val updatedAt: String,
+    val createdAt: Instant,
+    val updatedAt: Instant,
 )
 
 @Entity(
@@ -360,9 +360,9 @@ data class DocumentSourceEntity(
     val byteSize: Long,
     val checksumSha256: String?,
     val pageCount: Int?,
-    val createdAt: String,
+    val createdAt: Instant,
 )</code></pre>
-            <p class="block" data-block-id="tables-10"><code>sourceCount</code> on <code>documents</code> is denormalized for fast list rendering and should always match the actual number of child rows.</p>
+            <p class="block" data-block-id="tables-10"><code>sourceCount</code> on <code>documents</code> is denormalized for fast list rendering and should always match the actual number of child rows. Room persists audit timestamps as ISO-8601 UTC text through converters while the Kotlin model surface uses <code>Instant</code>.</p>
           </article>
 
           <article class="content-card">
@@ -388,9 +388,9 @@ data class ExtractionRunEntity(
     val promptVersion: String,
     val status: String,
     val errorCode: String?,
-    val startedAt: String?,
-    val completedAt: String?,
-    val createdAt: String,
+    val startedAt: Instant?,
+    val completedAt: Instant?,
+    val createdAt: Instant,
 )
 
 @Entity(
@@ -420,7 +420,7 @@ data class DocumentFactEntity(
     val isUserEdited: Boolean,
     val replacesFactId: String?,
     val isActive: Boolean,
-    val createdAt: String,
+    val createdAt: Instant,
 )</code></pre>
           </article>
 
@@ -448,8 +448,8 @@ data class MaintenanceEventEntity(
     val totalCostMinor: Long?,
     val currencyCode: String?,
     val status: String,
-    val createdAt: String,
-    val updatedAt: String,
+    val createdAt: Instant,
+    val updatedAt: Instant,
 )
 
 @Entity(
@@ -474,7 +474,7 @@ data class ServiceItemEntity(
     val currencyCode: String?,
     val sourceId: String?,
     val sourcePage: Int?,
-    val createdAt: String,
+    val createdAt: Instant,
 )
 
 @Entity(

@@ -4,7 +4,9 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import java.time.Instant
 import kotlinx.serialization.Serializable
+import org.vliux.orca.serialization.InstantIso8601Serializer
 
 @Serializable
 @Entity(
@@ -32,6 +34,8 @@ data class MaintenanceEventEntity(
     val totalCostMinor: Long?,
     val currencyCode: String?,
     val status: String,
-    val createdAt: String,
-    val updatedAt: String,
+    @Serializable(with = InstantIso8601Serializer::class)
+    val createdAt: Instant,
+    @Serializable(with = InstantIso8601Serializer::class)
+    val updatedAt: Instant,
 )

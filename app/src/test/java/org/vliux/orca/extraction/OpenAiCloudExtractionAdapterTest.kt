@@ -1,6 +1,7 @@
 package org.vliux.orca.extraction
 
 import kotlin.io.path.createTempFile
+import java.time.Instant
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -101,8 +102,8 @@ class OpenAiCloudExtractionAdapterTest {
         extractionStatus = "QUEUED",
         latestRunId = null,
         occurredAt = null,
-        createdAt = "2026-06-28T12:00:00Z",
-        updatedAt = "2026-06-28T12:00:00Z",
+        createdAt = Instant.parse("2026-06-28T12:00:00Z"),
+        updatedAt = Instant.parse("2026-06-28T12:00:00Z"),
     )
 
     private fun sourcePayload(
@@ -121,7 +122,7 @@ class OpenAiCloudExtractionAdapterTest {
             byteSize = file.length(),
             checksumSha256 = null,
             pageCount = null,
-            createdAt = "2026-06-28T12:00:00Z",
+            createdAt = Instant.parse("2026-06-28T12:00:00Z"),
         ),
         file = file,
     )

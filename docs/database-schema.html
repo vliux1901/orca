@@ -333,7 +333,8 @@ data class DocumentEntity(
     val importStatus: String,
     val extractionStatus: String,
     val latestRunId: String?,
-    val occurredAt: String?,
+    @ColumnInfo(name = "occurredAt")
+    val occurredOn: LocalDate?,
     val createdAt: Instant,
     val updatedAt: Instant,
 )
@@ -442,7 +443,7 @@ data class MaintenanceEventEntity(
     @PrimaryKey val eventId: String,
     val vehicleId: String,
     val documentId: String,
-    val eventDate: String?,
+    val eventDate: LocalDate?,
     val mileage: Int?,
     val shopName: String?,
     val totalCostMinor: Long?,

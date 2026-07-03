@@ -2,6 +2,7 @@ package org.vliux.orca.data
 
 import androidx.room.withTransaction
 import java.time.Instant
+import java.time.LocalDate
 import java.util.UUID
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -61,7 +62,7 @@ class DocumentRepository(
                 importStatus = DocumentImportStatus.READY.name,
                 extractionStatus = ExtractionStatus.NOT_STARTED.name,
                 latestRunId = null,
-                occurredAt = null,
+                occurredOn = null,
                 updatedAt = plan.document.updatedAt,
             )
         }
@@ -134,7 +135,7 @@ class DocumentRepository(
             importStatus = document.importStatus,
             extractionStatus = ExtractionStatus.QUEUED.name,
             latestRunId = document.latestRunId,
-            occurredAt = document.occurredAt,
+            occurredOn = document.occurredOn,
             updatedAt = now,
         )
         OrcaLog.info("Marked document=${documentId.takeLast(8)} extraction as QUEUED.")
@@ -174,7 +175,7 @@ class DocumentRepository(
                 importStatus = document.importStatus,
                 extractionStatus = ExtractionStatus.QUEUED.name,
                 latestRunId = run.runId,
-                occurredAt = document.occurredAt,
+                occurredOn = document.occurredOn,
                 updatedAt = now,
             )
         }
@@ -202,7 +203,7 @@ class DocumentRepository(
                 importStatus = document.importStatus,
                 extractionStatus = ExtractionStatus.RUNNING.name,
                 latestRunId = runId,
-                occurredAt = document.occurredAt,
+                occurredOn = document.occurredOn,
                 updatedAt = now,
             )
         }
@@ -230,7 +231,7 @@ class DocumentRepository(
                 importStatus = document.importStatus,
                 extractionStatus = ExtractionStatus.FAILED.name,
                 latestRunId = runId,
-                occurredAt = document.occurredAt,
+                occurredOn = document.occurredOn,
                 updatedAt = now,
             )
         }
@@ -242,7 +243,7 @@ class DocumentRepository(
     suspend fun finishRun(
         runId: String,
         status: String,
-        occurredAt: String?,
+        occurredOn: LocalDate?,
     ) {
         val run = requireNotNull(dao.getRun(runId))
         val document = requireNotNull(dao.getDocument(run.documentId))
@@ -260,7 +261,7 @@ class DocumentRepository(
                 title = document.title,
                 extractionStatus = status,
                 latestRunId = runId,
-                occurredAt = occurredAt,
+                occurredOn = occurredOn,
                 updatedAt = now,
             )
         }
@@ -307,7 +308,7 @@ class DocumentRepository(
                 title = result.title ?: document.title,
                 extractionStatus = ExtractionStatus.SUCCEEDED.name,
                 latestRunId = runId,
-                occurredAt = result.event?.eventDate,
+                occurredOn = result.event?.eventDate,
                 updatedAt = now,
             )
         }

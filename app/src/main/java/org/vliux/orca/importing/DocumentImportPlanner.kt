@@ -66,7 +66,7 @@ class DocumentImportPlanner(
                 importStatus = DocumentImportStatus.PENDING.name,
                 extractionStatus = ExtractionStatus.NOT_STARTED.name,
                 latestRunId = null,
-                occurredAt = null,
+                occurredOn = null,
                 createdAt = now,
                 updatedAt = now,
             ),

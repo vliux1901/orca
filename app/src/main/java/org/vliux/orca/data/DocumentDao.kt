@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import java.time.Instant
+import java.time.LocalDate
 import kotlinx.coroutines.flow.Flow
 import org.vliux.orca.data.model.DocumentEntity
 import org.vliux.orca.data.model.DocumentFactEntity
@@ -86,7 +87,7 @@ interface DocumentDao {
             importStatus = :importStatus,
             extractionStatus = :extractionStatus,
             latestRunId = :latestRunId,
-            occurredAt = :occurredAt,
+            occurredAt = :occurredOn,
             updatedAt = :updatedAt
         WHERE documentId = :documentId
         """,
@@ -97,7 +98,7 @@ interface DocumentDao {
         importStatus: String,
         extractionStatus: String,
         latestRunId: String?,
-        occurredAt: String?,
+        occurredOn: LocalDate?,
         updatedAt: Instant,
     )
 
@@ -107,7 +108,7 @@ interface DocumentDao {
         SET title = :title,
             extractionStatus = :extractionStatus,
             latestRunId = :latestRunId,
-            occurredAt = :occurredAt,
+            occurredAt = :occurredOn,
             updatedAt = :updatedAt
         WHERE documentId = :documentId
         """,
@@ -117,7 +118,7 @@ interface DocumentDao {
         title: String?,
         extractionStatus: String,
         latestRunId: String?,
-        occurredAt: String?,
+        occurredOn: LocalDate?,
         updatedAt: Instant,
     )
 
@@ -156,7 +157,7 @@ interface DocumentDao {
 
     @Query(
         """
-        SELECT documentId, title, sourceCount, importStatus, extractionStatus, occurredAt, createdAt, updatedAt
+        SELECT documentId, title, sourceCount, importStatus, extractionStatus, occurredAt AS occurredOn, createdAt, updatedAt
         FROM documents
         WHERE vehicleId = :vehicleId
         ORDER BY createdAt DESC

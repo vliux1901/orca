@@ -1,6 +1,7 @@
 package org.vliux.orca.normalization
 
 import java.time.Instant
+import java.time.LocalDate
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
@@ -68,7 +69,7 @@ class ExtractionNormalizerTest {
         assertEquals("Brake service", result.title)
         assertEquals(2, result.facts.size)
         assertEquals("SERVICE_DATE", result.facts.first().factType)
-        assertEquals("2026-05-01", result.event?.eventDate)
+        assertEquals(LocalDate.parse("2026-05-01"), result.event?.eventDate)
         assertEquals(32100, result.event?.mileage)
         assertEquals("USD", result.event?.currencyCode)
         assertEquals(Instant.parse("2026-06-28T12:00:00Z"), result.facts.first().createdAt)
@@ -82,6 +83,9 @@ class ExtractionNormalizerTest {
         assertEquals("service_items", result.debugReport.serviceItemDecisions.first().savedTo)
         assertTrue(
             Json.encodeToString(result.debugReport).contains("\"createdAt\":\"2026-06-28T12:00:00Z\""),
+        )
+        assertTrue(
+            Json.encodeToString(result.debugReport).contains("\"eventDate\":\"2026-05-01\""),
         )
     }
 

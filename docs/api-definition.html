@@ -293,7 +293,8 @@
     val importStatus: DocumentImportStatus,
     val extractionStatus: ExtractionStatus,
     val latestRunId: String?,
-    val occurredAt: String?,
+    @ColumnInfo(name = "occurredAt")
+    val occurredOn: LocalDate?,
     val createdAt: Instant,
     val updatedAt: Instant,
 )
@@ -310,7 +311,7 @@ data class DocumentSourceEntity(
     val pageCount: Int?,
     val createdAt: Instant,
 )</code></pre>
-            <p class="block" data-block-id="entities-2"><code>DocumentEntity</code> represents one logical maintenance document. <code>DocumentSourceEntity</code> represents one imported file that belongs to that document. Audit timestamps use <code>Instant</code>, while <code>occurredAt</code> stays a date string because it mirrors an extracted service date rather than an exact moment.</p>
+            <p class="block" data-block-id="entities-2"><code>DocumentEntity</code> represents one logical maintenance document. <code>DocumentSourceEntity</code> represents one imported file that belongs to that document. Audit timestamps use <code>Instant</code>, while <code>occurredOn</code> and <code>eventDate</code> use <code>LocalDate</code> because they represent service dates rather than exact moments.</p>
           </article>
 
           <article class="content-card">
@@ -459,7 +460,7 @@ data class ServiceItemDraft(
             <pre class="block" data-block-id="contracts-2"><code>data class DocumentListItem(
     val documentId: String,
     val title: String,
-    val occurredAt: String?,
+    val occurredOn: LocalDate?,
     val extractionStatus: ExtractionStatus,
     val sourceCount: Int,
     val totalCostLabel: String?,

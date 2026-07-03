@@ -66,11 +66,11 @@ class ExtractionNormalizer(
                 responseEvent = response.maintenanceEvent,
                 savedEvent = normalizedEvent,
                 savedTo = normalizedEvent?.let { "maintenance_events" },
-                occurredAtSavedTo = normalizedEvent?.eventDate?.let { "documents.occurredAt" },
+                occurredOnSavedTo = normalizedEvent?.eventDate?.let { "documents.occurredOn" },
                 reason = if (normalizedEvent == null) {
                     "No usable event fields survived normalization."
                 } else {
-                    "Normalized event saved to maintenance_events and eventDate mirrored to documents.occurredAt."
+                    "Normalized event saved to maintenance_events and eventDate mirrored to documents.occurredOn."
                 },
             ),
             serviceItemDecisions = itemDecisions,
@@ -103,7 +103,7 @@ class ExtractionNormalizer(
             )
         }
         val normalizedValue = when (trimmedType) {
-            "SERVICE_DATE" -> normalizeDate(fact.normalizedValue ?: trimmedValue)
+            "SERVICE_DATE" -> normalizeDate(fact.normalizedValue ?: trimmedValue)?.toString()
             "ODOMETER" -> normalizeMileage(fact.normalizedValue ?: trimmedValue)?.toString()
             "TOTAL_COST" -> normalizeCost(fact.normalizedValue ?: trimmedValue)?.toString()
             else -> fact.normalizedValue?.trim()?.takeIf { it.isNotEmpty() }
@@ -242,10 +242,10 @@ class ExtractionNormalizer(
         )
     }
 
-    private fun normalizeDate(raw: String?): String? {
+    private fun normalizeDate(raw: String?): LocalDate? {
         val value = raw?.trim()?.takeIf { it.isNotEmpty() } ?: return null
         return try {
-            LocalDate.parse(value).toString()
+            LocalDate.parse(value)
         } catch (_: DateTimeParseException) {
             null
         }
@@ -303,7 +303,7 @@ data class EventDecision(
     val responseEvent: AiMaintenanceEvent?,
     val savedEvent: MaintenanceEventEntity?,
     val savedTo: String?,
-    val occurredAtSavedTo: String?,
+    val occurredOnSavedTo: String?,
     val reason: String,
 )
 

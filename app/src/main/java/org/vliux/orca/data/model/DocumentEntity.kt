@@ -1,9 +1,11 @@
 package org.vliux.orca.data.model
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import java.time.Instant
+import java.time.LocalDate
 
 @Entity(
     tableName = "documents",
@@ -21,7 +23,8 @@ data class DocumentEntity(
     val importStatus: String,
     val extractionStatus: String,
     val latestRunId: String?,
-    val occurredAt: String?,
+    @ColumnInfo(name = "occurredAt")
+    val occurredOn: LocalDate?,
     val createdAt: Instant,
     val updatedAt: Instant,
 )

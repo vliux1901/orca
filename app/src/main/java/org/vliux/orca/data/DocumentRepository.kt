@@ -99,6 +99,16 @@ class DocumentRepository(
         imports: List<SourceImportRequest>,
     ): String = createDocument(vehicleId, imports)
 
+    suspend fun deleteDocument(documentId: String) {
+        val document = store.getDocument(documentId) ?: return
+        val sourcePaths = store.getSources(documentId).map { it.relativePath }
+        store.inTransaction {
+            deleteDocument(documentId)
+        }
+        fileStorage.deleteRelativePaths(sourcePaths)
+        OrcaLog.info("Deleted document=${document.documentId.takeLast(8)} and ${sourcePaths.size} stored source file(s).")
+    }
+
     fun observeDocumentList(vehicleId: String): Flow<List<DocumentListItem>> =
         store.observeDocumentList(vehicleId)
 

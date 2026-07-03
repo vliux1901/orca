@@ -51,6 +51,9 @@ interface DocumentDao {
     @Query("DELETE FROM search_entries WHERE documentId = :documentId")
     suspend fun deleteSearchEntriesByDocument(documentId: String)
 
+    @Query("DELETE FROM documents WHERE documentId = :documentId")
+    suspend fun deleteDocument(documentId: String)
+
     @Query(
         """
         UPDATE extraction_runs

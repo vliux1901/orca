@@ -32,6 +32,7 @@ class RoomDocumentStore(
     override suspend fun deleteEventByDocument(documentId: String) = dao.deleteEventByDocument(documentId)
     override suspend fun deleteServiceItemsByEvent(eventId: String) = dao.deleteServiceItemsByEvent(eventId)
     override suspend fun deleteSearchEntriesByDocument(documentId: String) = dao.deleteSearchEntriesByDocument(documentId)
+    override suspend fun deleteDocument(documentId: String) = dao.deleteDocument(documentId)
 
     override suspend fun updateExtractionRun(
         runId: String,

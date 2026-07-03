@@ -103,6 +103,64 @@ class DocumentRepositoryCreateDocumentTest {
         }
     }
 
+    @Test
+    fun deleteDocumentRemovesStoreStateAndCopiedFiles() = runTest {
+        val rootDir = createTempDirectory(prefix = "orca-files-").toFile()
+        try {
+            val store = InMemoryDocumentStore(knownVehicleIds = setOf("vehicle-123"))
+            val repository = DocumentRepository(
+                store = store,
+                fileStorage = AppFileStorage(rootDir) { error("Uri path should not be used in prepared-import tests.") },
+            )
+            val documentId = repository.createDocument(
+                vehicleId = "vehicle-123",
+                imports = listOf(
+                    preparedImport("receipt.png", "image/png", byteArrayOf(1, 2, 3), rootDir),
+                    preparedImport("invoice.pdf", "application/pdf", byteArrayOf(4, 5, 6, 7), rootDir),
+                ),
+            )
+            val sourceFiles = repository.getSources(documentId).map { File(rootDir, it.relativePath) }
+
+            repository.deleteDocument(documentId)
+
+            assertEquals(emptyList<DocumentListItem>(), repository.observeDocumentList("vehicle-123").first())
+            assertEquals(null, repository.observeDocumentDetail(documentId).first())
+            assertEquals(null, repository.getDocument(documentId))
+            assertTrue(sourceFiles.none(File::exists))
+            assertFalse(File(rootDir, "vehicles/vehicle-123/documents/$documentId").exists())
+        } finally {
+            rootDir.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun deleteDocumentToleratesAlreadyMissingFiles() = runTest {
+        val rootDir = createTempDirectory(prefix = "orca-files-").toFile()
+        try {
+            val store = InMemoryDocumentStore(knownVehicleIds = setOf("vehicle-123"))
+            val repository = DocumentRepository(
+                store = store,
+                fileStorage = AppFileStorage(rootDir) { error("Uri path should not be used in prepared-import tests.") },
+            )
+            val documentId = repository.createDocument(
+                vehicleId = "vehicle-123",
+                imports = listOf(
+                    preparedImport("receipt.png", "image/png", byteArrayOf(1, 2, 3), rootDir),
+                    preparedImport("invoice.pdf", "application/pdf", byteArrayOf(4, 5, 6, 7), rootDir),
+                ),
+            )
+            val firstSourceFile = File(rootDir, repository.getSources(documentId).first().relativePath)
+            firstSourceFile.delete()
+
+            repository.deleteDocument(documentId)
+
+            assertEquals(null, repository.getDocument(documentId))
+            assertFalse(File(rootDir, "vehicles/vehicle-123/documents/$documentId").exists())
+        } finally {
+            rootDir.deleteRecursively()
+        }
+    }
+
     private fun preparedImport(
         displayName: String,
         mimeType: String,
@@ -210,6 +268,25 @@ private class InMemoryDocumentStore(
 
     override suspend fun deleteSearchEntriesByDocument(documentId: String) {
         searchEntries.remove(documentId)
+    }
+
+    override suspend fun deleteDocument(documentId: String) {
+        val removed = documents.remove(documentId) ?: return
+        documentFlow(documentId).value = null
+        sources.remove(documentId)
+        sourceFlow(documentId).value = emptyList()
+        facts.remove(documentId)
+        factFlow(documentId).value = emptyList()
+        searchEntries.remove(documentId)
+        val removedEvent = events.remove(documentId)
+        eventFlow(documentId).value = null
+        removedEvent?.let {
+            serviceItems.remove(it.eventId)
+            serviceItemFlow(it.eventId).value = emptyList()
+        }
+        runs.values.removeIf { it.documentId == documentId }
+        runFlow(documentId).value = null
+        publishDocumentList(removed.vehicleId)
     }
 
     override suspend fun updateExtractionRun(

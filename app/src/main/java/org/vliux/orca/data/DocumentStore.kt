@@ -27,6 +27,7 @@ interface DocumentStore {
     suspend fun deleteEventByDocument(documentId: String)
     suspend fun deleteServiceItemsByEvent(eventId: String)
     suspend fun deleteSearchEntriesByDocument(documentId: String)
+    suspend fun deleteDocument(documentId: String)
 
     suspend fun updateExtractionRun(
         runId: String,

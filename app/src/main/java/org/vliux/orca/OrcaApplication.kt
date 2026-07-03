@@ -22,7 +22,7 @@ class OrcaApplication : Application() {
                 applicationContext,
                 OrcaDatabase::class.java,
                 "orca.db",
-            ).addMigrations(OrcaDatabase.MIGRATION_1_2).build(),
+            ).build(),
             repositoryFactory = {
                 DocumentRepository(
                     database = it,

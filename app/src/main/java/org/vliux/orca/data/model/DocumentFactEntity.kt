@@ -18,11 +18,18 @@ import org.vliux.orca.serialization.InstantIso8601Serializer
             childColumns = ["documentId"],
             onDelete = ForeignKey.CASCADE,
         ),
+        ForeignKey(
+            entity = DocumentSourceEntity::class,
+            parentColumns = ["sourceId"],
+            childColumns = ["sourceId"],
+            onDelete = ForeignKey.SET_NULL,
+        ),
     ],
     indices = [
         Index("documentId"),
         Index("factType"),
         Index("isActive"),
+        Index("sourceId"),
     ],
 )
 data class DocumentFactEntity(

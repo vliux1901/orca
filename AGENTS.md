@@ -16,3 +16,4 @@ Working rules:
     - Run build.
     - Updated or added unit tests for the changes.
     - Run all the related tests.
+    - Run Linter to make sure no warnings or errors.

@@ -345,9 +345,9 @@
           <article class="content-card">
             <h2>Storage Model</h2>
             <p class="block" data-block-id="data-1">Use local app-private storage for source documents. Source documents stay local even when original image and PDF files are sent to a cloud AI provider for extraction.</p>
-            <pre class="block" data-block-id="data-2"><code>files/documents/{vehicleId}/{documentId}/sources/source-001.{ext}
-files/documents/{vehicleId}/{documentId}/sources/source-002.{ext}
-files/documents/{vehicleId}/{documentId}/sources/source-003.{ext}</code></pre>
+            <pre class="block" data-block-id="data-2"><code>files/vehicles/{vehicleId}/documents/{documentId}/sources/source-001.{ext}
+files/vehicles/{vehicleId}/documents/{documentId}/sources/source-002.{ext}
+files/vehicles/{vehicleId}/documents/{documentId}/sources/source-003.{ext}</code></pre>
             <p class="block" data-block-id="data-2b">One logical document may contain multiple imported image and PDF files. Those source files are stored separately under <code>sources/</code> in document order.</p>
             <p class="block" data-block-id="data-2c">In V1, the app sends original source files to the provider directly instead of generating local page-image artifacts first.</p>
           </article>

@@ -1,6 +1,5 @@
 package org.vliux.orca.data
 
-import androidx.room.withTransaction
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
@@ -18,6 +17,7 @@ import org.vliux.orca.importing.DocumentImportPlanner
 import org.vliux.orca.importing.SourceImportPlanInput
 import org.vliux.orca.importing.SourceImportOrdering
 import org.vliux.orca.importing.SourceImportRequest
+import org.vliux.orca.importing.StoredSource
 import org.vliux.orca.data.model.DocumentFactEntity
 import org.vliux.orca.data.model.DocumentEntity
 import org.vliux.orca.data.model.DocumentImportStatus
@@ -31,41 +31,60 @@ import org.vliux.orca.data.model.ServiceItemEntity
 import org.vliux.orca.normalization.NormalizedExtractionResult
 
 class DocumentRepository(
-    private val database: OrcaDatabase,
+    private val store: DocumentStore,
     private val fileStorage: AppFileStorage,
     private val planner: DocumentImportPlanner = DocumentImportPlanner(),
 ) {
-    private val dao = database.documentDao()
     private val json = Json { prettyPrint = true; explicitNulls = false }
 
-    suspend fun importDocument(
+    suspend fun createDocument(
         vehicleId: String,
         imports: List<SourceImportRequest>,
+    ): String = createDocument(
+        vehicleId = vehicleId,
+        imports = SourceImportOrdering.order(imports).map { request ->
+            PreparedSourceImport(
+                displayName = request.displayName,
+                mimeType = request.mimeType,
+                storeSource = { source ->
+                    fileStorage.copySource(source, request)
+                },
+            )
+        },
+    )
+
+    internal suspend fun createDocument(
+        vehicleId: String,
+        imports: List<PreparedSourceImport>,
     ): String {
         require(imports.isNotEmpty()) { "At least one import is required." }
-        val orderedImports = SourceImportOrdering.order(imports)
-
         val plan = planner.plan(
             vehicleId = vehicleId,
-            imports = orderedImports.map { SourceImportPlanInput(it.displayName, it.mimeType) },
+            imports = imports.map { SourceImportPlanInput(it.displayName, it.mimeType) },
         )
 
-        val storedSources = plan.sources.zip(orderedImports).map { (sourcePlan, request) ->
-            fileStorage.copySource(sourcePlan.source, request)
-        }
+        val storedSources = mutableListOf<StoredSource>()
+        try {
+            imports.zip(plan.sources).forEach { (request, sourcePlan) ->
+                storedSources += request.storeSource(sourcePlan.source)
+            }
 
-        database.withTransaction {
-            dao.insertDocument(plan.document)
-            dao.insertSources(storedSources.map { it.source })
-            dao.updateDocumentState(
-                documentId = plan.document.documentId,
-                sourceCount = storedSources.size,
-                importStatus = DocumentImportStatus.READY.name,
-                extractionStatus = ExtractionStatus.NOT_STARTED.name,
-                latestRunId = null,
-                occurredOn = null,
-                updatedAt = plan.document.updatedAt,
-            )
+            store.inTransaction {
+                insertDocument(plan.document)
+                insertSources(storedSources.map { it.source })
+                updateDocumentState(
+                    documentId = plan.document.documentId,
+                    sourceCount = storedSources.size,
+                    importStatus = DocumentImportStatus.READY.name,
+                    extractionStatus = ExtractionStatus.NOT_STARTED.name,
+                    latestRunId = null,
+                    occurredOn = null,
+                    updatedAt = plan.document.updatedAt,
+                )
+            }
+        } catch (t: Throwable) {
+            fileStorage.deleteRelativePaths(storedSources.map { it.source.relativePath })
+            throw t
         }
 
         OrcaLog.info(
@@ -75,24 +94,29 @@ class DocumentRepository(
         return plan.document.documentId
     }
 
+    suspend fun importDocument(
+        vehicleId: String,
+        imports: List<SourceImportRequest>,
+    ): String = createDocument(vehicleId, imports)
+
     fun observeDocumentList(vehicleId: String): Flow<List<DocumentListItem>> =
-        dao.observeDocumentList(vehicleId)
+        store.observeDocumentList(vehicleId)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     fun observeDocumentDetail(documentId: String): Flow<DocumentDetail?> {
-        val eventFlow = dao.observeEvent(documentId)
+        val eventFlow = store.observeEvent(documentId)
         val documentBundleFlow = combine(
-            dao.observeDocument(documentId),
-            dao.observeSources(documentId),
-            dao.observeLatestRun(documentId),
+            store.observeDocument(documentId),
+            store.observeSources(documentId),
+            store.observeLatestRun(documentId),
         ) { document, sources, latestRun ->
             Triple(document, sources, latestRun)
         }
         val extractionFlow = combine(
-            dao.observeActiveFacts(documentId),
+            store.observeActiveFacts(documentId),
             eventFlow,
             eventFlow.flatMapLatest { event ->
-                event?.let { dao.observeServiceItems(it.eventId) } ?: flowOf(emptyList())
+                event?.let { store.observeServiceItems(it.eventId) } ?: flowOf(emptyList())
             },
         ) { facts, event, serviceItems ->
             Triple(facts, event, serviceItems)
@@ -114,16 +138,16 @@ class DocumentRepository(
     }
 
     suspend fun getDocument(documentId: String): DocumentEntity? =
-        dao.getDocument(documentId)
+        store.getDocument(documentId)
 
     suspend fun getSources(documentId: String): List<DocumentSourceEntity> =
-        dao.getSources(documentId)
+        store.getSources(documentId)
 
     suspend fun getDocumentBundle(documentId: String): DocumentBundle? {
-        val document = dao.getDocument(documentId) ?: return null
+        val document = store.getDocument(documentId) ?: return null
         return DocumentBundle(
             document = document,
-            sources = dao.getSources(documentId),
+            sources = store.getSources(documentId),
         )
     }
 
@@ -131,18 +155,18 @@ class DocumentRepository(
         documentId: String,
         entries: List<SearchEntryEntity>,
     ) {
-        database.withTransaction {
-            dao.deleteSearchEntriesByDocument(documentId)
+        store.inTransaction {
+            deleteSearchEntriesByDocument(documentId)
             if (entries.isNotEmpty()) {
-                dao.insertSearchEntries(entries)
+                insertSearchEntries(entries)
             }
         }
     }
 
     suspend fun markDocumentQueued(documentId: String) {
-        val document = requireNotNull(dao.getDocument(documentId))
+        val document = requireNotNull(store.getDocument(documentId))
         val now = Instant.now()
-        dao.updateDocumentState(
+        store.updateDocumentState(
             documentId = documentId,
             sourceCount = document.sourceCount,
             importStatus = document.importStatus,
@@ -160,7 +184,7 @@ class DocumentRepository(
         modelName: String,
         promptVersion: String,
     ): ExtractionRunEntity {
-        val document = requireNotNull(dao.getDocument(documentId))
+        val document = requireNotNull(store.getDocument(documentId))
         val now = Instant.now()
         val run = ExtractionRunEntity(
             runId = UUID.randomUUID().toString(),
@@ -180,9 +204,9 @@ class DocumentRepository(
             createdAt = now,
         )
 
-        database.withTransaction {
-            dao.insertExtractionRun(run)
-            dao.updateDocumentState(
+        store.inTransaction {
+            insertExtractionRun(run)
+            updateDocumentState(
                 documentId = documentId,
                 sourceCount = document.sourceCount,
                 importStatus = document.importStatus,
@@ -199,18 +223,18 @@ class DocumentRepository(
     }
 
     suspend fun markRunRunning(runId: String) {
-        val run = requireNotNull(dao.getRun(runId))
-        val document = requireNotNull(dao.getDocument(run.documentId))
+        val run = requireNotNull(store.getRun(runId))
+        val document = requireNotNull(store.getDocument(run.documentId))
         val now = Instant.now()
-        database.withTransaction {
-            dao.updateExtractionRun(
+        store.inTransaction {
+            updateExtractionRun(
                 runId = runId,
                 status = ExtractionStatus.RUNNING.name,
                 errorCode = null,
                 startedAt = now,
                 completedAt = null,
             )
-            dao.updateDocumentState(
+            updateDocumentState(
                 documentId = run.documentId,
                 sourceCount = document.sourceCount,
                 importStatus = document.importStatus,
@@ -227,18 +251,18 @@ class DocumentRepository(
         runId: String,
         errorCode: String,
     ) {
-        val run = requireNotNull(dao.getRun(runId))
-        val document = requireNotNull(dao.getDocument(run.documentId))
+        val run = requireNotNull(store.getRun(runId))
+        val document = requireNotNull(store.getDocument(run.documentId))
         val now = Instant.now()
-        database.withTransaction {
-            dao.updateExtractionRun(
+        store.inTransaction {
+            updateExtractionRun(
                 runId = runId,
                 status = ExtractionStatus.FAILED.name,
                 errorCode = errorCode,
                 startedAt = null,
                 completedAt = now,
             )
-            dao.updateDocumentState(
+            updateDocumentState(
                 documentId = run.documentId,
                 sourceCount = document.sourceCount,
                 importStatus = document.importStatus,
@@ -258,18 +282,18 @@ class DocumentRepository(
         status: String,
         occurredOn: LocalDate?,
     ) {
-        val run = requireNotNull(dao.getRun(runId))
-        val document = requireNotNull(dao.getDocument(run.documentId))
+        val run = requireNotNull(store.getRun(runId))
+        val document = requireNotNull(store.getDocument(run.documentId))
         val now = Instant.now()
-        database.withTransaction {
-            dao.updateExtractionRun(
+        store.inTransaction {
+            updateExtractionRun(
                 runId = runId,
                 status = status,
                 errorCode = null,
                 startedAt = null,
                 completedAt = now,
             )
-            dao.updateDocumentExtractionResult(
+            updateDocumentExtractionResult(
                 documentId = run.documentId,
                 title = document.title,
                 extractionStatus = status,
@@ -286,37 +310,37 @@ class DocumentRepository(
         parsed: ParsedExtractionPayload,
         result: NormalizedExtractionResult,
     ) {
-        val run = requireNotNull(dao.getRun(runId))
-        val document = requireNotNull(dao.getDocument(documentId))
+        val run = requireNotNull(store.getRun(runId))
+        val document = requireNotNull(store.getDocument(documentId))
         val now = Instant.now()
-        database.withTransaction {
-            dao.updateExtractionRunDebugArtifacts(
+        store.inTransaction {
+            updateExtractionRunDebugArtifacts(
                 runId = runId,
                 requestPrompt = parsed.provider.promptText,
                 responseEnvelopeJson = parsed.provider.responseEnvelopeJson,
                 responseOutputJson = parsed.provider.responseOutputJson,
                 normalizationDebugJson = json.encodeToString(result.debugReport),
             )
-            dao.updateExtractionRun(
+            updateExtractionRun(
                 runId = runId,
                 status = ExtractionStatus.SUCCEEDED.name,
                 errorCode = null,
                 startedAt = run.startedAt,
                 completedAt = now,
             )
-            dao.deleteFactsByDocument(documentId)
-            dao.getEvent(documentId)?.let { existingEvent ->
-                dao.deleteServiceItemsByEvent(existingEvent.eventId)
+            deleteFactsByDocument(documentId)
+            getEvent(documentId)?.let { existingEvent ->
+                deleteServiceItemsByEvent(existingEvent.eventId)
             }
-            dao.deleteEventByDocument(documentId)
+            deleteEventByDocument(documentId)
             if (result.facts.isNotEmpty()) {
-                dao.insertFacts(result.facts)
+                insertFacts(result.facts)
             }
-            result.event?.let { dao.insertEvent(it) }
+            result.event?.let { insertEvent(it) }
             if (result.serviceItems.isNotEmpty()) {
-                dao.insertServiceItems(result.serviceItems)
+                insertServiceItems(result.serviceItems)
             }
-            dao.updateDocumentExtractionResult(
+            updateDocumentExtractionResult(
                 documentId = documentId,
                 title = result.title ?: document.title,
                 extractionStatus = ExtractionStatus.SUCCEEDED.name,
@@ -330,6 +354,12 @@ class DocumentRepository(
         )
     }
 }
+
+internal data class PreparedSourceImport(
+    val displayName: String?,
+    val mimeType: String?,
+    val storeSource: (DocumentSourceEntity) -> StoredSource,
+)
 
 data class DocumentBundle(
     val document: DocumentEntity,

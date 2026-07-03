@@ -7,6 +7,7 @@ import org.vliux.orca.provider.ProviderRuntimeConfig
 import org.vliux.orca.provider.ProviderRuntimeConfigResolver
 import org.vliux.orca.data.OrcaDatabase
 import org.vliux.orca.data.DocumentRepository
+import org.vliux.orca.data.RoomDocumentStore
 import org.vliux.orca.data.VehicleRepository
 import org.vliux.orca.extraction.MaintenanceExtractionEngine
 import org.vliux.orca.extraction.OpenAiCloudExtractionAdapter
@@ -26,7 +27,7 @@ class OrcaApplication : Application() {
             ).build(),
             repositoryFactory = {
                 DocumentRepository(
-                    database = it,
+                    store = RoomDocumentStore(it),
                     fileStorage = AppFileStorage(applicationContext),
                 )
             },

@@ -32,8 +32,8 @@ class DocumentImportPlannerTest {
         assertEquals(Instant.parse("2026-06-28T12:00:00Z"), plan.document.updatedAt)
         assertEquals(
             listOf(
-                "documents/vehicle-123/id-0/sources/source-001.png",
-                "documents/vehicle-123/id-0/sources/source-002.pdf",
+                "vehicles/vehicle-123/documents/id-0/sources/source-001.png",
+                "vehicles/vehicle-123/documents/id-0/sources/source-002.pdf",
             ),
             plan.sources.map { it.source.relativePath },
         )
@@ -62,7 +62,7 @@ class DocumentImportPlannerTest {
         )
 
         assertEquals(
-            "documents/vehicle-123/fixed-id/sources/source-001.jpg",
+            "vehicles/vehicle-123/documents/fixed-id/sources/source-001.jpg",
             plan.sources.single().source.relativePath,
         )
     }

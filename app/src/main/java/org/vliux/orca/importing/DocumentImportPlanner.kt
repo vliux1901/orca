@@ -27,6 +27,11 @@ class DocumentImportPlanner(
     private val nowProvider: () -> Instant = { Instant.now() },
     private val idProvider: () -> String = { UUID.randomUUID().toString() },
 ) {
+    fun buildDocumentRelativeDirectory(
+        vehicleId: String,
+        documentId: String,
+    ): String = "vehicles/$vehicleId/documents/$documentId"
+
     fun plan(
         vehicleId: String,
         imports: List<SourceImportPlanInput>,
@@ -36,6 +41,7 @@ class DocumentImportPlanner(
         val now = nowProvider()
         val documentId = idProvider()
         val title = buildTitle(imports)
+        val documentDirectory = buildDocumentRelativeDirectory(vehicleId, documentId)
         val sourcePlans = imports.mapIndexed { index, input ->
             val sourceId = idProvider()
             val extension = determineExtension(input.displayName, input.mimeType)
@@ -47,7 +53,7 @@ class DocumentImportPlanner(
                     sourceOrder = index,
                     fileName = input.displayName?.takeIf { it.isNotBlank() } ?: destinationFileName,
                     mimeType = input.mimeType ?: DEFAULT_MIME_TYPE,
-                    relativePath = "documents/$vehicleId/$documentId/sources/$destinationFileName",
+                    relativePath = "$documentDirectory/sources/$destinationFileName",
                     byteSize = 0L,
                     checksumSha256 = null,
                     pageCount = null,

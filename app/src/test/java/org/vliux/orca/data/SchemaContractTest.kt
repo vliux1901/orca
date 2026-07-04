@@ -5,17 +5,18 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SchemaContractTest {
     @Test
-    fun version1SchemaDefinesPhase1CoreRelationships() {
+    fun version2SchemaDefinesCoreRelationshipsAndOptionalVehiclePlate() {
         val schemaFile = sequenceOf(
-            File("schemas/org.vliux.orca.data.OrcaDatabase/1.json"),
-            File("app/schemas/org.vliux.orca.data.OrcaDatabase/1.json"),
-        ).firstOrNull(File::exists) ?: File("schemas/org.vliux.orca.data.OrcaDatabase/1.json")
+            File("schemas/org.vliux.orca.data.OrcaDatabase/2.json"),
+            File("app/schemas/org.vliux.orca.data.OrcaDatabase/2.json"),
+        ).firstOrNull(File::exists) ?: File("schemas/org.vliux.orca.data.OrcaDatabase/2.json")
         assertTrue("Expected exported schema at ${schemaFile.path}", schemaFile.exists())
 
         val root = Json.parseToJsonElement(schemaFile.readText()).jsonObject
@@ -48,6 +49,7 @@ class SchemaContractTest {
         assertHasIndex(searchEntries, "index_search_entries_sourceId")
         assertHasIndex(serviceItems, "index_service_items_sourceId")
         assertHasColumn(vehicles, "licensePlate")
+        assertColumnNullable(vehicles, "licensePlate")
         assertHasColumn(vehicles, "vin")
     }
 
@@ -87,5 +89,16 @@ class SchemaContractTest {
             field.jsonObject.getValue("fieldPath").jsonPrimitive.content
         }
         assertTrue("Expected column $columnName", fields.contains(columnName))
+    }
+
+    private fun assertColumnNullable(
+        entity: JsonObject,
+        columnName: String,
+    ) {
+        val field = entity.getValue("fields").jsonArray.first { candidate ->
+            candidate.jsonObject.getValue("fieldPath").jsonPrimitive.content == columnName
+        }.jsonObject
+        val notNull = field["notNull"]?.jsonPrimitive?.contentOrNull?.toBoolean() ?: false
+        assertTrue("Expected column $columnName to be nullable", !notNull)
     }
 }

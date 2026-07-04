@@ -10,7 +10,7 @@ data class SaveVehicleRequest(
     val make: String,
     val model: String,
     val year: Int,
-    val licensePlate: String,
+    val licensePlate: String?,
     val vin: String?,
     val currentMileage: Int?,
 )

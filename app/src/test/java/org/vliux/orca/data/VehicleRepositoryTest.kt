@@ -28,7 +28,7 @@ class VehicleRepositoryTest {
                 make = "Toyota",
                 model = "Highlander",
                 year = 2020,
-                licensePlate = "ABC1234",
+                licensePlate = null,
                 vin = null,
                 currentMileage = 45123,
             ),
@@ -42,7 +42,7 @@ class VehicleRepositoryTest {
                 make = "Toyota",
                 model = "Highlander",
                 year = 2020,
-                licensePlate = "ABC1234",
+                licensePlate = null,
                 vin = null,
                 currentMileage = 45123,
                 createdAt = now,
@@ -61,7 +61,7 @@ class VehicleRepositoryTest {
                 make = "Honda",
                 model = "Civic",
                 year = 2018,
-                licensePlate = "XYZ9876",
+                licensePlate = null,
                 vin = "VIN1",
                 currentMileage = 22222,
                 createdAt = Instant.parse("2026-01-01T00:00:00Z"),
@@ -80,7 +80,7 @@ class VehicleRepositoryTest {
                 make = "Honda",
                 model = "Civic",
                 year = 2019,
-                licensePlate = "XYZ9876",
+                licensePlate = null,
                 vin = "VIN2",
                 currentMileage = 33333,
             ),
@@ -91,6 +91,7 @@ class VehicleRepositoryTest {
         assertEquals(now, stored?.updatedAt)
         assertEquals("Commuter Car", stored?.displayName)
         assertEquals(2019, stored?.year)
+        assertNull(stored?.licensePlate)
         assertEquals("VIN2", stored?.vin)
         assertEquals(33333, stored?.currentMileage)
     }
@@ -110,7 +111,7 @@ class VehicleRepositoryTest {
                 make = "Toyota",
                 model = "Highlander",
                 year = 2020,
-                licensePlate = "ABC1234",
+                licensePlate = null,
                 vin = null,
                 currentMileage = 45123,
             ),

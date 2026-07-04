@@ -24,7 +24,7 @@ class OrcaApplication : Application() {
                 applicationContext,
                 OrcaDatabase::class.java,
                 "orca.db",
-            ).build(),
+            ).addMigrations(OrcaDatabase.MIGRATION_1_2).build(),
             repositoryFactory = {
                 DocumentRepository(
                     store = RoomDocumentStore(it),

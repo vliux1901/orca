@@ -54,28 +54,36 @@ class OpenAiCloudExtractionAdapter(
                 .header("Content-Type", "application/json")
                 .build()
 
-            client.newCall(httpRequest).execute().use { response ->
-                val responseBody = response.body?.string().orEmpty()
-                OrcaLog.info(
-                    "OpenAI HTTP response for document=${request.document.documentId.takeLast(8)} code=${response.code} bodyLength=${responseBody.length}.",
-                )
-                if (!response.isSuccessful) {
-                    throw IOException("OpenAI extraction failed with HTTP ${response.code}: $responseBody")
+            try {
+                client.newCall(httpRequest).execute().use { response ->
+                    val responseBody = response.body?.string().orEmpty()
+                    OrcaLog.info(
+                        "OpenAI HTTP response for document=${request.document.documentId.takeLast(8)} code=${response.code} bodyLength=${responseBody.length}.",
+                    )
+                    if (!response.isSuccessful) {
+                        throw providerHttpFailure(response.code, responseBody)
+                    }
+
+                    val outputText = extractOutputText(responseBody)
+                        ?: throw MalformedProviderPayloadException("OpenAI response did not contain output_text.")
+                    OrcaLog.info(
+                        "OpenAI output_text extracted for document=${request.document.documentId.takeLast(8)} length=${outputText.length}.",
+                    )
+
+                    ProviderExtractionPayload(
+                        backendType = "CLOUD_VISION",
+                        providerName = config.providerName,
+                        modelName = config.modelName,
+                        rawJson = outputText,
+                    )
                 }
-
-                val outputText = extractOutputText(responseBody)
-                    ?: throw IOException("OpenAI response did not contain output_text.")
-                OrcaLog.info(
-                    "OpenAI output_text extracted for document=${request.document.documentId.takeLast(8)} length=${outputText.length}.",
-                )
-
-                ProviderExtractionPayload(
-                    backendType = "CLOUD_VISION",
-                    providerName = config.providerName,
-                    modelName = config.modelName,
-                    promptText = promptText,
-                    responseEnvelopeJson = responseBody,
-                    responseOutputJson = outputText,
+            } catch (error: ExtractionPipelineException) {
+                throw error
+            } catch (error: IOException) {
+                throw RetryableExtractionException(
+                    errorCode = "PROVIDER_IO",
+                    message = "OpenAI extraction request failed before a valid response was received.",
+                    cause = error,
                 )
             }
         }
@@ -206,6 +214,24 @@ class OpenAiCloudExtractionAdapter(
                     put("items", buildJsonObject { put("type", JsonPrimitive("string")) })
                 })
             })
+        }
+    }
+
+    private fun providerHttpFailure(
+        statusCode: Int,
+        responseBody: String,
+    ): ExtractionPipelineException {
+        val message = "OpenAI extraction failed with HTTP $statusCode."
+        return if (statusCode == 408 || statusCode == 409 || statusCode == 429 || statusCode >= 500) {
+            RetryableExtractionException(
+                errorCode = "PROVIDER_HTTP_$statusCode",
+                message = "$message Response body length=${responseBody.length}.",
+            )
+        } else {
+            TerminalExtractionException(
+                errorCode = "PROVIDER_HTTP_$statusCode",
+                message = "$message Response body length=${responseBody.length}.",
+            )
         }
     }
 

@@ -42,20 +42,6 @@ class RoomDocumentStore(
         completedAt: Instant?,
     ) = dao.updateExtractionRun(runId, status, errorCode, startedAt, completedAt)
 
-    override suspend fun updateExtractionRunDebugArtifacts(
-        runId: String,
-        requestPrompt: String?,
-        responseEnvelopeJson: String?,
-        responseOutputJson: String?,
-        normalizationDebugJson: String?,
-    ) = dao.updateExtractionRunDebugArtifacts(
-        runId,
-        requestPrompt,
-        responseEnvelopeJson,
-        responseOutputJson,
-        normalizationDebugJson,
-    )
-
     override suspend fun updateDocumentState(
         documentId: String,
         sourceCount: Int,

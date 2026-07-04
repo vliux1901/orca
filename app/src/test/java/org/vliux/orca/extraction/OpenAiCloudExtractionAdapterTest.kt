@@ -44,7 +44,7 @@ class OpenAiCloudExtractionAdapterTest {
                     file = pdfFile,
                 ),
             ),
-            promptVersion = "phase0-v1",
+            promptVersion = "phase3-v1",
         )
         val prompt = adapter.buildPrompt(request)
         val body = adapter.buildRequestBody(request, prompt)

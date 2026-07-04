@@ -8,10 +8,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import org.vliux.orca.logging.OrcaLog
-import org.vliux.orca.extraction.ParsedExtractionPayload
 import org.vliux.orca.importing.AppFileStorage
 import org.vliux.orca.importing.DocumentImportPlanner
 import org.vliux.orca.importing.SourceImportPlanInput
@@ -35,8 +32,6 @@ class DocumentRepository(
     private val fileStorage: AppFileStorage,
     private val planner: DocumentImportPlanner = DocumentImportPlanner(),
 ) {
-    private val json = Json { prettyPrint = true; explicitNulls = false }
-
     suspend fun createDocument(
         vehicleId: String,
         imports: List<SourceImportRequest>,
@@ -205,10 +200,6 @@ class DocumentRepository(
             promptVersion = promptVersion,
             status = ExtractionStatus.QUEUED.name,
             errorCode = null,
-            requestPrompt = null,
-            responseEnvelopeJson = null,
-            responseOutputJson = null,
-            normalizationDebugJson = null,
             startedAt = null,
             completedAt = null,
             createdAt = now,
@@ -287,6 +278,36 @@ class DocumentRepository(
         )
     }
 
+    suspend fun markRunRetryableFailure(
+        runId: String,
+        errorCode: String,
+    ) {
+        val run = requireNotNull(store.getRun(runId))
+        val document = requireNotNull(store.getDocument(run.documentId))
+        val now = Instant.now()
+        store.inTransaction {
+            updateExtractionRun(
+                runId = runId,
+                status = ExtractionStatus.FAILED.name,
+                errorCode = errorCode,
+                startedAt = run.startedAt,
+                completedAt = now,
+            )
+            updateDocumentState(
+                documentId = run.documentId,
+                sourceCount = document.sourceCount,
+                importStatus = document.importStatus,
+                extractionStatus = ExtractionStatus.QUEUED.name,
+                latestRunId = runId,
+                occurredOn = document.occurredOn,
+                updatedAt = now,
+            )
+        }
+        OrcaLog.error(
+            "Marked extraction run=${runId.takeLast(8)} as retryable failure with errorCode=$errorCode.",
+        )
+    }
+
     suspend fun finishRun(
         runId: String,
         status: String,
@@ -317,20 +338,12 @@ class DocumentRepository(
     suspend fun applyExtractionResult(
         documentId: String,
         runId: String,
-        parsed: ParsedExtractionPayload,
         result: NormalizedExtractionResult,
     ) {
         val run = requireNotNull(store.getRun(runId))
         val document = requireNotNull(store.getDocument(documentId))
         val now = Instant.now()
         store.inTransaction {
-            updateExtractionRunDebugArtifacts(
-                runId = runId,
-                requestPrompt = parsed.provider.promptText,
-                responseEnvelopeJson = parsed.provider.responseEnvelopeJson,
-                responseOutputJson = parsed.provider.responseOutputJson,
-                normalizationDebugJson = json.encodeToString(result.debugReport),
-            )
             updateExtractionRun(
                 runId = runId,
                 status = ExtractionStatus.SUCCEEDED.name,

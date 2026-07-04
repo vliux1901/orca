@@ -270,24 +270,6 @@ private class SchedulerDocumentStore(
         runFlow(updated.documentId).value = updated
     }
 
-    override suspend fun updateExtractionRunDebugArtifacts(
-        runId: String,
-        requestPrompt: String?,
-        responseEnvelopeJson: String?,
-        responseOutputJson: String?,
-        normalizationDebugJson: String?,
-    ) {
-        val run = requireNotNull(runs[runId])
-        val updated = run.copy(
-            requestPrompt = requestPrompt,
-            responseEnvelopeJson = responseEnvelopeJson,
-            responseOutputJson = responseOutputJson,
-            normalizationDebugJson = normalizationDebugJson,
-        )
-        runs[runId] = updated
-        runFlow(updated.documentId).value = updated
-    }
-
     override suspend fun updateDocumentState(
         documentId: String,
         sourceCount: Int,

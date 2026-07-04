@@ -22,9 +22,7 @@ data class ProviderExtractionPayload(
     val backendType: String,
     val providerName: String,
     val modelName: String,
-    val promptText: String,
-    val responseEnvelopeJson: String,
-    val responseOutputJson: String,
+    val rawJson: String,
 )
 
 data class ParsedExtractionPayload(
@@ -53,7 +51,7 @@ class DefaultMaintenanceExtractionEngine(
     ): ParsedExtractionPayload {
         val providerPayload = adapter.extract(request)
         return ParsedExtractionPayload(
-            response = parser.parse(providerPayload.responseOutputJson),
+            response = parser.parse(providerPayload.rawJson),
             provider = providerPayload,
         )
     }

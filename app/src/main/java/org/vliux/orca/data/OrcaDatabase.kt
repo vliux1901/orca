@@ -25,7 +25,7 @@ import org.vliux.orca.data.model.VehicleEntity
         ServiceItemEntity::class,
         SearchEntryEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 @TypeConverters(InstantTypeConverters::class)
@@ -84,6 +84,65 @@ abstract class OrcaDatabase : RoomDatabase() {
                 db.execSQL("DROP TABLE `vehicles`")
                 db.execSQL("ALTER TABLE `vehicles_new` RENAME TO `vehicles`")
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_vehicles_updatedAt` ON `vehicles` (`updatedAt`)")
+            }
+        }
+
+        val MIGRATION_2_3: Migration = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `extraction_runs_new` (
+                        `runId` TEXT NOT NULL,
+                        `documentId` TEXT NOT NULL,
+                        `backendType` TEXT NOT NULL,
+                        `providerName` TEXT NOT NULL,
+                        `modelName` TEXT NOT NULL,
+                        `promptVersion` TEXT NOT NULL,
+                        `status` TEXT NOT NULL,
+                        `errorCode` TEXT,
+                        `startedAt` TEXT,
+                        `completedAt` TEXT,
+                        `createdAt` TEXT NOT NULL,
+                        PRIMARY KEY(`runId`),
+                        FOREIGN KEY(`documentId`) REFERENCES `documents`(`documentId`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    """
+                    INSERT INTO `extraction_runs_new` (
+                        `runId`,
+                        `documentId`,
+                        `backendType`,
+                        `providerName`,
+                        `modelName`,
+                        `promptVersion`,
+                        `status`,
+                        `errorCode`,
+                        `startedAt`,
+                        `completedAt`,
+                        `createdAt`
+                    )
+                    SELECT
+                        `runId`,
+                        `documentId`,
+                        `backendType`,
+                        `providerName`,
+                        `modelName`,
+                        `promptVersion`,
+                        `status`,
+                        `errorCode`,
+                        `startedAt`,
+                        `completedAt`,
+                        `createdAt`
+                    FROM `extraction_runs`
+                    """.trimIndent(),
+                )
+                db.execSQL("DROP TABLE `extraction_runs`")
+                db.execSQL("ALTER TABLE `extraction_runs_new` RENAME TO `extraction_runs`")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_extraction_runs_documentId` ON `extraction_runs` (`documentId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_extraction_runs_status` ON `extraction_runs` (`status`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_extraction_runs_createdAt` ON `extraction_runs` (`createdAt`)")
             }
         }
     }

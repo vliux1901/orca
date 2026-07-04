@@ -74,24 +74,6 @@ interface DocumentDao {
 
     @Query(
         """
-        UPDATE extraction_runs
-        SET requestPrompt = :requestPrompt,
-            responseEnvelopeJson = :responseEnvelopeJson,
-            responseOutputJson = :responseOutputJson,
-            normalizationDebugJson = :normalizationDebugJson
-        WHERE runId = :runId
-        """,
-    )
-    suspend fun updateExtractionRunDebugArtifacts(
-        runId: String,
-        requestPrompt: String?,
-        responseEnvelopeJson: String?,
-        responseOutputJson: String?,
-        normalizationDebugJson: String?,
-    )
-
-    @Query(
-        """
         UPDATE documents
         SET sourceCount = :sourceCount,
             importStatus = :importStatus,

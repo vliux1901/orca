@@ -37,14 +37,6 @@ interface DocumentStore {
         completedAt: Instant?,
     )
 
-    suspend fun updateExtractionRunDebugArtifacts(
-        runId: String,
-        requestPrompt: String?,
-        responseEnvelopeJson: String?,
-        responseOutputJson: String?,
-        normalizationDebugJson: String?,
-    )
-
     suspend fun updateDocumentState(
         documentId: String,
         sourceCount: Int,

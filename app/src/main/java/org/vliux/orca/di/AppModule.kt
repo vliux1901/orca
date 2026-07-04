@@ -43,7 +43,10 @@ object AppModule {
         appContext,
         OrcaDatabase::class.java,
         "orca.db",
-    ).addMigrations(OrcaDatabase.MIGRATION_1_2).build()
+    ).addMigrations(
+        OrcaDatabase.MIGRATION_1_2,
+        OrcaDatabase.MIGRATION_2_3,
+    ).build()
 
     @Provides
     @Singleton

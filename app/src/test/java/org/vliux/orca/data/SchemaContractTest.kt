@@ -12,11 +12,11 @@ import org.junit.Test
 
 class SchemaContractTest {
     @Test
-    fun version2SchemaDefinesCoreRelationshipsAndOptionalVehiclePlate() {
+    fun version3SchemaDefinesCoreRelationshipsAndOptionalVehiclePlate() {
         val schemaFile = sequenceOf(
-            File("schemas/org.vliux.orca.data.OrcaDatabase/2.json"),
-            File("app/schemas/org.vliux.orca.data.OrcaDatabase/2.json"),
-        ).firstOrNull(File::exists) ?: File("schemas/org.vliux.orca.data.OrcaDatabase/2.json")
+            File("schemas/org.vliux.orca.data.OrcaDatabase/3.json"),
+            File("app/schemas/org.vliux.orca.data.OrcaDatabase/3.json"),
+        ).firstOrNull(File::exists) ?: File("schemas/org.vliux.orca.data.OrcaDatabase/3.json")
         assertTrue("Expected exported schema at ${schemaFile.path}", schemaFile.exists())
 
         val root = Json.parseToJsonElement(schemaFile.readText()).jsonObject
@@ -27,6 +27,9 @@ class SchemaContractTest {
         }.jsonObject
         val documents = entities.first { entity ->
             entity.jsonObject.getValue("tableName").jsonPrimitive.content == "documents"
+        }.jsonObject
+        val extractionRuns = entities.first { entity ->
+            entity.jsonObject.getValue("tableName").jsonPrimitive.content == "extraction_runs"
         }.jsonObject
         val searchEntries = entities.first { entity ->
             entity.jsonObject.getValue("tableName").jsonPrimitive.content == "search_entries"
@@ -51,6 +54,10 @@ class SchemaContractTest {
         assertHasColumn(vehicles, "licensePlate")
         assertColumnNullable(vehicles, "licensePlate")
         assertHasColumn(vehicles, "vin")
+        assertLacksColumn(extractionRuns, "requestPrompt")
+        assertLacksColumn(extractionRuns, "responseEnvelopeJson")
+        assertLacksColumn(extractionRuns, "responseOutputJson")
+        assertLacksColumn(extractionRuns, "normalizationDebugJson")
     }
 
     private fun assertHasForeignKey(
@@ -89,6 +96,16 @@ class SchemaContractTest {
             field.jsonObject.getValue("fieldPath").jsonPrimitive.content
         }
         assertTrue("Expected column $columnName", fields.contains(columnName))
+    }
+
+    private fun assertLacksColumn(
+        entity: JsonObject,
+        columnName: String,
+    ) {
+        val fields = entity.getValue("fields").jsonArray.map { field ->
+            field.jsonObject.getValue("fieldPath").jsonPrimitive.content
+        }
+        assertTrue("Did not expect column $columnName", !fields.contains(columnName))
     }
 
     private fun assertColumnNullable(

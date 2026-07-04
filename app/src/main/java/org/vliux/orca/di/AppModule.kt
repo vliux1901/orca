@@ -25,6 +25,8 @@ import org.vliux.orca.importing.DocumentImportPlanner
 import org.vliux.orca.normalization.ExtractionNormalizer
 import org.vliux.orca.provider.ProviderRuntimeConfig
 import org.vliux.orca.provider.ProviderRuntimeConfigResolver
+import org.vliux.orca.worker.DocumentExtractionWorkEnqueuer
+import org.vliux.orca.worker.WorkManagerDocumentExtractionWorkEnqueuer
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -103,4 +105,10 @@ object AppModule {
     fun provideWorkManager(
         @ApplicationContext appContext: Context,
     ): WorkManager = WorkManager.getInstance(appContext)
+
+    @Provides
+    @Singleton
+    fun provideDocumentExtractionWorkEnqueuer(
+        workManager: WorkManager,
+    ): DocumentExtractionWorkEnqueuer = WorkManagerDocumentExtractionWorkEnqueuer(workManager)
 }

@@ -41,30 +41,33 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
-import org.vliux.orca.AppGraph
+import org.vliux.orca.data.DocumentRepository
 import org.vliux.orca.data.DocumentDetail
 import org.vliux.orca.data.VehicleRepository
 import org.vliux.orca.data.model.DocumentListItem
 import org.vliux.orca.data.model.VehicleEntity
 import org.vliux.orca.importing.SourceImportRequest
+import org.vliux.orca.worker.DocumentExtractionScheduler
 
 @Composable
 fun VehicleHubScreen(
-    appGraph: AppGraph,
+    vehicleRepository: VehicleRepository,
+    documentRepository: DocumentRepository,
+    documentExtractionScheduler: DocumentExtractionScheduler,
     modifier: Modifier = Modifier,
 ) {
     var route by remember { mutableStateOf<VehicleRoute>(VehicleRoute.List) }
 
     when (val currentRoute = route) {
         VehicleRoute.List -> VehicleListScreen(
-            vehicleRepository = appGraph.vehicleRepository,
+            vehicleRepository = vehicleRepository,
             modifier = modifier,
             onCreateVehicle = { route = VehicleRoute.Editor(vehicleId = null) },
             onOpenVehicle = { route = VehicleRoute.Detail(vehicleId = it) },
             onEditVehicle = { route = VehicleRoute.Editor(vehicleId = it) },
         )
         is VehicleRoute.Editor -> VehicleEditorScreen(
-            vehicleRepository = appGraph.vehicleRepository,
+            vehicleRepository = vehicleRepository,
             modifier = modifier,
             vehicleId = currentRoute.vehicleId,
             onBack = {
@@ -81,7 +84,9 @@ fun VehicleHubScreen(
             },
         )
         is VehicleRoute.Detail -> VehicleDetailScreen(
-            appGraph = appGraph,
+            vehicleRepository = vehicleRepository,
+            documentRepository = documentRepository,
+            documentExtractionScheduler = documentExtractionScheduler,
             modifier = modifier,
             vehicleId = currentRoute.vehicleId,
             onBack = { route = VehicleRoute.List },
@@ -99,7 +104,7 @@ fun VehicleHubScreen(
             },
         )
         is VehicleRoute.DocumentDetail -> DocumentDetailScreen(
-            appGraph = appGraph,
+            documentRepository = documentRepository,
             modifier = modifier,
             vehicleId = currentRoute.vehicleId,
             documentId = currentRoute.documentId,
@@ -154,7 +159,9 @@ private fun VehicleListScreen(
 
 @Composable
 private fun VehicleDetailScreen(
-    appGraph: AppGraph,
+    vehicleRepository: VehicleRepository,
+    documentRepository: DocumentRepository,
+    documentExtractionScheduler: DocumentExtractionScheduler,
     vehicleId: String,
     onBack: () -> Unit,
     onEditVehicle: () -> Unit,
@@ -163,7 +170,6 @@ private fun VehicleDetailScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val vehicleRepository = appGraph.vehicleRepository
     val vehicleState by produceState<VehicleEditorLoadState>(
         initialValue = VehicleEditorLoadState(isLoading = true, vehicle = null),
         key1 = vehicleId,
@@ -174,8 +180,8 @@ private fun VehicleDetailScreen(
             vehicle = vehicleRepository.getVehicle(vehicleId),
         )
     }
-    val documentFlow = remember(appGraph.repository, vehicleId) {
-        appGraph.repository.observeDocumentList(vehicleId)
+    val documentFlow = remember(documentRepository, vehicleId) {
+        documentRepository.observeDocumentList(vehicleId)
     }
     val documents by documentFlow.collectAsStateWithLifecycle(initialValue = emptyList())
     var importError by remember(vehicleId) { mutableStateOf<String?>(null) }
@@ -193,8 +199,8 @@ private fun VehicleDetailScreen(
             importMessage = null
             runCatching {
                 val requests = uris.map { uri -> uri.toSourceImportRequest(context) }
-                val documentId = appGraph.repository.importDocument(vehicleId, requests)
-                val queued = appGraph.queueDocumentExtraction(documentId)
+                val documentId = documentRepository.importDocument(vehicleId, requests)
+                val queued = documentExtractionScheduler.queueDocumentExtraction(documentId)
                 ImportResult(documentId = documentId, queued = queued)
             }.onSuccess { result ->
                 importMessage = if (result.queued) {
@@ -250,7 +256,7 @@ private fun VehicleDetailScreen(
                     )
                     else -> VehicleDetailHeaderCard(
                         vehicle = loadedVehicle,
-                        extractionConfigured = appGraph.extractionConfigured,
+                        extractionConfigured = documentExtractionScheduler.extractionConfigured,
                     )
                 }
             }
@@ -294,14 +300,14 @@ private fun VehicleDetailScreen(
 
 @Composable
 private fun DocumentDetailScreen(
-    appGraph: AppGraph,
+    documentRepository: DocumentRepository,
     vehicleId: String,
     documentId: String,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val detailFlow = remember(appGraph.repository, documentId) {
-        appGraph.repository.observeDocumentDetail(documentId)
+    val detailFlow = remember(documentRepository, documentId) {
+        documentRepository.observeDocumentDetail(documentId)
     }
     val detail by detailFlow.collectAsStateWithLifecycle(initialValue = null)
 

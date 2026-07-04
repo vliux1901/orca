@@ -14,6 +14,7 @@ Working rules:
 - Generate new documents as HTML file(s) by default.
 - Plan the code change scope ahead of implementation.
 - If a change is too large, break it into individual and modular commits in a stack.
+- If possible, manage app dependencies through Hilt instead of ad hoc wiring.
 - Do the following verifications every time any product code is changed:
     - Run build.
     - Updated or added unit tests for the changes.

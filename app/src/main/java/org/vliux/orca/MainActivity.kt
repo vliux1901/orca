@@ -14,7 +14,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             OrcaTheme {
-                VehicleHubScreen(vehicleRepository = app.graph.vehicleRepository)
+                VehicleHubScreen(appGraph = app.graph)
             }
         }
     }

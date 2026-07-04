@@ -161,6 +161,34 @@ class DocumentRepositoryCreateDocumentTest {
         }
     }
 
+    @Test
+    fun markDocumentQueuedUpdatesListAndDetailState() = runTest {
+        val rootDir = createTempDirectory(prefix = "orca-files-").toFile()
+        try {
+            val store = InMemoryDocumentStore(knownVehicleIds = setOf("vehicle-123"))
+            val repository = DocumentRepository(
+                store = store,
+                fileStorage = AppFileStorage(rootDir) { error("Uri path should not be used in prepared-import tests.") },
+            )
+            val documentId = repository.createDocument(
+                vehicleId = "vehicle-123",
+                imports = listOf(
+                    preparedImport("receipt.png", "image/png", byteArrayOf(1, 2, 3), rootDir),
+                ),
+            )
+
+            repository.markDocumentQueued(documentId)
+
+            val listItem = repository.observeDocumentList("vehicle-123").first().single()
+            val detail = repository.observeDocumentDetail(documentId).first()
+            assertEquals(1, listItem.sourceCount)
+            assertEquals(ExtractionStatus.QUEUED.name, listItem.extractionStatus)
+            assertEquals(ExtractionStatus.QUEUED.name, detail?.document?.extractionStatus)
+        } finally {
+            rootDir.deleteRecursively()
+        }
+    }
+
     private fun preparedImport(
         displayName: String,
         mimeType: String,

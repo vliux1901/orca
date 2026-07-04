@@ -1,5 +1,10 @@
 package org.vliux.orca.ui.vehicle
 
+import android.content.Context
+import android.net.Uri
+import android.provider.OpenableColumns
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts.OpenMultipleDocuments
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -30,33 +35,75 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
+import org.vliux.orca.AppGraph
+import org.vliux.orca.data.DocumentDetail
 import org.vliux.orca.data.VehicleRepository
+import org.vliux.orca.data.model.DocumentListItem
 import org.vliux.orca.data.model.VehicleEntity
+import org.vliux.orca.importing.SourceImportRequest
 
 @Composable
 fun VehicleHubScreen(
-    vehicleRepository: VehicleRepository,
+    appGraph: AppGraph,
     modifier: Modifier = Modifier,
 ) {
     var route by remember { mutableStateOf<VehicleRoute>(VehicleRoute.List) }
 
     when (val currentRoute = route) {
         VehicleRoute.List -> VehicleListScreen(
-            vehicleRepository = vehicleRepository,
+            vehicleRepository = appGraph.vehicleRepository,
             modifier = modifier,
             onCreateVehicle = { route = VehicleRoute.Editor(vehicleId = null) },
+            onOpenVehicle = { route = VehicleRoute.Detail(vehicleId = it) },
             onEditVehicle = { route = VehicleRoute.Editor(vehicleId = it) },
         )
         is VehicleRoute.Editor -> VehicleEditorScreen(
-            vehicleRepository = vehicleRepository,
+            vehicleRepository = appGraph.vehicleRepository,
+            modifier = modifier,
+            vehicleId = currentRoute.vehicleId,
+            onBack = {
+                route = when (val parent = currentRoute.parent) {
+                    null -> VehicleRoute.List
+                    is VehicleRoute.Detail -> parent
+                    is VehicleRoute.DocumentDetail -> parent
+                    VehicleRoute.List -> VehicleRoute.List
+                    is VehicleRoute.Editor -> VehicleRoute.List
+                }
+            },
+            onSaved = { vehicleId ->
+                route = VehicleRoute.Detail(vehicleId = vehicleId)
+            },
+        )
+        is VehicleRoute.Detail -> VehicleDetailScreen(
+            appGraph = appGraph,
             modifier = modifier,
             vehicleId = currentRoute.vehicleId,
             onBack = { route = VehicleRoute.List },
+            onEditVehicle = {
+                route = VehicleRoute.Editor(
+                    vehicleId = currentRoute.vehicleId,
+                    parent = currentRoute,
+                )
+            },
+            onOpenDocument = { documentId ->
+                route = VehicleRoute.DocumentDetail(
+                    vehicleId = currentRoute.vehicleId,
+                    documentId = documentId,
+                )
+            },
+        )
+        is VehicleRoute.DocumentDetail -> DocumentDetailScreen(
+            appGraph = appGraph,
+            modifier = modifier,
+            vehicleId = currentRoute.vehicleId,
+            documentId = currentRoute.documentId,
+            onBack = { route = VehicleRoute.Detail(currentRoute.vehicleId) },
         )
     }
 }
@@ -65,6 +112,7 @@ fun VehicleHubScreen(
 private fun VehicleListScreen(
     vehicleRepository: VehicleRepository,
     onCreateVehicle: () -> Unit,
+    onOpenVehicle: (String) -> Unit,
     onEditVehicle: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -95,8 +143,215 @@ private fun VehicleListScreen(
                 items(vehicles, key = { it.vehicleId }) { vehicle ->
                     VehicleSummaryCard(
                         vehicle = vehicle,
+                        onOpenVehicle = { onOpenVehicle(vehicle.vehicleId) },
                         onEditVehicle = { onEditVehicle(vehicle.vehicleId) },
                     )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun VehicleDetailScreen(
+    appGraph: AppGraph,
+    vehicleId: String,
+    onBack: () -> Unit,
+    onEditVehicle: () -> Unit,
+    onOpenDocument: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val vehicleRepository = appGraph.vehicleRepository
+    val vehicleState by produceState<VehicleEditorLoadState>(
+        initialValue = VehicleEditorLoadState(isLoading = true, vehicle = null),
+        key1 = vehicleId,
+        key2 = vehicleRepository,
+    ) {
+        value = VehicleEditorLoadState(
+            isLoading = false,
+            vehicle = vehicleRepository.getVehicle(vehicleId),
+        )
+    }
+    val documentFlow = remember(appGraph.repository, vehicleId) {
+        appGraph.repository.observeDocumentList(vehicleId)
+    }
+    val documents by documentFlow.collectAsStateWithLifecycle(initialValue = emptyList())
+    var importError by remember(vehicleId) { mutableStateOf<String?>(null) }
+    var importMessage by remember(vehicleId) { mutableStateOf<String?>(null) }
+    var isImporting by remember(vehicleId) { mutableStateOf(false) }
+    val loadedVehicle = vehicleState.vehicle
+
+    val launcher = rememberLauncherForActivityResult(OpenMultipleDocuments()) { uris ->
+        if (uris.isEmpty()) {
+            return@rememberLauncherForActivityResult
+        }
+        scope.launch {
+            isImporting = true
+            importError = null
+            importMessage = null
+            runCatching {
+                val requests = uris.map { uri -> uri.toSourceImportRequest(context) }
+                val documentId = appGraph.repository.importDocument(vehicleId, requests)
+                val queued = appGraph.queueDocumentExtraction(documentId)
+                ImportResult(documentId = documentId, queued = queued)
+            }.onSuccess { result ->
+                importMessage = if (result.queued) {
+                    "Imported document and queued extraction."
+                } else {
+                    "Imported document. Extraction is not configured on this build."
+                }
+                onOpenDocument(result.documentId)
+            }.onFailure { error ->
+                importError = error.message ?: "Failed to import files."
+            }
+            isImporting = false
+        }
+    }
+
+    Scaffold(modifier = modifier.fillMaxSize()) { innerPadding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(bottom = 32.dp),
+        ) {
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    TextButton(onClick = onBack) {
+                        Text("Back")
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(onClick = onEditVehicle) {
+                            Text("Edit")
+                        }
+                        Button(
+                            onClick = { launcher.launch(SUPPORTED_IMPORT_MIME_TYPES) },
+                            enabled = !isImporting && vehicleState.vehicle != null,
+                        ) {
+                            Text(if (isImporting) "Importing..." else "Import Files")
+                        }
+                    }
+                }
+            }
+
+            item {
+                when {
+                    vehicleState.isLoading -> CircularProgressIndicator()
+                    loadedVehicle == null -> MissingEntityCard(
+                        title = "Vehicle not found.",
+                        message = "The selected vehicle could not be loaded from the local database.",
+                    )
+                    else -> VehicleDetailHeaderCard(
+                        vehicle = loadedVehicle,
+                        extractionConfigured = appGraph.extractionConfigured,
+                    )
+                }
+            }
+
+            importMessage?.let { message ->
+                item {
+                    InfoCard(title = "Import Result", message = message)
+                }
+            }
+
+            importError?.let { message ->
+                item {
+                    ErrorCard(message = message)
+                }
+            }
+
+            if (loadedVehicle != null) {
+                item {
+                    SectionHeader(
+                        title = "Documents",
+                        subtitle = "Imported files are grouped into one logical document and queued for extraction when configuration is available.",
+                    )
+                }
+
+                if (documents.isEmpty()) {
+                    item {
+                        EmptyDocumentState(onImport = { launcher.launch(SUPPORTED_IMPORT_MIME_TYPES) })
+                    }
+                } else {
+                    items(documents, key = { it.documentId }) { document ->
+                        DocumentSummaryCard(
+                            document = document,
+                            onOpenDocument = { onOpenDocument(document.documentId) },
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DocumentDetailScreen(
+    appGraph: AppGraph,
+    vehicleId: String,
+    documentId: String,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val detailFlow = remember(appGraph.repository, documentId) {
+        appGraph.repository.observeDocumentDetail(documentId)
+    }
+    val detail by detailFlow.collectAsStateWithLifecycle(initialValue = null)
+
+    Scaffold(modifier = modifier.fillMaxSize()) { innerPadding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(bottom = 32.dp),
+        ) {
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    TextButton(onClick = onBack) {
+                        Text("Back")
+                    }
+                    Text(
+                        text = "Vehicle ${vehicleId.takeLast(6)}",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
+
+            item {
+                if (detail == null) {
+                    MissingEntityCard(
+                        title = "Document not found.",
+                        message = "The selected document could not be loaded from the local database.",
+                    )
+                } else {
+                    DocumentDetailHeader(detail = requireNotNull(detail))
+                }
+            }
+
+            detail?.let { loadedDetail ->
+                item {
+                    SourceFilesCard(detail = loadedDetail)
+                }
+                item {
+                    PlaceholderFactsCard(detail = loadedDetail)
+                }
+                item {
+                    PlaceholderEventCard(detail = loadedDetail)
+                }
+                item {
+                    PlaceholderServiceItemsCard(detail = loadedDetail)
                 }
             }
         }
@@ -108,6 +363,7 @@ private fun VehicleEditorScreen(
     vehicleRepository: VehicleRepository,
     vehicleId: String?,
     onBack: () -> Unit,
+    onSaved: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
@@ -177,22 +433,10 @@ private fun VehicleEditorScreen(
             if (vehicleId != null && (!initialized || loadState.isLoading)) {
                 CircularProgressIndicator()
             } else if (vehicleId != null && loadState.vehicle == null) {
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Text(
-                            text = "Vehicle not found.",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        Text(
-                            text = "The selected vehicle could not be loaded from the local database.",
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                    }
-                }
+                MissingEntityCard(
+                    title = "Vehicle not found.",
+                    message = "The selected vehicle could not be loaded from the local database.",
+                )
             } else {
                 VehicleForm(
                     draft = formDraft,
@@ -229,9 +473,10 @@ private fun VehicleEditorScreen(
                                         vehicleRepository.createVehicle(request)
                                     } else {
                                         vehicleRepository.updateVehicle(vehicleId, request)
+                                        vehicleId
                                     }
-                                }.onSuccess {
-                                    onBack()
+                                }.onSuccess { savedVehicleId ->
+                                    onSaved(savedVehicleId)
                                 }.onFailure { error ->
                                     saveError = error.message ?: "Failed to save vehicle."
                                 }
@@ -306,12 +551,13 @@ private fun EmptyVehicleState(
 @Composable
 private fun VehicleSummaryCard(
     vehicle: VehicleEntity,
+    onOpenVehicle: () -> Unit,
     onEditVehicle: () -> Unit,
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onEditVehicle),
+            .clickable(onClick = onOpenVehicle),
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -326,22 +572,370 @@ private fun VehicleSummaryCard(
                 text = "${vehicle.year} ${vehicle.make} ${vehicle.model}",
                 style = MaterialTheme.typography.bodyMedium,
             )
+            val metadata = listOfNotNull(
+                vehicle.licensePlate?.takeIf { it.isNotBlank() }?.let { "Plate $it" },
+                vehicle.currentMileage?.let { "$it mi" },
+                vehicle.vin?.takeIf { it.isNotBlank() }?.let { "VIN ${it.takeLast(6)}" },
+            )
+            if (metadata.isNotEmpty()) {
+                Text(
+                    text = metadata.joinToString(" | "),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                TextButton(onClick = onOpenVehicle) {
+                    Text("Open")
+                }
+                TextButton(onClick = onEditVehicle) {
+                    Text("Edit")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun VehicleDetailHeaderCard(
+    vehicle: VehicleEntity,
+    extractionConfigured: Boolean,
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
             Text(
-                text = listOfNotNull(
-                    vehicle.licensePlate?.takeIf { it.isNotBlank() }?.let { "Plate $it" },
-                    vehicle.currentMileage?.let { "$it mi" },
-                    vehicle.vin?.takeIf { it.isNotBlank() }?.let { "VIN ${it.takeLast(6)}" },
-                ).joinToString(" | "),
+                text = vehicle.displayName,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text = "${vehicle.year} ${vehicle.make} ${vehicle.model}",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            val metadata = listOfNotNull(
+                vehicle.licensePlate?.takeIf { it.isNotBlank() }?.let { "Plate $it" },
+                vehicle.currentMileage?.let { "$it mi" },
+                vehicle.vin?.takeIf { it.isNotBlank() }?.let { "VIN ${it.takeLast(6)}" },
+            )
+            if (metadata.isNotEmpty()) {
+                Text(
+                    text = metadata.joinToString(" | "),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            Text(
+                text = if (extractionConfigured) {
+                    "Imports will be queued for background extraction after files are copied into app storage."
+                } else {
+                    "Imports are available now, but background extraction is not configured on this build."
+                },
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+    }
+}
+
+@Composable
+private fun EmptyDocumentState(
+    onImport: () -> Unit,
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                text = "No documents yet",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = "Import one or more PDFs or photos to create the first logical maintenance document for this vehicle.",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Button(onClick = onImport) {
+                Text("Import Files")
+            }
+        }
+    }
+}
+
+@Composable
+private fun DocumentSummaryCard(
+    document: DocumentListItem,
+    onOpenDocument: () -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onOpenDocument),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = document.title ?: "Imported document",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = buildString {
+                    append("Sources ${document.sourceCount}")
+                    append(" | Import ${document.importStatus}")
+                    append(" | Extraction ${document.extractionStatus}")
+                },
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            document.occurredOn?.let { occurredOn ->
+                Text(
+                    text = "Occurred on $occurredOn",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            Text(
+                text = "Updated ${document.updatedAt}",
                 style = MaterialTheme.typography.bodySmall,
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End,
             ) {
-                TextButton(onClick = onEditVehicle) {
-                    Text("Edit")
+                TextButton(onClick = onOpenDocument) {
+                    Text("Open")
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun DocumentDetailHeader(
+    detail: DocumentDetail,
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                text = detail.document.title ?: "Imported document",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text = "Import ${detail.document.importStatus} | Extraction ${detail.document.extractionStatus}",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Text(
+                text = "Sources ${detail.sources.size} | Updated ${detail.document.updatedAt}",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            detail.latestRun?.let { run ->
+                Text(
+                    text = "Latest run ${run.status} via ${run.providerName}/${run.modelName}",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SourceFilesCard(
+    detail: DocumentDetail,
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = "Source Files",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            detail.sources.forEach { source ->
+                Text(
+                    text = "${source.fileName} | ${source.mimeType} | ${source.byteSize} bytes",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlaceholderFactsCard(
+    detail: DocumentDetail,
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = "Extracted Facts",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            if (detail.facts.isEmpty()) {
+                Text(
+                    text = placeholderTextFor(detail.document.extractionStatus),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            } else {
+                detail.facts.forEach { fact ->
+                    Text(
+                        text = "${fact.factType}: ${fact.valueText}",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlaceholderEventCard(
+    detail: DocumentDetail,
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = "Timeline Event",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            val event = detail.event
+            if (event == null) {
+                Text(
+                    text = placeholderTextFor(detail.document.extractionStatus),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            } else {
+                Text(
+                    text = "${event.eventDate} | ${event.shopName ?: "Unknown shop"} | ${event.status}",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlaceholderServiceItemsCard(
+    detail: DocumentDetail,
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = "Service Items",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            if (detail.serviceItems.isEmpty()) {
+                Text(
+                    text = placeholderTextFor(detail.document.extractionStatus),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            } else {
+                detail.serviceItems.forEach { item ->
+                    Text(
+                        text = item.label,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SectionHeader(
+    title: String,
+    subtitle: String,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+        )
+        Text(
+            text = subtitle,
+            style = MaterialTheme.typography.bodyMedium,
+        )
+    }
+}
+
+@Composable
+private fun MissingEntityCard(
+    title: String,
+    message: String,
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ErrorCard(
+    message: String,
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = message,
+            modifier = Modifier.padding(16.dp),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.error,
+        )
+    }
+}
+
+@Composable
+private fun InfoCard(
+    title: String,
+    message: String,
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+            )
         }
     }
 }
@@ -414,12 +1008,51 @@ private fun VehicleTextField(
     )
 }
 
+private fun Uri.toSourceImportRequest(context: Context): SourceImportRequest {
+    val displayName = context.contentResolver.query(this, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
+        ?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                cursor.getString(0)
+            } else {
+                null
+            }
+        }
+    val mimeType = context.contentResolver.getType(this)
+    return SourceImportRequest(
+        uri = this,
+        displayName = displayName,
+        mimeType = mimeType,
+    )
+}
+
+private fun placeholderTextFor(extractionStatus: String): String = when (extractionStatus) {
+    "QUEUED" -> "Extraction is queued. Placeholder sections will populate after the background worker runs."
+    "RUNNING" -> "Extraction is running. Placeholder sections will populate when structured results persist."
+    "FAILED" -> "Extraction failed. Placeholder sections remain empty until the document is retried."
+    else -> "No extracted content yet. Placeholder sections will populate after extraction."
+}
+
 private sealed interface VehicleRoute {
     data object List : VehicleRoute
-    data class Editor(val vehicleId: String?) : VehicleRoute
+    data class Editor(
+        val vehicleId: String?,
+        val parent: VehicleRoute? = null,
+    ) : VehicleRoute
+    data class Detail(val vehicleId: String) : VehicleRoute
+    data class DocumentDetail(
+        val vehicleId: String,
+        val documentId: String,
+    ) : VehicleRoute
 }
 
 private data class VehicleEditorLoadState(
     val isLoading: Boolean,
     val vehicle: VehicleEntity?,
 )
+
+private data class ImportResult(
+    val documentId: String,
+    val queued: Boolean,
+)
+
+private val SUPPORTED_IMPORT_MIME_TYPES = arrayOf("image/*", "application/pdf")

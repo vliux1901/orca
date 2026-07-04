@@ -5,6 +5,7 @@ import androidx.room.Room
 import androidx.work.WorkManager
 import dagger.Module
 import dagger.Provides
+import dagger.Reusable
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
@@ -20,6 +21,7 @@ import org.vliux.orca.extraction.MaintenanceExtractionEngine
 import org.vliux.orca.extraction.OpenAiCloudExtractionAdapter
 import org.vliux.orca.extraction.StrictJsonExtractionParser
 import org.vliux.orca.importing.AppFileStorage
+import org.vliux.orca.importing.DocumentImportPlanner
 import org.vliux.orca.normalization.ExtractionNormalizer
 import org.vliux.orca.provider.ProviderRuntimeConfig
 import org.vliux.orca.provider.ProviderRuntimeConfigResolver
@@ -54,13 +56,19 @@ object AppModule {
     ): AppFileStorage = AppFileStorage(appContext)
 
     @Provides
+    @Reusable
+    fun provideDocumentImportPlanner(): DocumentImportPlanner = DocumentImportPlanner()
+
+    @Provides
     @Singleton
     fun provideDocumentRepository(
         store: DocumentStore,
         fileStorage: AppFileStorage,
+        planner: DocumentImportPlanner,
     ): DocumentRepository = DocumentRepository(
         store = store,
         fileStorage = fileStorage,
+        planner = planner,
     )
 
     @Provides
@@ -70,7 +78,7 @@ object AppModule {
     ): VehicleRepository = VehicleRepository(database.vehicleDao())
 
     @Provides
-    @Singleton
+    @Reusable
     fun provideStrictJsonExtractionParser(): StrictJsonExtractionParser = StrictJsonExtractionParser()
 
     @Provides
@@ -87,7 +95,7 @@ object AppModule {
     ): MaintenanceExtractionEngine = DefaultMaintenanceExtractionEngine(adapter, parser)
 
     @Provides
-    @Singleton
+    @Reusable
     fun provideExtractionNormalizer(): ExtractionNormalizer = ExtractionNormalizer()
 
     @Provides

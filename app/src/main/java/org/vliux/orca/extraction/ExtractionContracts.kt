@@ -85,6 +85,10 @@ data class AiExtractedFact(
     val valueText: String,
     @SerialName("normalized_value")
     val normalizedValue: String? = null,
+    @SerialName("interpreted_from_fact_type")
+    val interpretedFromFactType: String? = null,
+    @SerialName("interpreted_from_value_text")
+    val interpretedFromValueText: String? = null,
     @SerialName("currency_code")
     val currencyCode: String? = null,
     @SerialName("source_id")

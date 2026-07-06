@@ -61,9 +61,35 @@ class DocumentExtractionProcessorTest {
                         title = "Brake service",
                         facts = listOf(
                             AiExtractedFact(
+                                factType = "LINE_ITEM",
+                                valueText = "120K3 service",
+                                normalizedValue = null,
+                                interpretedFromFactType = null,
+                                interpretedFromValueText = null,
+                                currencyCode = null,
+                                sourceId = "source-001",
+                                sourcePage = 1,
+                                evidenceText = "120K3 service",
+                                confidence = 0.88,
+                            ),
+                            AiExtractedFact(
+                                factType = "INTERPRETED_LINE_ITEM",
+                                valueText = "Likely 120,000-mile scheduled service package",
+                                normalizedValue = null,
+                                interpretedFromFactType = "LINE_ITEM",
+                                interpretedFromValueText = "120K3 service",
+                                currencyCode = null,
+                                sourceId = "source-001",
+                                sourcePage = 1,
+                                evidenceText = "120K3 service",
+                                confidence = 0.61,
+                            ),
+                            AiExtractedFact(
                                 factType = "SERVICE_DATE",
                                 valueText = "2026-05-01",
                                 normalizedValue = "2026-05-01",
+                                interpretedFromFactType = null,
+                                interpretedFromValueText = null,
                                 currencyCode = null,
                                 sourceId = "source-001",
                                 sourcePage = 1,
@@ -125,8 +151,10 @@ class DocumentExtractionProcessorTest {
             assertTrue(engine.lastRequest?.sources?.single()?.file?.exists() == true)
             assertEquals(ExtractionStatus.SUCCEEDED.name, detail?.document?.extractionStatus)
             assertEquals("Brake service", detail?.document?.title)
-            assertEquals(1, detail?.facts?.size)
-            assertEquals("SERVICE_DATE", detail?.facts?.single()?.factType)
+            assertEquals(3, detail?.facts?.size)
+            val rawLineItem = detail?.facts?.first { it.factType == "LINE_ITEM" }
+            val interpretedLineItem = detail?.facts?.first { it.factType == "INTERPRETED_LINE_ITEM" }
+            assertEquals(rawLineItem?.factId, interpretedLineItem?.interpretedFromFactId)
             assertEquals(LocalDate.parse("2026-05-01"), detail?.event?.eventDate)
             assertEquals(1, detail?.serviceItems?.size)
             assertEquals(ExtractionStatus.SUCCEEDED.name, detail?.latestRun?.status)

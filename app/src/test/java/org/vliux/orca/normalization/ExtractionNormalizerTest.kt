@@ -69,6 +69,7 @@ class ExtractionNormalizerTest {
         assertEquals("Brake service", result.title)
         assertEquals(2, result.facts.size)
         assertEquals("SERVICE_DATE", result.facts.first().factType)
+        assertNull(result.facts.first().interpretedFromFactId)
         assertEquals(LocalDate.parse("2026-05-01"), result.event?.eventDate)
         assertEquals(32100, result.event?.mileage)
         assertEquals("USD", result.event?.currencyCode)
@@ -121,6 +122,43 @@ class ExtractionNormalizerTest {
             "No usable event fields survived normalization.",
             result.debugReport.eventDecision.reason,
         )
+    }
+
+    @Test
+    fun normalizePersistsInterpretedLineItemWithLinkToRawFact() {
+        val result = normalizer.normalize(
+            documentId = "doc-1",
+            vehicleId = "vehicle-1",
+            runId = "run-1",
+            response = AiExtractionResponse(
+                facts = listOf(
+                    AiExtractedFact(
+                        factType = "line_item",
+                        valueText = "120K3 service",
+                        sourceId = "src-1",
+                        sourcePage = 1,
+                        evidenceText = "120K3 service",
+                        confidence = 0.82,
+                    ),
+                    AiExtractedFact(
+                        factType = "interpreted_line_item",
+                        valueText = "Likely 120,000-mile scheduled service package",
+                        interpretedFromFactType = "line_item",
+                        interpretedFromValueText = "120K3 service",
+                        sourceId = "src-1",
+                        sourcePage = 1,
+                        evidenceText = "120K3 service",
+                        confidence = 0.64,
+                    ),
+                ),
+            ),
+            sources = listOf(source("src-1")),
+        )
+
+        assertEquals(2, result.facts.size)
+        assertEquals("LINE_ITEM", result.facts[0].factType)
+        assertEquals("INTERPRETED_LINE_ITEM", result.facts[1].factType)
+        assertEquals(result.facts[0].factId, result.facts[1].interpretedFromFactId)
     }
 
     private fun source(sourceId: String) = DocumentSourceEntity(

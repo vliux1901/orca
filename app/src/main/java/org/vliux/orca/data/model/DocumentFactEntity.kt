@@ -29,6 +29,7 @@ import org.vliux.orca.serialization.InstantIso8601Serializer
         Index("documentId"),
         Index("factType"),
         Index("isActive"),
+        Index("interpretedFromFactId"),
         Index("sourceId"),
     ],
 )
@@ -39,6 +40,7 @@ data class DocumentFactEntity(
     val factType: String,
     val valueText: String,
     val normalizedValue: String?,
+    val interpretedFromFactId: String?,
     val currencyCode: String?,
     val sourceId: String?,
     val sourcePage: Int?,

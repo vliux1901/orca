@@ -160,7 +160,10 @@ class OpenAiCloudExtractionAdapter(
             - Return strict JSON only matching the required schema.
             - Keep citations tied to the original source_id even if you infer a different reading order.
             - Each extracted fact should cite the best matching source_id, page number when available, and a short evidence_text snippet.
-            - Use these fact_type values only when applicable: SERVICE_DATE, ODOMETER, TOTAL_COST, SHOP_NAME, VIN, LINE_ITEM, NOTE.
+            - Use these fact_type values only when applicable: SERVICE_DATE, ODOMETER, TOTAL_COST, SHOP_NAME, VIN, LINE_ITEM, NOTE, INTERPRETED_LINE_ITEM.
+            - Use INTERPRETED_LINE_ITEM only for a plain-language explanation of a raw LINE_ITEM or NOTE that appears in the document.
+            - Keep INTERPRETED_LINE_ITEM concise, usually one short line, and avoid long explanations or advice.
+            - When you return INTERPRETED_LINE_ITEM, also fill interpreted_from_fact_type and interpreted_from_value_text to point at the raw dealer shorthand you are interpreting.
             - If a field is not present or is uncertain, return null or omit it where allowed instead of guessing.
             - TOTAL_COST and item prices must be returned as minor currency units when possible.
 
@@ -238,14 +241,16 @@ class OpenAiCloudExtractionAdapter(
     private fun factSchema(): JsonObject = buildJsonObject {
         put("type", JsonPrimitive("object"))
         put("additionalProperties", JsonPrimitive(false))
-        put("required", jsonStringArray("fact_type", "value_text", "normalized_value", "currency_code", "source_id", "source_page", "evidence_text", "confidence"))
+        put("required", jsonStringArray("fact_type", "value_text", "normalized_value", "interpreted_from_fact_type", "interpreted_from_value_text", "currency_code", "source_id", "source_page", "evidence_text", "confidence"))
         put("properties", buildJsonObject {
             put("fact_type", buildJsonObject {
                 put("type", JsonPrimitive("string"))
-                put("enum", jsonStringArray("SERVICE_DATE", "ODOMETER", "TOTAL_COST", "SHOP_NAME", "VIN", "LINE_ITEM", "NOTE"))
+                put("enum", jsonStringArray("SERVICE_DATE", "ODOMETER", "TOTAL_COST", "SHOP_NAME", "VIN", "LINE_ITEM", "NOTE", "INTERPRETED_LINE_ITEM"))
             })
             put("value_text", buildJsonObject { put("type", JsonPrimitive("string")) })
             put("normalized_value", nullableStringSchema())
+            put("interpreted_from_fact_type", nullableStringSchema())
+            put("interpreted_from_value_text", nullableStringSchema())
             put("currency_code", nullableStringSchema())
             put("source_id", nullableStringSchema())
             put("source_page", nullableIntegerSchema())

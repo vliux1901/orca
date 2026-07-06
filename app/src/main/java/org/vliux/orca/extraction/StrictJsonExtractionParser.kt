@@ -57,6 +57,8 @@ class StrictJsonExtractionParser(
                 "fact_type",
                 "value_text",
                 "normalized_value",
+                "interpreted_from_fact_type",
+                "interpreted_from_value_text",
                 "currency_code",
                 "source_id",
                 "source_page",

@@ -17,6 +17,8 @@ class StrictJsonExtractionParserTest {
                   "fact_type": "SERVICE_DATE",
                   "value_text": "2026-05-01",
                   "normalized_value": "2026-05-01",
+                  "interpreted_from_fact_type": null,
+                  "interpreted_from_value_text": null,
                   "currency_code": null,
                   "source_id": "src-1",
                   "source_page": 1,
@@ -40,6 +42,7 @@ class StrictJsonExtractionParserTest {
         assertEquals("Brake service", result.title)
         assertEquals("SERVICE_DATE", result.facts.single().factType)
         assertEquals("Service Date: 05/01/2026", result.facts.single().evidenceText)
+        assertEquals(null, result.facts.single().interpretedFromFactType)
         assertEquals("2026-05-01", result.maintenanceEvent?.eventDate)
     }
 

@@ -26,14 +26,30 @@ class ExtractionNormalizer(
         sources: List<DocumentSourceEntity>,
     ): NormalizedExtractionResult {
         val sourceIds = sources.map { it.sourceId }.toSet()
-        val factDecisions = response.facts.map { fact ->
+        val rawFactsByKey = linkedMapOf<RawFactKey, DocumentFactEntity>()
+        val rawFactDecisions = response.facts.filterNot(::isInterpretedFact).map { fact ->
             normalizeFact(
                 documentId = documentId,
                 runId = runId,
                 fact = fact,
                 sourceIds = sourceIds,
+                rawFactsByKey = rawFactsByKey,
+            ).also { decision ->
+                decision.savedFact?.takeIf { it.interpretedFromFactId == null }?.let { savedFact ->
+                    rawFactsByKey.putIfAbsent(RawFactKey(savedFact.factType, savedFact.valueText), savedFact)
+                }
+            }
+        }
+        val interpretedFactDecisions = response.facts.filter(::isInterpretedFact).map { fact ->
+            normalizeFact(
+                documentId = documentId,
+                runId = runId,
+                fact = fact,
+                sourceIds = sourceIds,
+                rawFactsByKey = rawFactsByKey,
             )
         }
+        val factDecisions = rawFactDecisions + interpretedFactDecisions
         val normalizedFacts = factDecisions.mapNotNull { it.savedFact }
         val normalizedEvent = normalizeEvent(
             documentId = documentId,
@@ -91,6 +107,7 @@ class ExtractionNormalizer(
         runId: String,
         fact: AiExtractedFact,
         sourceIds: Set<String>,
+        rawFactsByKey: Map<RawFactKey, DocumentFactEntity>,
     ): FactDecision {
         val trimmedType = fact.factType.trim().uppercase()
         val trimmedValue = fact.valueText.trim()
@@ -102,6 +119,27 @@ class ExtractionNormalizer(
                 reason = "Dropped because fact_type or value_text was blank after trimming.",
             )
         }
+        val interpretedFromKey = if (trimmedType == INTERPRETED_LINE_ITEM) {
+            RawFactKey(
+                factType = fact.interpretedFromFactType?.trim()?.uppercase().orEmpty(),
+                valueText = fact.interpretedFromValueText?.trim().orEmpty(),
+            ).takeIf { it.factType.isNotEmpty() && it.valueText.isNotEmpty() }
+        } else {
+            null
+        }
+        val interpretedFromFact = interpretedFromKey?.let(rawFactsByKey::get)
+        if (trimmedType == INTERPRETED_LINE_ITEM && interpretedFromFact == null) {
+            return FactDecision(
+                input = fact,
+                savedFact = null,
+                savedTo = null,
+                reason = if (interpretedFromKey == null) {
+                    "Dropped because INTERPRETED_LINE_ITEM requires interpreted_from_fact_type and interpreted_from_value_text."
+                } else {
+                    "Dropped because INTERPRETED_LINE_ITEM could not match a previously normalized raw fact."
+                },
+            )
+        }
         val normalizedValue = when (trimmedType) {
             "SERVICE_DATE" -> normalizeDate(fact.normalizedValue ?: trimmedValue)?.toString()
             "ODOMETER" -> normalizeMileage(fact.normalizedValue ?: trimmedValue)?.toString()
@@ -111,28 +149,49 @@ class ExtractionNormalizer(
         val sanitizedSourceId = fact.sourceId?.takeIf(sourceIds::contains)
         val sanitizedSourcePage = fact.sourcePage?.takeIf { it > 0 }
         val sanitizedConfidence = fact.confidence?.takeIf { it in 0.0..1.0 }
+        val sanitizedEvidenceText = fact.evidenceText?.trim()?.takeIf { it.isNotEmpty() }
+        if (trimmedType == INTERPRETED_LINE_ITEM && sanitizedEvidenceText == null) {
+            return FactDecision(
+                input = fact,
+                savedFact = null,
+                savedTo = null,
+                reason = "Dropped because INTERPRETED_LINE_ITEM requires evidence_text for review.",
+            )
+        }
+        if (trimmedType == INTERPRETED_LINE_ITEM && sanitizedSourceId == null && sanitizedSourcePage == null) {
+            return FactDecision(
+                input = fact,
+                savedFact = null,
+                savedTo = null,
+                reason = "Dropped because INTERPRETED_LINE_ITEM requires at least source_id or source_page for citation.",
+            )
+        }
         return FactDecision(
             input = fact,
             savedFact = DocumentFactEntity(
-            factId = idProvider(),
-            documentId = documentId,
-            runId = runId,
-            factType = trimmedType,
-            valueText = trimmedValue,
-            normalizedValue = normalizedValue,
-            currencyCode = fact.currencyCode?.trim()?.uppercase()?.takeIf { it.isNotEmpty() },
-            sourceId = sanitizedSourceId,
-            sourcePage = sanitizedSourcePage,
-            evidenceText = fact.evidenceText?.trim()?.takeIf { it.isNotEmpty() },
-            confidence = sanitizedConfidence,
-            isUserEdited = false,
-            replacesFactId = null,
-            isActive = true,
-            createdAt = nowProvider(),
+                factId = idProvider(),
+                documentId = documentId,
+                runId = runId,
+                factType = trimmedType,
+                valueText = trimmedValue,
+                normalizedValue = normalizedValue,
+                interpretedFromFactId = interpretedFromFact?.factId,
+                currencyCode = fact.currencyCode?.trim()?.uppercase()?.takeIf { it.isNotEmpty() },
+                sourceId = sanitizedSourceId,
+                sourcePage = sanitizedSourcePage,
+                evidenceText = sanitizedEvidenceText,
+                confidence = sanitizedConfidence,
+                isUserEdited = false,
+                replacesFactId = null,
+                isActive = true,
+                createdAt = nowProvider(),
             ),
             savedTo = "document_facts",
             reason = buildString {
                 append("Saved to document_facts after trimming type/value.")
+                if (interpretedFromFact != null) {
+                    append(" Linked interpreted fact to raw factId=${interpretedFromFact.factId}.")
+                }
                 if (fact.sourceId != null && sanitizedSourceId == null) {
                     append(" source_id was dropped because it did not match an imported source.")
                 }
@@ -263,6 +322,18 @@ class ExtractionNormalizer(
 
     private fun List<DocumentFactEntity>.firstValue(factType: String): String? =
         firstOrNull { it.factType == factType }?.normalizedValue ?: firstOrNull { it.factType == factType }?.valueText
+
+    private fun isInterpretedFact(fact: AiExtractedFact): Boolean =
+        fact.factType.trim().uppercase() == INTERPRETED_LINE_ITEM
+
+    private data class RawFactKey(
+        val factType: String,
+        val valueText: String,
+    )
+
+    companion object {
+        private const val INTERPRETED_LINE_ITEM = "INTERPRETED_LINE_ITEM"
+    }
 }
 
 data class NormalizedExtractionResult(

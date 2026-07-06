@@ -9,6 +9,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Row
@@ -31,6 +32,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -178,17 +180,14 @@ private fun VehicleListScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(bottom = 96.dp),
         ) {
+            item {
+                SearchPlaceholderField()
+            }
             if (vehicles.isEmpty()) {
                 item {
                     EmptyVehicleState(onCreateVehicle = onCreateVehicle)
                 }
             } else {
-                item {
-                    VehicleHeaderCard(
-                        vehicleCount = vehicles.size,
-                        onCreateVehicle = onCreateVehicle,
-                    )
-                }
                 items(vehicles, key = { it.vehicleId }) { vehicle ->
                     VehicleSummaryCard(
                         vehicle = vehicle,
@@ -211,6 +210,20 @@ private fun AppIcon() {
             .size(28.dp)
             .clip(MaterialTheme.shapes.small),
         contentScale = ContentScale.Crop,
+    )
+}
+
+@Composable
+private fun SearchPlaceholderField() {
+    OutlinedTextField(
+        value = "",
+        onValueChange = {},
+        modifier = Modifier.fillMaxWidth(),
+        enabled = false,
+        singleLine = true,
+        placeholder = {
+            Text("Search vehicles and records (coming soon)")
+        },
     )
 }
 
@@ -299,7 +312,20 @@ private fun VehicleDetailScreen(
         }
     }
 
-    Scaffold(modifier = modifier.fillMaxSize()) { innerPadding ->
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            VehicleTopBar(
+                title = loadedVehicle?.displayName ?: "View Vehicle",
+                onBack = onBack,
+                actionContent = {
+                    TextButton(onClick = onEditVehicle) {
+                        Text("Edit")
+                    }
+                },
+            )
+        },
+    ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -308,28 +334,6 @@ private fun VehicleDetailScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(bottom = 32.dp),
         ) {
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    TextButton(onClick = onBack) {
-                        Text("Back")
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TextButton(onClick = onEditVehicle) {
-                            Text("Edit")
-                        }
-                        Button(
-                            onClick = { launcher.launch(SUPPORTED_IMPORT_MIME_TYPES) },
-                            enabled = !isImporting && vehicleState.vehicle != null,
-                        ) {
-                            Text(if (isImporting) "Importing..." else "Import Files")
-                        }
-                    }
-                }
-            }
-
             item {
                 when {
                     vehicleState.isLoading -> CircularProgressIndicator()
@@ -363,6 +367,19 @@ private fun VehicleDetailScreen(
                         subtitle = "Imported files are grouped into one logical document and queued for extraction when configuration is available.",
                     )
                 }
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                    ) {
+                        Button(
+                            onClick = { launcher.launch(SUPPORTED_IMPORT_MIME_TYPES) },
+                            enabled = !isImporting,
+                        ) {
+                            Text(if (isImporting) "Importing..." else "Import Files")
+                        }
+                    }
+                }
 
                 if (documents.isEmpty()) {
                     item {
@@ -394,7 +411,15 @@ private fun DocumentDetailScreen(
     }
     val detail by detailFlow.collectAsStateWithLifecycle(initialValue = null)
 
-    Scaffold(modifier = modifier.fillMaxSize()) { innerPadding ->
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            VehicleTopBar(
+                title = detail?.document?.title ?: "Document Detail",
+                onBack = onBack,
+            )
+        },
+    ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -403,21 +428,6 @@ private fun DocumentDetailScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(bottom = 32.dp),
         ) {
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    TextButton(onClick = onBack) {
-                        Text("Back")
-                    }
-                    Text(
-                        text = "Vehicle ${vehicleId.takeLast(6)}",
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
-            }
-
             item {
                 if (detail == null) {
                     MissingEntityCard(
@@ -486,8 +496,17 @@ private fun VehicleEditorScreen(
     }
 
     val validation = formDraft.validate()
+    val screenTitle = if (vehicleId == null) "New Vehicle" else "Edit Vehicle"
 
-    Scaffold(modifier = modifier.fillMaxSize()) { innerPadding ->
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            VehicleTopBar(
+                title = screenTitle,
+                onBack = onBack,
+            )
+        },
+    ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -496,28 +515,10 @@ private fun VehicleEditorScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(
-                        text = if (vehicleId == null) "Create Vehicle" else "Edit Vehicle",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Text(
-                        text = "Vehicle profiles own imported maintenance documents and later extraction results.",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
-                TextButton(
-                    onClick = onBack,
-                    enabled = !isSaving,
-                ) {
-                    Text("Back")
-                }
-            }
+            Text(
+                text = "Vehicle profiles own imported maintenance documents and later extraction results.",
+                style = MaterialTheme.typography.bodyMedium,
+            )
 
             if (vehicleId != null && (!initialized || loadState.isLoading)) {
                 CircularProgressIndicator()
@@ -582,34 +583,31 @@ private fun VehicleEditorScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun VehicleHeaderCard(
-    vehicleCount: Int,
-    onCreateVehicle: () -> Unit,
+private fun VehicleTopBar(
+    title: String,
+    onBack: () -> Unit,
+    actionContent: @Composable (RowScope.() -> Unit) = {},
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
+    TopAppBar(
+        title = {
             Text(
-                text = "Vehicles",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
             )
-            Text(
-                text = if (vehicleCount == 0) {
-                    "Create a vehicle profile to start phase 2 import and document flows."
-                } else {
-                    "$vehicleCount vehicle profile(s) ready for document imports."
-                },
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            Button(onClick = onCreateVehicle) {
-                Text("Add Vehicle")
+        },
+        navigationIcon = {
+            IconButton(onClick = onBack) {
+                Text(
+                    text = "\u2190",
+                    style = MaterialTheme.typography.titleLarge,
+                )
             }
-        }
-    }
+        },
+        actions = actionContent,
+    )
 }
 
 @Composable
@@ -648,40 +646,53 @@ private fun VehicleSummaryCard(
             .fillMaxWidth()
             .clickable(onClick = onOpenVehicle),
     ) {
-        Column(
+        Row(
             modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text(
-                text = vehicle.displayName,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                text = "${vehicle.year} ${vehicle.make} ${vehicle.model}",
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            val metadata = listOfNotNull(
-                vehicle.licensePlate?.takeIf { it.isNotBlank() }?.let { "Plate $it" },
-                vehicle.currentMileage?.let { "$it mi" },
-                vehicle.vin?.takeIf { it.isNotBlank() }?.let { "VIN ${it.takeLast(6)}" },
-            )
-            if (metadata.isNotEmpty()) {
-                Text(
-                    text = metadata.joinToString(" | "),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                TextButton(onClick = onOpenVehicle) {
-                    Text("Open")
+                Text(
+                    text = vehicle.displayName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text = "${vehicle.year} ${vehicle.make} ${vehicle.model}",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                val metadata = listOfNotNull(
+                    vehicle.licensePlate?.takeIf { it.isNotBlank() }?.let { "Plate $it" },
+                    vehicle.currentMileage?.let { "$it mi" },
+                    vehicle.vin?.takeIf { it.isNotBlank() }?.let { "VIN ${it.takeLast(6)}" },
+                )
+                if (metadata.isNotEmpty()) {
+                    Text(
+                        text = metadata.joinToString(" | "),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
                 }
-                TextButton(onClick = onEditVehicle) {
-                    Text("Edit")
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    TextButton(onClick = onOpenVehicle) {
+                        Text("Open")
+                    }
+                    TextButton(onClick = onEditVehicle) {
+                        Text("Edit")
+                    }
                 }
+            }
+            Box(modifier = Modifier.padding(top = 4.dp)) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_vehicle_car),
+                    contentDescription = "Vehicle",
+                    modifier = Modifier.size(36.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }

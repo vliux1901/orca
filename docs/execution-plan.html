@@ -276,7 +276,7 @@
               <li class="block" data-block-id="phase3-1">Implement <code>MaintenanceExtractionEngine</code>, <code>ExtractionRequest</code>, and the cloud adapter boundary.</li>
               <li class="block" data-block-id="phase3-2">Implement provider request building for original image/PDF source files plus prompt instructions about upright orientation and structural reconstruction.</li>
               <li class="block" data-block-id="phase3-3">Implement strict JSON parsing, schema validation, and error classification for malformed or partial responses.</li>
-              <li class="block" data-block-id="phase3-4">Persist <code>ExtractionRunEntity</code>, extracted facts, and citations in one worker pipeline.</li>
+              <li class="block" data-block-id="phase3-4">Persist <code>ExtractionRunEntity</code>, extracted facts, interpreted shorthand expansions, and citations in one worker pipeline.</li>
               <li class="block" data-block-id="phase3-5">Handle retryable failures, terminal failures, and visible status updates for the document.</li>
             </ul>
             <p class="block" data-block-id="phase3-6">Exit criteria: fixture-backed worker tests pass, and a real provider integration can process a sample document end-to-end into stored facts.</p>
@@ -286,6 +286,7 @@
             <h2>Phase 4: Normalization, Timeline, And Search</h2>
             <ul>
               <li class="block" data-block-id="phase4-1">Implement local normalization for dates, mileage, cost, vendor labels, and categories.</li>
+              <li class="block" data-block-id="phase4-1b">Implement a review-safe interpretation layer for dealer abbreviations and maintenance package codes that preserves raw text, citations, and confidence.</li>
               <li class="block" data-block-id="phase4-2">Derive one <code>MaintenanceEventEntity</code> per logical document in the normal V1 path.</li>
               <li class="block" data-block-id="phase4-3">Persist optional item-level pricing on <code>ServiceItemEntity</code> when the provider returns it reliably.</li>
               <li class="block" data-block-id="phase4-4">Implement delete-and-rebuild indexing for <code>SearchEntryEntity</code> on extraction success and correction updates.</li>
@@ -296,7 +297,7 @@
           <article class="content-card">
             <h2>Phase 5: Review And Correction</h2>
             <ul>
-              <li class="block" data-block-id="phase5-1">Build document detail review UI showing unverified facts, citations, and source-file list.</li>
+              <li class="block" data-block-id="phase5-1">Build document detail review UI showing unverified facts, citations, raw dealer text, interpreted shorthand, and source-file list.</li>
               <li class="block" data-block-id="phase5-2">Implement user correction flows for service date, mileage, vendor, service items, and cost.</li>
               <li class="block" data-block-id="phase5-3">Implement replacement-fact writes so original extracted values remain in history and corrected values become active.</li>
               <li class="block" data-block-id="phase5-4">Trigger event rebuild and search-index rebuild after corrections.</li>
@@ -345,7 +346,7 @@
               <li class="block" data-block-id="testing-6">Worker tests: request assembly, error classification, retry policy, JSON validation, and DB persistence.</li>
               <li class="block" data-block-id="testing-7">Normalization tests: date parsing, mileage normalization, currency normalization, and category mapping.</li>
               <li class="block" data-block-id="testing-8">Indexing tests: delete-and-rebuild search generation after extraction and correction.</li>
-              <li class="block" data-block-id="testing-9">UI tests: import flow, status transitions, detail review, and correction flow.</li>
+              <li class="block" data-block-id="testing-9">UI tests: import flow, status transitions, detail review, shorthand interpretation display, and correction flow.</li>
             </ul>
           </article>
 

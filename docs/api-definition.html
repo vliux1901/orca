@@ -348,7 +348,7 @@ data class DocumentSourceEntity(
             <pre class="block" data-block-id="entities-6"><code>enum class DocumentImportStatus { PENDING, READY, FAILED }
 enum class ExtractionStatus { NOT_STARTED, QUEUED, RUNNING, SUCCEEDED, FAILED }
 enum class ExtractionBackendType { CLOUD_VISION, LOCAL_VISION }
-enum class FactType { SERVICE_DATE, ODOMETER, TOTAL_COST, SHOP_NAME, VIN, LINE_ITEM, NOTE }</code></pre>
+enum class FactType { SERVICE_DATE, ODOMETER, TOTAL_COST, SHOP_NAME, VIN, LINE_ITEM, NOTE, INTERPRETED_LINE_ITEM }</code></pre>
             <p class="block" data-block-id="entities-7">Keep enums app-owned even if providers use different labels.</p>
           </article>
         </section>
@@ -476,6 +476,8 @@ data class ExtractedFact(
     val factType: FactType,
     val valueText: String,
     val normalizedValue: String?,
+    val interpretedFromFactType: FactType?,
+    val interpretedFromValueText: String?,
     val currencyCode: String?,
     val sourceId: String?,
     val sourcePage: Int?,
@@ -509,6 +511,7 @@ data class DocumentDetailModel(
     val aggregate: DocumentAggregate,
     val sourcePreviews: List&lt;SourcePreview&gt;,
     val activeFacts: List&lt;FactViewModel&gt;,
+    val interpretedFacts: List&lt;FactViewModel&gt;,
     val warnings: List&lt;String&gt;,
 )</code></pre>
             <p class="block" data-block-id="contracts-3">Keep screen models separate from Room entities so formatting and UI-only fields do not leak back into persistence.</p>
@@ -521,6 +524,7 @@ data class DocumentDetailModel(
               <li class="block" data-block-id="contracts-5">Require citations to use app-owned <code>sourceId</code> and page number when available.</li>
               <li class="block" data-block-id="contracts-6">Normalize dates, costs, and mileage locally before persistence.</li>
               <li class="block" data-block-id="contracts-7">Allow missing low-confidence optional fields, but do not invent values to make the contract look complete.</li>
+              <li class="block" data-block-id="contracts-7c">Require interpreted shorthand expansions to retain a pointer to the raw extracted fact and never persist without evidence text or citation.</li>
             </ul>
           </article>
 

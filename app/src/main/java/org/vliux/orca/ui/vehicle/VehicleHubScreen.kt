@@ -3,6 +3,7 @@ package org.vliux.orca.ui.vehicle
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts.OpenMultipleDocuments
 import androidx.compose.foundation.clickable
@@ -71,6 +72,9 @@ fun VehicleHubScreen(
     modifier: Modifier = Modifier,
 ) {
     var route by remember { mutableStateOf<VehicleRoute>(VehicleRoute.List) }
+    BackHandler(enabled = route != VehicleRoute.List) {
+        route = route.navigateBack()
+    }
 
     when (val currentRoute = route) {
         VehicleRoute.List -> VehicleListScreen(
@@ -83,15 +87,7 @@ fun VehicleHubScreen(
             vehicleRepository = vehicleRepository,
             modifier = modifier,
             vehicleId = currentRoute.vehicleId,
-            onBack = {
-                route = when (val parent = currentRoute.parent) {
-                    null -> VehicleRoute.List
-                    is VehicleRoute.Detail -> parent
-                    is VehicleRoute.DocumentDetail -> parent
-                    VehicleRoute.List -> VehicleRoute.List
-                    is VehicleRoute.Editor -> VehicleRoute.List
-                }
-            },
+            onBack = { route = route.navigateBack() },
             onSaved = { vehicleId ->
                 route = VehicleRoute.Detail(vehicleId = vehicleId)
             },
@@ -102,7 +98,7 @@ fun VehicleHubScreen(
             documentExtractionScheduler = documentExtractionScheduler,
             modifier = modifier,
             vehicleId = currentRoute.vehicleId,
-            onBack = { route = VehicleRoute.List },
+            onBack = { route = route.navigateBack() },
             onEditVehicle = {
                 route = VehicleRoute.Editor(
                     vehicleId = currentRoute.vehicleId,
@@ -121,7 +117,7 @@ fun VehicleHubScreen(
             modifier = modifier,
             vehicleId = currentRoute.vehicleId,
             documentId = currentRoute.documentId,
-            onBack = { route = VehicleRoute.Detail(currentRoute.vehicleId) },
+            onBack = { route = route.navigateBack() },
         )
     }
 }
@@ -597,9 +593,9 @@ private fun VehicleTopBar(
         },
         navigationIcon = {
             IconButton(onClick = onBack) {
-                Text(
-                    text = "\u2190",
-                    style = MaterialTheme.typography.titleLarge,
+                Icon(
+                    painter = painterResource(R.drawable.ic_back_arrow),
+                    contentDescription = "Back",
                 )
             }
         },
@@ -1128,6 +1124,19 @@ private sealed interface VehicleRoute {
         val vehicleId: String,
         val documentId: String,
     ) : VehicleRoute
+}
+
+private fun VehicleRoute.navigateBack(): VehicleRoute = when (this) {
+    VehicleRoute.List -> VehicleRoute.List
+    is VehicleRoute.Detail -> VehicleRoute.List
+    is VehicleRoute.DocumentDetail -> VehicleRoute.Detail(vehicleId)
+    is VehicleRoute.Editor -> when (val parent = parent) {
+        null -> VehicleRoute.List
+        is VehicleRoute.Detail -> parent
+        is VehicleRoute.DocumentDetail -> parent
+        VehicleRoute.List -> VehicleRoute.List
+        is VehicleRoute.Editor -> VehicleRoute.List
+    }
 }
 
 private data class VehicleEditorLoadState(

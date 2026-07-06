@@ -78,7 +78,6 @@ fun VehicleHubScreen(
             modifier = modifier,
             onCreateVehicle = { route = VehicleRoute.Editor(vehicleId = null) },
             onOpenVehicle = { route = VehicleRoute.Detail(vehicleId = it) },
-            onEditVehicle = { route = VehicleRoute.Editor(vehicleId = it) },
         )
         is VehicleRoute.Editor -> VehicleEditorScreen(
             vehicleRepository = vehicleRepository,
@@ -133,7 +132,6 @@ private fun VehicleListScreen(
     vehicleRepository: VehicleRepository,
     onCreateVehicle: () -> Unit,
     onOpenVehicle: (String) -> Unit,
-    onEditVehicle: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val vehiclesFlow = remember(vehicleRepository) { vehicleRepository.observeVehicles() }
@@ -192,7 +190,6 @@ private fun VehicleListScreen(
                     VehicleSummaryCard(
                         vehicle = vehicle,
                         onOpenVehicle = { onOpenVehicle(vehicle.vehicleId) },
-                        onEditVehicle = { onEditVehicle(vehicle.vehicleId) },
                     )
                 }
             }
@@ -639,7 +636,6 @@ private fun EmptyVehicleState(
 private fun VehicleSummaryCard(
     vehicle: VehicleEntity,
     onOpenVehicle: () -> Unit,
-    onEditVehicle: () -> Unit,
 ) {
     Card(
         modifier = Modifier
@@ -673,17 +669,6 @@ private fun VehicleSummaryCard(
                         text = metadata.joinToString(" | "),
                         style = MaterialTheme.typography.bodySmall,
                     )
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    TextButton(onClick = onOpenVehicle) {
-                        Text("Open")
-                    }
-                    TextButton(onClick = onEditVehicle) {
-                        Text("Edit")
-                    }
                 }
             }
             Box(modifier = Modifier.padding(top = 4.dp)) {

@@ -26,6 +26,10 @@ import org.vliux.orca.data.model.MaintenanceEventEntity
 import org.vliux.orca.data.model.SearchEntryEntity
 import org.vliux.orca.data.model.ServiceItemEntity
 import org.vliux.orca.importing.AppFileStorage
+import org.vliux.orca.normalization.EventDecision
+import org.vliux.orca.normalization.NormalizationDebugReport
+import org.vliux.orca.normalization.NormalizedExtractionResult
+import org.vliux.orca.normalization.ValueDecision
 
 class DocumentRepositoryCreateDocumentTest {
     @Test
@@ -189,6 +193,59 @@ class DocumentRepositoryCreateDocumentTest {
         }
     }
 
+    @Test
+    fun applyExtractionResultDeletesAndRebuildsSearchEntries() = runTest {
+        val rootDir = createTempDirectory(prefix = "orca-files-").toFile()
+        try {
+            val store = InMemoryDocumentStore(knownVehicleIds = setOf("vehicle-123"))
+            val repository = DocumentRepository(
+                store = store,
+                fileStorage = AppFileStorage(rootDir) { error("Uri path should not be used in prepared-import tests.") },
+            )
+            val documentId = repository.createDocument(
+                vehicleId = "vehicle-123",
+                imports = listOf(preparedImport("receipt.png", "image/png", byteArrayOf(1, 2, 3), rootDir)),
+            )
+            val firstRun = repository.createQueuedRun(documentId, "openai", "gpt-test", "phase3-v1")
+            repository.applyExtractionResult(
+                documentId = documentId,
+                runId = firstRun.runId,
+                result = normalizedResult(
+                    documentId = documentId,
+                    vehicleId = "vehicle-123",
+                    title = "Brake service",
+                    lineItem = "Front brake pads",
+                    interpretedLineItem = null,
+                    serviceLabel = "Brake pads",
+                ),
+            )
+
+            val secondRun = repository.createQueuedRun(documentId, "openai", "gpt-test", "phase3-v1")
+            repository.applyExtractionResult(
+                documentId = documentId,
+                runId = secondRun.runId,
+                result = normalizedResult(
+                    documentId = documentId,
+                    vehicleId = "vehicle-123",
+                    title = "BMW 120K service",
+                    lineItem = "120K3 service",
+                    interpretedLineItem = "Likely 120,000-mile scheduled service package",
+                    serviceLabel = "120K package inspection",
+                ),
+            )
+
+            val entries = store.searchEntriesForDocument(documentId)
+
+            assertTrue(entries.isNotEmpty())
+            assertTrue(entries.none { it.title == "Brake service" || it.body.contains("Front brake pads") })
+            assertTrue(entries.any { it.entryType == "EVENT" && it.title == "BMW 120K service" })
+            assertTrue(entries.any { it.entryType == "FACT" && it.body.contains("120K3 service") })
+            assertTrue(entries.any { it.entryType == "FACT" && it.body.contains("Likely 120,000-mile scheduled service package") })
+        } finally {
+            rootDir.deleteRecursively()
+        }
+    }
+
     private fun preparedImport(
         displayName: String,
         mimeType: String,
@@ -204,6 +261,94 @@ class DocumentRepositoryCreateDocumentTest {
                 }
         },
     )
+
+    private fun normalizedResult(
+        documentId: String,
+        vehicleId: String,
+        title: String,
+        lineItem: String,
+        interpretedLineItem: String?,
+        serviceLabel: String,
+    ): NormalizedExtractionResult {
+        val now = Instant.parse("2026-07-01T00:00:00Z")
+        val rawFact = DocumentFactEntity(
+            factId = "fact-raw-$lineItem",
+            documentId = documentId,
+            runId = "run",
+            factType = "LINE_ITEM",
+            valueText = lineItem,
+            normalizedValue = null,
+            interpretedFromFactId = null,
+            currencyCode = null,
+            sourceId = "source-001",
+            sourcePage = 1,
+            evidenceText = lineItem,
+            confidence = 0.9,
+            isUserEdited = false,
+            replacesFactId = null,
+            isActive = true,
+            createdAt = now,
+        )
+        val facts = buildList {
+            add(rawFact)
+            interpretedLineItem?.let {
+                add(
+                    rawFact.copy(
+                        factId = "fact-interpreted-$serviceLabel",
+                        factType = "INTERPRETED_LINE_ITEM",
+                        valueText = it,
+                        interpretedFromFactId = rawFact.factId,
+                    ),
+                )
+            }
+        }
+        val event = MaintenanceEventEntity(
+            eventId = "event-$serviceLabel",
+            vehicleId = vehicleId,
+            documentId = documentId,
+            eventDate = LocalDate.parse("2026-05-01"),
+            mileage = 32100,
+            shopName = "Town Tire",
+            totalCostMinor = 25999,
+            currencyCode = "USD",
+            status = "EXTRACTED_UNVERIFIED",
+            createdAt = now,
+            updatedAt = now,
+        )
+        val serviceItems = listOf(
+            ServiceItemEntity(
+                serviceItemId = "item-$serviceLabel",
+                eventId = event.eventId,
+                category = "INSPECTION",
+                label = serviceLabel,
+                notes = null,
+                costMinor = 12000,
+                currencyCode = "USD",
+                sourceId = "source-001",
+                sourcePage = 1,
+                createdAt = now,
+            ),
+        )
+        return NormalizedExtractionResult(
+            title = title,
+            facts = facts,
+            event = event,
+            serviceItems = serviceItems,
+            debugReport = NormalizationDebugReport(
+                titleDecision = ValueDecision("response.title", title, "documents.title", "test"),
+                factDecisions = emptyList(),
+                eventDecision = EventDecision(
+                    responseEvent = null,
+                    savedEvent = event,
+                    savedTo = "maintenance_events",
+                    occurredOnSavedTo = "documents.occurredOn",
+                    reason = "test",
+                ),
+                serviceItemDecisions = emptyList(),
+                warnings = emptyList(),
+            ),
+        )
+    }
 }
 
 private class InMemoryDocumentStore(
@@ -391,6 +536,9 @@ private class InMemoryDocumentStore(
     override fun observeEvent(documentId: String): Flow<MaintenanceEventEntity?> = eventFlow(documentId)
     override fun observeServiceItems(eventId: String): Flow<List<ServiceItemEntity>> = serviceItemFlow(eventId)
     override fun observeDocumentList(vehicleId: String): Flow<List<DocumentListItem>> = documentListFlow(vehicleId)
+
+    fun searchEntriesForDocument(documentId: String): List<SearchEntryEntity> =
+        searchEntries[documentId].orEmpty().sortedBy { it.entryType + it.title + it.body }
 
     private fun publishDocumentList(vehicleId: String) {
         documentListFlow(vehicleId).value = documents.values

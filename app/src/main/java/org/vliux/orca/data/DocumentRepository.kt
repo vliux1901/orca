@@ -26,11 +26,13 @@ import org.vliux.orca.data.model.MaintenanceEventEntity
 import org.vliux.orca.data.model.SearchEntryEntity
 import org.vliux.orca.data.model.ServiceItemEntity
 import org.vliux.orca.normalization.NormalizedExtractionResult
+import org.vliux.orca.search.SearchIndexBuilder
 
 class DocumentRepository(
     private val store: DocumentStore,
     private val fileStorage: AppFileStorage,
     private val planner: DocumentImportPlanner = DocumentImportPlanner(),
+    private val searchIndexBuilder: SearchIndexBuilder = SearchIndexBuilder(),
 ) {
     suspend fun createDocument(
         vehicleId: String,
@@ -343,6 +345,15 @@ class DocumentRepository(
         val run = requireNotNull(store.getRun(runId))
         val document = requireNotNull(store.getDocument(documentId))
         val now = Instant.now()
+        val resolvedTitle = result.title ?: document.title
+        val searchEntries = searchIndexBuilder.build(
+            document = document,
+            title = resolvedTitle,
+            facts = result.facts,
+            event = result.event,
+            serviceItems = result.serviceItems,
+            createdAt = now,
+        )
         store.inTransaction {
             updateExtractionRun(
                 runId = runId,
@@ -356,6 +367,7 @@ class DocumentRepository(
                 deleteServiceItemsByEvent(existingEvent.eventId)
             }
             deleteEventByDocument(documentId)
+            deleteSearchEntriesByDocument(documentId)
             if (result.facts.isNotEmpty()) {
                 insertFacts(result.facts)
             }
@@ -363,9 +375,12 @@ class DocumentRepository(
             if (result.serviceItems.isNotEmpty()) {
                 insertServiceItems(result.serviceItems)
             }
+            if (searchEntries.isNotEmpty()) {
+                insertSearchEntries(searchEntries)
+            }
             updateDocumentExtractionResult(
                 documentId = documentId,
-                title = result.title ?: document.title,
+                title = resolvedTitle,
                 extractionStatus = ExtractionStatus.SUCCEEDED.name,
                 latestRunId = runId,
                 occurredOn = result.event?.eventDate,
@@ -373,7 +388,7 @@ class DocumentRepository(
             )
         }
         OrcaLog.info(
-            "Applied extraction result for document=${documentId.takeLast(8)} with ${result.facts.size} fact(s) and ${result.serviceItems.size} service item(s).",
+            "Applied extraction result for document=${documentId.takeLast(8)} with ${result.facts.size} fact(s), ${result.serviceItems.size} service item(s), and ${searchEntries.size} search entry/entries.",
         )
     }
 }

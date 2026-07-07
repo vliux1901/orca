@@ -26,6 +26,7 @@ import org.vliux.orca.data.model.MaintenanceEventEntity
 import org.vliux.orca.data.model.SearchEntryEntity
 import org.vliux.orca.data.model.ServiceItemEntity
 import org.vliux.orca.importing.AppFileStorage
+import org.vliux.orca.search.SearchIndexBuilder
 import org.vliux.orca.normalization.EventDecision
 import org.vliux.orca.normalization.NormalizationDebugReport
 import org.vliux.orca.normalization.NormalizedExtractionResult
@@ -246,6 +247,96 @@ class DocumentRepositoryCreateDocumentTest {
         }
     }
 
+    @Test
+    fun replaceFactKeepsHistoryAndRebuildsDerivedEventAndSearch() = runTest {
+        val rootDir = createTempDirectory(prefix = "orca-files-").toFile()
+        try {
+            val store = InMemoryDocumentStore(knownVehicleIds = setOf("vehicle-123"))
+            val repository = DocumentRepository(
+                store = store,
+                fileStorage = AppFileStorage(rootDir) { error("Uri path should not be used in prepared-import tests.") },
+            )
+            val rebuilder = DocumentDerivedStateRebuilder(store = store, searchIndexBuilder = SearchIndexBuilder())
+            val factRepository = FactRepository(store = store, derivedStateRebuilder = rebuilder)
+            val documentId = repository.createDocument(
+                vehicleId = "vehicle-123",
+                imports = listOf(preparedImport("receipt.png", "image/png", byteArrayOf(1, 2, 3), rootDir)),
+            )
+            seedCorrectionState(store, documentId, "vehicle-123")
+
+            factRepository.replaceFact(
+                documentId = documentId,
+                replacedFactId = "fact-shop",
+                replacement = FactReplacement(
+                    factType = "SHOP_NAME",
+                    valueText = "elite bmw",
+                    note = "Corrected after checking the receipt header.",
+                ),
+            )
+
+            val activeFacts = store.getActiveFacts(documentId)
+            val replacedFact = requireNotNull(store.getFact("fact-shop"))
+            val userEditedFact = activeFacts.single { it.factType == "SHOP_NAME" }
+            val event = requireNotNull(store.getEvent(documentId))
+            val entries = store.searchEntriesForDocument(documentId)
+
+            assertFalse(replacedFact.isActive)
+            assertTrue(userEditedFact.isUserEdited)
+            assertEquals("Elite BMW", userEditedFact.valueText)
+            assertEquals("Elite BMW", userEditedFact.normalizedValue)
+            assertEquals("Corrected after checking the receipt header.", userEditedFact.userNote)
+            assertEquals("Elite BMW", event.shopName)
+            assertEquals("USER_VERIFIED", event.status)
+            assertTrue(entries.any { it.entryType == "EVENT" && it.body.contains("Shop Elite BMW") })
+            assertTrue(entries.any { it.entryType == "FACT" && it.body.contains("Elite BMW") })
+        } finally {
+            rootDir.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun updateServiceItemRebuildsSearchAndMarksEventUserVerified() = runTest {
+        val rootDir = createTempDirectory(prefix = "orca-files-").toFile()
+        try {
+            val store = InMemoryDocumentStore(knownVehicleIds = setOf("vehicle-123"))
+            val repository = DocumentRepository(
+                store = store,
+                fileStorage = AppFileStorage(rootDir) { error("Uri path should not be used in prepared-import tests.") },
+            )
+            val rebuilder = DocumentDerivedStateRebuilder(store = store, searchIndexBuilder = SearchIndexBuilder())
+            val serviceItemRepository = ServiceItemRepository(store = store, derivedStateRebuilder = rebuilder)
+            val documentId = repository.createDocument(
+                vehicleId = "vehicle-123",
+                imports = listOf(preparedImport("receipt.png", "image/png", byteArrayOf(1, 2, 3), rootDir)),
+            )
+            seedCorrectionState(store, documentId, "vehicle-123")
+
+            serviceItemRepository.updateServiceItem(
+                documentId = documentId,
+                serviceItemId = "service-1",
+                request = SaveServiceItemRequest(
+                    label = "Rear brake pads",
+                    category = "brakes",
+                    notes = "Corrected item label",
+                    costText = "189.50",
+                ),
+            )
+
+            val event = requireNotNull(store.getEvent(documentId))
+            val item = requireNotNull(store.getServiceItem("service-1"))
+            val entries = store.searchEntriesForDocument(documentId)
+
+            assertEquals("USER_VERIFIED", event.status)
+            assertEquals("BRAKES", item.category)
+            assertEquals("Rear brake pads", item.label)
+            assertEquals(18950L, item.costMinor)
+            assertTrue(entries.any { it.entryType == "SERVICE_ITEM" && it.title == "Rear brake pads" })
+            assertTrue(entries.none { it.entryType == "SERVICE_ITEM" && it.title == "Front brake pads" })
+        } finally {
+            rootDir.deleteRecursively()
+        }
+    }
+
     private fun preparedImport(
         displayName: String,
         mimeType: String,
@@ -284,6 +375,7 @@ class DocumentRepositoryCreateDocumentTest {
             sourcePage = 1,
             evidenceText = lineItem,
             reviewWarning = null,
+            userNote = null,
             confidence = 0.9,
             isUserEdited = false,
             replacesFactId = null,
@@ -350,6 +442,94 @@ class DocumentRepositoryCreateDocumentTest {
             ),
         )
     }
+
+    private suspend fun seedCorrectionState(
+        store: InMemoryDocumentStore,
+        documentId: String,
+        vehicleId: String,
+    ) {
+        val now = Instant.parse("2026-07-01T00:00:00Z")
+        val shopFact = DocumentFactEntity(
+            factId = "fact-shop",
+            documentId = documentId,
+            runId = "run-1",
+            factType = "SHOP_NAME",
+            valueText = "Town Tire",
+            normalizedValue = "Town Tire",
+            interpretedFromFactId = null,
+            currencyCode = null,
+            sourceId = "source-001",
+            sourcePage = 1,
+            evidenceText = "Town Tire",
+            reviewWarning = null,
+            userNote = null,
+            confidence = 0.9,
+            isUserEdited = false,
+            replacesFactId = null,
+            isActive = true,
+            createdAt = now,
+        )
+        val totalCostFact = DocumentFactEntity(
+            factId = "fact-total",
+            documentId = documentId,
+            runId = "run-1",
+            factType = "TOTAL_COST",
+            valueText = "259.99",
+            normalizedValue = "25999",
+            interpretedFromFactId = null,
+            currencyCode = "USD",
+            sourceId = "source-001",
+            sourcePage = 1,
+            evidenceText = "259.99",
+            reviewWarning = null,
+            userNote = null,
+            confidence = 0.9,
+            isUserEdited = false,
+            replacesFactId = null,
+            isActive = true,
+            createdAt = now,
+        )
+        val event = MaintenanceEventEntity(
+            eventId = "event-1",
+            vehicleId = vehicleId,
+            documentId = documentId,
+            eventDate = LocalDate.parse("2026-05-01"),
+            mileage = 32100,
+            shopName = "Town Tire",
+            totalCostMinor = 25999,
+            currencyCode = "USD",
+            status = "EXTRACTED_UNVERIFIED",
+            createdAt = now,
+            updatedAt = now,
+        )
+        val item = ServiceItemEntity(
+            serviceItemId = "service-1",
+            eventId = "event-1",
+            category = "BRAKES",
+            label = "Front brake pads",
+            notes = null,
+            costMinor = 12000,
+            currencyCode = "USD",
+            sourceId = "source-001",
+            sourcePage = 1,
+            createdAt = now,
+        )
+        store.inTransaction {
+            insertFacts(listOf(shopFact, totalCostFact))
+            insertEvent(event)
+            insertServiceItems(listOf(item))
+            insertSearchEntries(
+                SearchIndexBuilder().build(
+                    document = requireNotNull(getDocument(documentId)),
+                    title = getDocument(documentId)?.title,
+                    facts = listOf(shopFact, totalCostFact),
+                    event = event,
+                    serviceItems = listOf(item),
+                    createdAt = now,
+                ),
+            )
+        }
+    }
 }
 
 private class InMemoryDocumentStore(
@@ -396,7 +576,10 @@ private class InMemoryDocumentStore(
     override suspend fun insertFacts(facts: List<DocumentFactEntity>) {
         facts.groupBy { it.documentId }.forEach { (documentId, documentFacts) ->
             val existing = this.facts.getOrPut(documentId) { mutableListOf() }
-            existing += documentFacts
+            documentFacts.forEach { fact ->
+                existing.removeAll { it.factId == fact.factId }
+                existing += fact
+            }
             factFlow(documentId).value = existing.filter { it.isActive }.sortedBy { it.createdAt }
         }
     }
@@ -409,7 +592,10 @@ private class InMemoryDocumentStore(
     override suspend fun insertServiceItems(items: List<ServiceItemEntity>) {
         items.groupBy { it.eventId }.forEach { (eventId, newItems) ->
             val existing = serviceItems.getOrPut(eventId) { mutableListOf() }
-            existing += newItems
+            newItems.forEach { item ->
+                existing.removeAll { it.serviceItemId == item.serviceItemId }
+                existing += item
+            }
             serviceItemFlow(eventId).value = existing.sortedBy { it.createdAt }
         }
     }
@@ -442,6 +628,14 @@ private class InMemoryDocumentStore(
 
     override suspend fun deleteSearchEntriesByDocument(documentId: String) {
         searchEntries.remove(documentId)
+    }
+
+    override suspend fun deleteServiceItemById(serviceItemId: String) {
+        serviceItems.forEach { (eventId, items) ->
+            if (items.removeAll { it.serviceItemId == serviceItemId }) {
+                serviceItemFlow(eventId).value = items.sortedBy { it.createdAt }
+            }
+        }
     }
 
     override suspend fun deleteDocument(documentId: String) {
@@ -533,6 +727,43 @@ private class InMemoryDocumentStore(
     override fun observeLatestRun(documentId: String): Flow<ExtractionRunEntity?> = runFlow(documentId)
     override suspend fun getRun(runId: String): ExtractionRunEntity? = runs[runId]
     override suspend fun getEvent(documentId: String): MaintenanceEventEntity? = events[documentId]
+    override suspend fun getFact(factId: String): DocumentFactEntity? =
+        facts.values.flatMap { it }.firstOrNull { it.factId == factId }
+
+    override suspend fun getActiveFacts(documentId: String): List<DocumentFactEntity> =
+        facts[documentId].orEmpty().filter { it.isActive }.sortedBy { it.createdAt }
+
+    override suspend fun deactivateFact(factId: String) {
+        facts.forEach { (documentId, items) ->
+            val index = items.indexOfFirst { it.factId == factId }
+            if (index >= 0) {
+                items[index] = items[index].copy(isActive = false)
+                factFlow(documentId).value = items.filter { it.isActive }.sortedBy { it.createdAt }
+            }
+        }
+    }
+
+    override suspend fun deactivateActiveFactsByType(documentId: String, factType: String) {
+        val items = facts[documentId] ?: return
+        var changed = false
+        items.indices.forEach { index ->
+            val fact = items[index]
+            if (fact.factType == factType && fact.isActive) {
+                items[index] = fact.copy(isActive = false)
+                changed = true
+            }
+        }
+        if (changed) {
+            factFlow(documentId).value = items.filter { it.isActive }.sortedBy { it.createdAt }
+        }
+    }
+
+    override suspend fun getServiceItems(eventId: String): List<ServiceItemEntity> =
+        serviceItems[eventId].orEmpty().sortedBy { it.createdAt }
+
+    override suspend fun getServiceItem(serviceItemId: String): ServiceItemEntity? =
+        serviceItems.values.flatMap { it }.firstOrNull { it.serviceItemId == serviceItemId }
+
     override fun observeActiveFacts(documentId: String): Flow<List<DocumentFactEntity>> = factFlow(documentId)
     override fun observeEvent(documentId: String): Flow<MaintenanceEventEntity?> = eventFlow(documentId)
     override fun observeServiceItems(eventId: String): Flow<List<ServiceItemEntity>> = serviceItemFlow(eventId)
@@ -540,6 +771,9 @@ private class InMemoryDocumentStore(
 
     fun searchEntriesForDocument(documentId: String): List<SearchEntryEntity> =
         searchEntries[documentId].orEmpty().sortedBy { it.entryType + it.title + it.body }
+
+    fun factsForDocument(documentId: String): List<DocumentFactEntity> =
+        facts[documentId].orEmpty().sortedBy { it.createdAt }
 
     private fun publishDocumentList(vehicleId: String) {
         documentListFlow(vehicleId).value = documents.values

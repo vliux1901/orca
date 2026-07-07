@@ -442,7 +442,7 @@ data class ExtractionRunEntity(
             onDelete = ForeignKey.SET_NULL,
         ),
     ],
-    indices = [Index("documentId"), Index("factType"), Index("isActive"), Index("sourceId")]
+    indices = [Index("documentId"), Index("factType"), Index("isActive"), Index(["documentId", "factType", "isActive"]), Index("sourceId")]
 )
 data class DocumentFactEntity(
     @PrimaryKey val factId: String,
@@ -456,6 +456,7 @@ data class DocumentFactEntity(
     val sourcePage: Int?,
     val evidenceText: String?,
     val reviewWarning: String?,
+    val userNote: String?,
     val confidence: Double?,
     val isUserEdited: Boolean,
     val replacesFactId: String?,
@@ -563,6 +564,7 @@ data class SearchEntryEntity(
               <li class="block" data-block-id="rules-2"><code>documents.extractionStatus</code> should move through <code>not_started</code>, <code>queued</code>, <code>running</code>, <code>succeeded</code>, or <code>failed</code>.</li>
               <li class="block" data-block-id="rules-3">A successful extraction run may create facts and derived timeline rows in one transaction.</li>
               <li class="block" data-block-id="rules-4">User edits create a new active fact and mark the replaced extracted fact inactive rather than updating history in place.</li>
+              <li class="block" data-block-id="rules-4b">If a correction is entered for a scalar field that did not have an extracted fact row, save a new active user-edited fact with no <code>replacesFactId</code> and rebuild the effective event/search state from active records.</li>
               <li class="block" data-block-id="rules-5">Deleting a document cascades to sources, extraction runs, facts, events, service items, and search entries.</li>
             </ul>
           </article>
@@ -576,6 +578,7 @@ data class SearchEntryEntity(
               <li class="block" data-block-id="rules-9">Fact review and replacement flows need <code>document_facts(documentId, factType, isActive)</code>.</li>
               <li class="block" data-block-id="rules-9e">Citation-style <code>sourceId</code> references in <code>document_facts</code> and <code>service_items</code> should use foreign keys back to <code>document_sources</code> with <code>ON DELETE SET NULL</code>.</li>
               <li class="block" data-block-id="rules-9f">If a raw extracted line appears to diverge from its cited evidence, keep the fact row and persist a review warning so the UI can prompt user review instead of silently dropping the line.</li>
+              <li class="block" data-block-id="rules-9g">V1 service-item edits rewrite the canonical <code>service_items</code> row directly and then rebuild the parent event/search state. Only fact rows preserve full replacement history in V1.</li>
             </ul>
           </article>
 

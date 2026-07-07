@@ -1,5 +1,7 @@
 package org.vliux.orca.normalization
 
+import java.time.LocalDate
+import java.time.format.DateTimeParseException
 import java.util.Locale
 
 internal object NormalizationRules {
@@ -63,6 +65,25 @@ internal object NormalizationRules {
 
     fun normalizeWhitespace(raw: String?): String? =
         raw?.trim()?.replace(Regex("\\s+"), " ")?.takeIf { it.isNotEmpty() }
+
+    fun normalizeDate(raw: String?): LocalDate? {
+        val value = normalizeWhitespace(raw) ?: return null
+        return try {
+            LocalDate.parse(value)
+        } catch (_: DateTimeParseException) {
+            null
+        }
+    }
+
+    fun normalizeMileage(raw: String?): Int? {
+        val digits = raw.orEmpty().filter(Char::isDigit)
+        return digits.toIntOrNull()?.takeIf { it in 0..2_000_000 }
+    }
+
+    fun normalizeCostMinor(raw: String?): Long? {
+        val digits = raw.orEmpty().filter(Char::isDigit)
+        return digits.toLongOrNull()?.takeIf { it >= 0 }
+    }
 
     private fun String.containsAny(vararg terms: String): Boolean = terms.any { contains(it) }
 }

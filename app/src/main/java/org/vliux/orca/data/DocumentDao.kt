@@ -51,6 +51,9 @@ interface DocumentDao {
     @Query("DELETE FROM search_entries WHERE documentId = :documentId")
     suspend fun deleteSearchEntriesByDocument(documentId: String)
 
+    @Query("DELETE FROM service_items WHERE serviceItemId = :serviceItemId")
+    suspend fun deleteServiceItemById(serviceItemId: String)
+
     @Query("DELETE FROM documents WHERE documentId = :documentId")
     suspend fun deleteDocument(documentId: String)
 
@@ -138,11 +141,29 @@ interface DocumentDao {
     @Query("SELECT * FROM maintenance_events WHERE documentId = :documentId LIMIT 1")
     suspend fun getEvent(documentId: String): MaintenanceEventEntity?
 
+    @Query("SELECT * FROM document_facts WHERE factId = :factId LIMIT 1")
+    suspend fun getFact(factId: String): DocumentFactEntity?
+
+    @Query("SELECT * FROM document_facts WHERE documentId = :documentId AND isActive = 1 ORDER BY createdAt ASC")
+    suspend fun getActiveFacts(documentId: String): List<DocumentFactEntity>
+
+    @Query("UPDATE document_facts SET isActive = 0 WHERE factId = :factId")
+    suspend fun deactivateFact(factId: String)
+
+    @Query("UPDATE document_facts SET isActive = 0 WHERE documentId = :documentId AND factType = :factType AND isActive = 1")
+    suspend fun deactivateActiveFactsByType(documentId: String, factType: String)
+
     @Query("SELECT * FROM document_facts WHERE documentId = :documentId AND isActive = 1 ORDER BY createdAt ASC")
     fun observeActiveFacts(documentId: String): Flow<List<DocumentFactEntity>>
 
     @Query("SELECT * FROM maintenance_events WHERE documentId = :documentId LIMIT 1")
     fun observeEvent(documentId: String): Flow<MaintenanceEventEntity?>
+
+    @Query("SELECT * FROM service_items WHERE eventId = :eventId ORDER BY createdAt ASC")
+    suspend fun getServiceItems(eventId: String): List<ServiceItemEntity>
+
+    @Query("SELECT * FROM service_items WHERE serviceItemId = :serviceItemId LIMIT 1")
+    suspend fun getServiceItem(serviceItemId: String): ServiceItemEntity?
 
     @Query("SELECT * FROM service_items WHERE eventId = :eventId ORDER BY createdAt ASC")
     fun observeServiceItems(eventId: String): Flow<List<ServiceItemEntity>>

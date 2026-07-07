@@ -118,6 +118,7 @@ class SearchIndexBuilderTest {
         sourcePage = sourcePage,
         evidenceText = evidenceText,
         reviewWarning = null,
+        userNote = null,
         confidence = 0.8,
         isUserEdited = false,
         replacesFactId = null,

@@ -391,8 +391,16 @@ interface DocumentRepository {
 interface FactRepository {
     suspend fun replaceFact(
         documentId: String,
-        replacedFactId: String,
+        replacedFactId: String?,
         replacement: FactReplacement,
+    )
+}
+
+interface ServiceItemRepository {
+    suspend fun updateServiceItem(
+        documentId: String,
+        serviceItemId: String,
+        request: SaveServiceItemRequest,
     )
 }</code></pre>
           </article>
@@ -418,8 +426,14 @@ data class SourceImport(
 data class FactReplacement(
     val factType: FactType,
     val valueText: String,
-    val normalizedValue: String?,
     val note: String?,
+)
+
+data class SaveServiceItemRequest(
+    val label: String,
+    val category: String,
+    val notes: String?,
+    val costText: String?,
 )</code></pre>
             <p class="block" data-block-id="repos-3">Use simple repository inputs so import and correction flows stay independent from provider-specific payload shapes.</p>
           </article>

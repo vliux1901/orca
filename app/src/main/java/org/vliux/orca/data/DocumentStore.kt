@@ -27,6 +27,7 @@ interface DocumentStore {
     suspend fun deleteEventByDocument(documentId: String)
     suspend fun deleteServiceItemsByEvent(eventId: String)
     suspend fun deleteSearchEntriesByDocument(documentId: String)
+    suspend fun deleteServiceItemById(serviceItemId: String)
     suspend fun deleteDocument(documentId: String)
 
     suspend fun updateExtractionRun(
@@ -67,6 +68,12 @@ interface DocumentStore {
 
     suspend fun getRun(runId: String): ExtractionRunEntity?
     suspend fun getEvent(documentId: String): MaintenanceEventEntity?
+    suspend fun getFact(factId: String): DocumentFactEntity?
+    suspend fun getActiveFacts(documentId: String): List<DocumentFactEntity>
+    suspend fun deactivateFact(factId: String)
+    suspend fun deactivateActiveFactsByType(documentId: String, factType: String)
+    suspend fun getServiceItems(eventId: String): List<ServiceItemEntity>
+    suspend fun getServiceItem(serviceItemId: String): ServiceItemEntity?
     fun observeActiveFacts(documentId: String): Flow<List<DocumentFactEntity>>
     fun observeEvent(documentId: String): Flow<MaintenanceEventEntity?>
     fun observeServiceItems(eventId: String): Flow<List<ServiceItemEntity>>

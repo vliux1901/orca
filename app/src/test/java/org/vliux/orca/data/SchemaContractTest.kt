@@ -12,11 +12,11 @@ import org.junit.Test
 
 class SchemaContractTest {
     @Test
-    fun version5SchemaDefinesCoreRelationshipsAndOptionalVehiclePlate() {
+    fun version6SchemaDefinesCoreRelationshipsAndOptionalVehiclePlate() {
         val schemaFile = sequenceOf(
-            File("schemas/org.vliux.orca.data.OrcaDatabase/5.json"),
-            File("app/schemas/org.vliux.orca.data.OrcaDatabase/5.json"),
-        ).firstOrNull(File::exists) ?: File("schemas/org.vliux.orca.data.OrcaDatabase/5.json")
+            File("schemas/org.vliux.orca.data.OrcaDatabase/6.json"),
+            File("app/schemas/org.vliux.orca.data.OrcaDatabase/6.json"),
+        ).firstOrNull(File::exists) ?: File("schemas/org.vliux.orca.data.OrcaDatabase/6.json")
         assertTrue("Expected exported schema at ${schemaFile.path}", schemaFile.exists())
 
         val root = Json.parseToJsonElement(schemaFile.readText()).jsonObject
@@ -49,11 +49,13 @@ class SchemaContractTest {
         assertHasIndex(documents, "index_documents_vehicleId")
         assertHasIndex(documentFacts, "index_document_facts_sourceId")
         assertHasIndex(documentFacts, "index_document_facts_interpretedFromFactId")
+        assertHasIndex(documentFacts, "index_document_facts_documentId_factType_isActive")
         assertHasIndex(searchEntries, "index_search_entries_vehicleId")
         assertHasIndex(searchEntries, "index_search_entries_sourceId")
         assertHasIndex(serviceItems, "index_service_items_sourceId")
         assertHasColumn(documentFacts, "interpretedFromFactId")
         assertHasColumn(documentFacts, "reviewWarning")
+        assertHasColumn(documentFacts, "userNote")
         assertHasColumn(vehicles, "licensePlate")
         assertColumnNullable(vehicles, "licensePlate")
         assertHasColumn(vehicles, "vin")

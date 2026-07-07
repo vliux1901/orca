@@ -32,6 +32,7 @@ class RoomDocumentStore(
     override suspend fun deleteEventByDocument(documentId: String) = dao.deleteEventByDocument(documentId)
     override suspend fun deleteServiceItemsByEvent(eventId: String) = dao.deleteServiceItemsByEvent(eventId)
     override suspend fun deleteSearchEntriesByDocument(documentId: String) = dao.deleteSearchEntriesByDocument(documentId)
+    override suspend fun deleteServiceItemById(serviceItemId: String) = dao.deleteServiceItemById(serviceItemId)
     override suspend fun deleteDocument(documentId: String) = dao.deleteDocument(documentId)
 
     override suspend fun updateExtractionRun(
@@ -69,6 +70,13 @@ class RoomDocumentStore(
     override fun observeLatestRun(documentId: String): Flow<ExtractionRunEntity?> = dao.observeLatestRun(documentId)
     override suspend fun getRun(runId: String): ExtractionRunEntity? = dao.getRun(runId)
     override suspend fun getEvent(documentId: String): MaintenanceEventEntity? = dao.getEvent(documentId)
+    override suspend fun getFact(factId: String): DocumentFactEntity? = dao.getFact(factId)
+    override suspend fun getActiveFacts(documentId: String): List<DocumentFactEntity> = dao.getActiveFacts(documentId)
+    override suspend fun deactivateFact(factId: String) = dao.deactivateFact(factId)
+    override suspend fun deactivateActiveFactsByType(documentId: String, factType: String) =
+        dao.deactivateActiveFactsByType(documentId, factType)
+    override suspend fun getServiceItems(eventId: String): List<ServiceItemEntity> = dao.getServiceItems(eventId)
+    override suspend fun getServiceItem(serviceItemId: String): ServiceItemEntity? = dao.getServiceItem(serviceItemId)
     override fun observeActiveFacts(documentId: String): Flow<List<DocumentFactEntity>> = dao.observeActiveFacts(documentId)
     override fun observeEvent(documentId: String): Flow<MaintenanceEventEntity?> = dao.observeEvent(documentId)
     override fun observeServiceItems(eventId: String): Flow<List<ServiceItemEntity>> = dao.observeServiceItems(eventId)

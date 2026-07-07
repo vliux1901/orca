@@ -1,8 +1,6 @@
 package org.vliux.orca.normalization
 
 import java.time.Instant
-import java.time.LocalDate
-import java.time.format.DateTimeParseException
 import java.util.UUID
 import kotlinx.serialization.Serializable
 import org.vliux.orca.extraction.AiExtractedFact
@@ -149,9 +147,9 @@ class ExtractionNormalizer(
             )
         }
         val normalizedValue = when (trimmedType) {
-            "SERVICE_DATE" -> normalizeDate(fact.normalizedValue ?: trimmedValue)?.toString()
-            "ODOMETER" -> normalizeMileage(fact.normalizedValue ?: trimmedValue)?.toString()
-            "TOTAL_COST" -> normalizeCost(fact.normalizedValue ?: trimmedValue)?.toString()
+            "SERVICE_DATE" -> NormalizationRules.normalizeDate(fact.normalizedValue ?: trimmedValue)?.toString()
+            "ODOMETER" -> NormalizationRules.normalizeMileage(fact.normalizedValue ?: trimmedValue)?.toString()
+            "TOTAL_COST" -> NormalizationRules.normalizeCostMinor(fact.normalizedValue ?: trimmedValue)?.toString()
             "SHOP_NAME" -> NormalizationRules.normalizeShopName(fact.normalizedValue ?: trimmedValue)
             else -> fact.normalizedValue?.trim()?.takeIf { it.isNotEmpty() }
         }
@@ -206,6 +204,7 @@ class ExtractionNormalizer(
                 sourcePage = sanitizedSourcePage,
                 evidenceText = sanitizedEvidenceText,
                 reviewWarning = reviewWarning,
+                userNote = null,
                 confidence = sanitizedConfidence,
                 isUserEdited = false,
                 replacesFactId = null,
@@ -256,11 +255,11 @@ class ExtractionNormalizer(
             responseEvent?.eventDate ?: facts.firstValue("SERVICE_DATE"),
         )
         val mileage = responseEvent?.mileage?.takeIf { it >= 0 }
-            ?: facts.firstValue("ODOMETER")?.let(::normalizeMileage)
+            ?: facts.firstValue("ODOMETER")?.let(NormalizationRules::normalizeMileage)
         val shopName = NormalizationRules.normalizeShopName(responseEvent?.shopName)
             ?: NormalizationRules.normalizeShopName(facts.firstValue("SHOP_NAME"))
         val totalCostMinor = responseEvent?.totalCostMinor?.takeIf { it >= 0 }
-            ?: facts.firstValue("TOTAL_COST")?.let(::normalizeCost)
+            ?: facts.firstValue("TOTAL_COST")?.let(NormalizationRules::normalizeCostMinor)
         val currencyCode = responseEvent?.currencyCode?.trim()?.uppercase()?.takeIf { it.isNotEmpty() }
             ?: facts.firstOrNull { it.factType == "TOTAL_COST" }?.currencyCode
 
@@ -343,24 +342,7 @@ class ExtractionNormalizer(
         )
     }
 
-    private fun normalizeDate(raw: String?): LocalDate? {
-        val value = raw?.trim()?.takeIf { it.isNotEmpty() } ?: return null
-        return try {
-            LocalDate.parse(value)
-        } catch (_: DateTimeParseException) {
-            null
-        }
-    }
-
-    private fun normalizeMileage(raw: String): Int? {
-        val digits = raw.filter { it.isDigit() }
-        return digits.toIntOrNull()?.takeIf { it in 0..2_000_000 }
-    }
-
-    private fun normalizeCost(raw: String): Long? {
-        val digits = raw.filter { it.isDigit() }
-        return digits.toLongOrNull()?.takeIf { it >= 0 }
-    }
+    private fun normalizeDate(raw: String?): java.time.LocalDate? = NormalizationRules.normalizeDate(raw)
 
     private fun List<DocumentFactEntity>.firstValue(factType: String): String? =
         firstOrNull { it.factType == factType }?.normalizedValue ?: firstOrNull { it.factType == factType }?.valueText

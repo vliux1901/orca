@@ -11,9 +11,12 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 import org.vliux.orca.data.DocumentRepository
+import org.vliux.orca.data.DocumentDerivedStateRebuilder
 import org.vliux.orca.data.DocumentStore
+import org.vliux.orca.data.FactRepository
 import org.vliux.orca.data.OrcaDatabase
 import org.vliux.orca.data.RoomDocumentStore
+import org.vliux.orca.data.ServiceItemRepository
 import org.vliux.orca.data.VehicleRepository
 import org.vliux.orca.extraction.CloudExtractionAdapter
 import org.vliux.orca.extraction.DefaultMaintenanceExtractionEngine
@@ -49,6 +52,7 @@ object AppModule {
         OrcaDatabase.MIGRATION_2_3,
         OrcaDatabase.MIGRATION_3_4,
         OrcaDatabase.MIGRATION_4_5,
+        OrcaDatabase.MIGRATION_5_6,
     ).build()
 
     @Provides
@@ -109,6 +113,36 @@ object AppModule {
     @Provides
     @Reusable
     fun provideSearchIndexBuilder(): SearchIndexBuilder = SearchIndexBuilder()
+
+    @Provides
+    @Singleton
+    fun provideDocumentDerivedStateRebuilder(
+        store: DocumentStore,
+        searchIndexBuilder: SearchIndexBuilder,
+    ): DocumentDerivedStateRebuilder = DocumentDerivedStateRebuilder(
+        store = store,
+        searchIndexBuilder = searchIndexBuilder,
+    )
+
+    @Provides
+    @Singleton
+    fun provideFactRepository(
+        store: DocumentStore,
+        derivedStateRebuilder: DocumentDerivedStateRebuilder,
+    ): FactRepository = FactRepository(
+        store = store,
+        derivedStateRebuilder = derivedStateRebuilder,
+    )
+
+    @Provides
+    @Singleton
+    fun provideServiceItemRepository(
+        store: DocumentStore,
+        derivedStateRebuilder: DocumentDerivedStateRebuilder,
+    ): ServiceItemRepository = ServiceItemRepository(
+        store = store,
+        derivedStateRebuilder = derivedStateRebuilder,
+    )
 
     @Provides
     @Singleton

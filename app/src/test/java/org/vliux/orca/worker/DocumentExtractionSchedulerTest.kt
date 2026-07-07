@@ -233,6 +233,14 @@ private class SchedulerDocumentStore(
         searchEntries.remove(documentId)
     }
 
+    override suspend fun deleteServiceItemById(serviceItemId: String) {
+        serviceItems.forEach { (eventId, items) ->
+            if (items.removeAll { it.serviceItemId == serviceItemId }) {
+                serviceItemFlow(eventId).value = items.sortedBy { it.createdAt }
+            }
+        }
+    }
+
     override suspend fun deleteDocument(documentId: String) {
         val removed = documents.remove(documentId) ?: return
         documentFlow(documentId).value = null
@@ -330,6 +338,43 @@ private class SchedulerDocumentStore(
     override suspend fun getRun(runId: String): ExtractionRunEntity? = runs[runId]
 
     override suspend fun getEvent(documentId: String): MaintenanceEventEntity? = events[documentId]
+
+    override suspend fun getFact(factId: String): DocumentFactEntity? =
+        facts.values.flatMap { it }.firstOrNull { it.factId == factId }
+
+    override suspend fun getActiveFacts(documentId: String): List<DocumentFactEntity> =
+        facts[documentId].orEmpty().filter { it.isActive }.sortedBy { it.createdAt }
+
+    override suspend fun deactivateFact(factId: String) {
+        facts.forEach { (documentId, items) ->
+            val index = items.indexOfFirst { it.factId == factId }
+            if (index >= 0) {
+                items[index] = items[index].copy(isActive = false)
+                factFlow(documentId).value = items.filter { it.isActive }.sortedBy { it.createdAt }
+            }
+        }
+    }
+
+    override suspend fun deactivateActiveFactsByType(documentId: String, factType: String) {
+        val items = facts[documentId] ?: return
+        var changed = false
+        items.indices.forEach { index ->
+            val fact = items[index]
+            if (fact.factType == factType && fact.isActive) {
+                items[index] = fact.copy(isActive = false)
+                changed = true
+            }
+        }
+        if (changed) {
+            factFlow(documentId).value = items.filter { it.isActive }.sortedBy { it.createdAt }
+        }
+    }
+
+    override suspend fun getServiceItems(eventId: String): List<ServiceItemEntity> =
+        serviceItems[eventId].orEmpty().sortedBy { it.createdAt }
+
+    override suspend fun getServiceItem(serviceItemId: String): ServiceItemEntity? =
+        serviceItems.values.flatMap { it }.firstOrNull { it.serviceItemId == serviceItemId }
 
     override fun observeActiveFacts(documentId: String): Flow<List<DocumentFactEntity>> = factFlow(documentId)
 

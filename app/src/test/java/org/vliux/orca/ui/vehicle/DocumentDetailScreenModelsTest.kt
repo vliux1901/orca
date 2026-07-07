@@ -4,6 +4,7 @@ import java.time.Instant
 import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.vliux.orca.data.DocumentDetail
 import org.vliux.orca.data.model.DocumentEntity
@@ -144,6 +145,14 @@ class DocumentDetailScreenModelsTest {
         val models = resolveServiceItemDisplayModels(detail)
 
         assertEquals(warning, models.single().linkedLineItem?.reviewWarning)
+    }
+
+    @Test
+    fun documentDeleteHelpersProduceExpectedActionAndConfirmationText() {
+        assertEquals("Delete", documentDeleteActionLabel(isDeleting = false))
+        assertEquals("Deleting...", documentDeleteActionLabel(isDeleting = true))
+        assertTrue(documentDeleteConfirmationMessage("Invoice 42").contains("\"Invoice 42\""))
+        assertTrue(documentDeleteConfirmationMessage(null).contains("This cannot be undone."))
     }
 
     private fun documentDetail(

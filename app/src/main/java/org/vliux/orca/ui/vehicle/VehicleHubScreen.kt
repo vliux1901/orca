@@ -37,6 +37,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -431,8 +432,12 @@ private fun DocumentDetailScreen(
     val detailFlow = remember(documentRepository, documentId) {
         documentRepository.observeDocumentDetail(documentId)
     }
+    val scope = rememberCoroutineScope()
     val detail by detailFlow.collectAsStateWithLifecycle(initialValue = null)
     var previewRequest by remember(documentId) { mutableStateOf<SourcePreviewRequest?>(null) }
+    var showDeleteConfirmation by remember(documentId) { mutableStateOf(false) }
+    var isDeleting by remember(documentId) { mutableStateOf(false) }
+    var deleteError by remember(documentId) { mutableStateOf<String?>(null) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -440,6 +445,16 @@ private fun DocumentDetailScreen(
             VehicleTopBar(
                 title = detail?.document?.title ?: "Document Detail",
                 onBack = onBack,
+                actionContent = {
+                    if (detail != null) {
+                        TextButton(
+                            onClick = { showDeleteConfirmation = true },
+                            enabled = !isDeleting,
+                        ) {
+                            Text(documentDeleteActionLabel(isDeleting = isDeleting))
+                        }
+                    }
+                },
             )
         },
     ) { innerPadding ->
@@ -451,6 +466,12 @@ private fun DocumentDetailScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(bottom = 32.dp),
         ) {
+            deleteError?.let { message ->
+                item {
+                    ErrorCard(message = message)
+                }
+            }
+
             item {
                 if (detail == null) {
                     MissingEntityCard(
@@ -510,6 +531,53 @@ private fun DocumentDetailScreen(
             request = request,
             appFileStorage = appFileStorage,
             onDismiss = { previewRequest = null },
+        )
+    }
+
+    if (showDeleteConfirmation && detail != null) {
+        AlertDialog(
+            onDismissRequest = {
+                if (!isDeleting) {
+                    showDeleteConfirmation = false
+                }
+            },
+            title = {
+                Text("Delete Document")
+            },
+            text = {
+                Text(documentDeleteConfirmationMessage(detail?.document?.title))
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val currentDetail = detail ?: return@Button
+                        isDeleting = true
+                        deleteError = null
+                        scope.launch {
+                            runCatching {
+                                documentRepository.deleteDocument(currentDetail.document.documentId)
+                            }.onSuccess {
+                                showDeleteConfirmation = false
+                                onBack()
+                            }.onFailure { error ->
+                                deleteError = error.message ?: "Unable to delete document."
+                            }
+                            isDeleting = false
+                        }
+                    },
+                    enabled = !isDeleting,
+                ) {
+                    Text(if (isDeleting) "Deleting..." else "Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showDeleteConfirmation = false },
+                    enabled = !isDeleting,
+                ) {
+                    Text("Cancel")
+                }
+            },
         )
     }
 }
@@ -1452,6 +1520,20 @@ private fun FactReviewWarning(
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.error,
     )
+}
+
+internal fun documentDeleteActionLabel(
+    isDeleting: Boolean,
+): String = if (isDeleting) "Deleting..." else "Delete"
+
+internal fun documentDeleteConfirmationMessage(
+    documentTitle: String?,
+): String = buildString {
+    append("Delete this document and its imported source files?")
+    documentTitle?.takeIf { it.isNotBlank() }?.let { title ->
+        append(" \"").append(title).append("\"")
+    }
+    append(" This cannot be undone.")
 }
 
 @Composable

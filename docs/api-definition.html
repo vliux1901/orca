@@ -402,6 +402,11 @@ interface ServiceItemRepository {
         serviceItemId: String,
         request: SaveServiceItemRequest,
     )
+
+    suspend fun deleteServiceItem(
+        documentId: String,
+        serviceItemId: String,
+    )
 }</code></pre>
           </article>
 

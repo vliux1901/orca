@@ -126,6 +126,30 @@ class ExtractionNormalizerTest {
     }
 
     @Test
+    fun normalizeParsesCompactDealerDateFormats() {
+        val result = normalizer.normalize(
+            documentId = "doc-1",
+            vehicleId = "vehicle-1",
+            runId = "run-1",
+            response = AiExtractionResponse(
+                facts = listOf(
+                    AiExtractedFact(
+                        factType = "service_date",
+                        valueText = "06JUL26",
+                        sourceId = "src-1",
+                        sourcePage = 1,
+                        evidenceText = "06JUL26",
+                    ),
+                ),
+            ),
+            sources = listOf(source("src-1")),
+        )
+
+        assertEquals("2026-07-06", result.facts.single().normalizedValue)
+        assertEquals(LocalDate.parse("2026-07-06"), result.event?.eventDate)
+    }
+
+    @Test
     fun normalizePersistsInterpretedLineItemWithLinkToRawFact() {
         val result = normalizer.normalize(
             documentId = "doc-1",
@@ -293,6 +317,62 @@ class ExtractionNormalizerTest {
         assertEquals("BMW Seattle LLC", result.facts.single().normalizedValue)
         assertEquals("BMW Seattle LLC", result.event?.shopName)
         assertEquals(listOf("INSPECTION", "TIRES"), result.serviceItems.map { it.category })
+    }
+
+    @Test
+    fun normalizeDropsDiscountsAndFeesFromServiceItems() {
+        val result = normalizer.normalize(
+            documentId = "doc-1",
+            vehicleId = "vehicle-1",
+            runId = "run-1",
+            response = AiExtractionResponse(
+                maintenanceEvent = AiMaintenanceEvent(
+                    eventDate = "2026-05-01",
+                ),
+                serviceItems = listOf(
+                    AiServiceItem(
+                        category = "maintenance",
+                        label = "Oil change",
+                    ),
+                    AiServiceItem(
+                        category = "fee",
+                        label = "Waste disp fee",
+                    ),
+                    AiServiceItem(
+                        category = "discount",
+                        label = "25% discount",
+                    ),
+                ),
+            ),
+            sources = listOf(source("src-1")),
+        )
+
+        assertEquals(listOf("Oil change"), result.serviceItems.map { it.label })
+        assertTrue(result.debugReport.serviceItemDecisions[1].reason.contains("discount, fee, tax"))
+        assertTrue(result.debugReport.serviceItemDecisions[2].reason.contains("discount, fee, tax"))
+    }
+
+    @Test
+    fun normalizeKeepsRealServiceItemsWhoseTextOnlyContainsFeeLettersAsSubstring() {
+        val result = normalizer.normalize(
+            documentId = "doc-1",
+            vehicleId = "vehicle-1",
+            runId = "run-1",
+            response = AiExtractionResponse(
+                maintenanceEvent = AiMaintenanceEvent(
+                    eventDate = "2026-05-01",
+                ),
+                serviceItems = listOf(
+                    AiServiceItem(
+                        category = "fluid service",
+                        label = "Differential fluid service",
+                    ),
+                ),
+            ),
+            sources = listOf(source("src-1")),
+        )
+
+        assertEquals(listOf("Differential fluid service"), result.serviceItems.map { it.label })
     }
 
     private fun source(sourceId: String) = DocumentSourceEntity(

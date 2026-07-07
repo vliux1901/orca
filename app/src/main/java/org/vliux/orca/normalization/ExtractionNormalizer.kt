@@ -310,6 +310,14 @@ class ExtractionNormalizer(
                 reason = "Dropped because category or label was blank after trimming.",
             )
         }
+        if (NormalizationRules.shouldExcludeServiceItem(category = category, label = label, notes = item.notes)) {
+            return ServiceItemDecision(
+                input = item,
+                savedItem = null,
+                savedTo = null,
+                reason = "Dropped because the line looks like a discount, fee, tax, or other non-service charge.",
+            )
+        }
         val sanitizedSourceId = item.sourceId?.takeIf(sourceIds::contains)
         val sanitizedSourcePage = item.sourcePage?.takeIf { it > 0 }
         return ServiceItemDecision(

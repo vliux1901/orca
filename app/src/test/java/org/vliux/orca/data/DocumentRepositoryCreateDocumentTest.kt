@@ -337,6 +337,40 @@ class DocumentRepositoryCreateDocumentTest {
         }
     }
 
+    @Test
+    fun deleteServiceItemRemovesCanonicalRowAndRebuildsSearch() = runTest {
+        val rootDir = createTempDirectory(prefix = "orca-files-").toFile()
+        try {
+            val store = InMemoryDocumentStore(knownVehicleIds = setOf("vehicle-123"))
+            val repository = DocumentRepository(
+                store = store,
+                fileStorage = AppFileStorage(rootDir) { error("Uri path should not be used in prepared-import tests.") },
+            )
+            val rebuilder = DocumentDerivedStateRebuilder(store = store, searchIndexBuilder = SearchIndexBuilder())
+            val serviceItemRepository = ServiceItemRepository(store = store, derivedStateRebuilder = rebuilder)
+            val documentId = repository.createDocument(
+                vehicleId = "vehicle-123",
+                imports = listOf(preparedImport("receipt.png", "image/png", byteArrayOf(1, 2, 3), rootDir)),
+            )
+            seedCorrectionState(store, documentId, "vehicle-123")
+
+            serviceItemRepository.deleteServiceItem(
+                documentId = documentId,
+                serviceItemId = "service-1",
+            )
+
+            val remaining = store.getServiceItems("event-1")
+            val event = requireNotNull(store.getEvent(documentId))
+            val entries = store.searchEntriesForDocument(documentId)
+
+            assertTrue(remaining.isEmpty())
+            assertEquals("USER_VERIFIED", event.status)
+            assertTrue(entries.none { it.entryType == "SERVICE_ITEM" })
+        } finally {
+            rootDir.deleteRecursively()
+        }
+    }
+
     private fun preparedImport(
         displayName: String,
         mimeType: String,

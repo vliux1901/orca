@@ -170,6 +170,8 @@ class OpenAiCloudExtractionAdapter(
             - When you return INTERPRETED_LINE_ITEM, also fill interpreted_from_fact_type and interpreted_from_value_text to point at the raw dealer shorthand you are interpreting.
             - If a field is not present or is uncertain, return null or omit it where allowed instead of guessing.
             - TOTAL_COST and item prices must be returned as minor currency units when possible.
+            - service_items should include actual maintenance work only.
+            - Exclude discounts, coupons, environmental or disposal fees, waste disposal charges, shop supplies, taxes, and similar non-service charges from service_items.
 
             Metadata:
             - document_id=${request.document.documentId}

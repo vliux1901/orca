@@ -1,6 +1,4 @@
 package org.vliux.orca.data
-
-import java.time.Instant
 import org.vliux.orca.data.model.ServiceItemEntity
 import org.vliux.orca.normalization.NormalizationRules
 
@@ -14,7 +12,6 @@ data class SaveServiceItemRequest(
 class ServiceItemRepository(
     private val store: DocumentStore,
     private val derivedStateRebuilder: DocumentDerivedStateRebuilder,
-    private val nowProvider: () -> Instant = { Instant.now() },
 ) {
     suspend fun updateServiceItem(
         documentId: String,
@@ -52,6 +49,20 @@ class ServiceItemRepository(
 
         store.inTransaction {
             insertServiceItems(listOf(updated))
+        }
+        derivedStateRebuilder.rebuild(documentId = documentId, markUserVerified = true)
+    }
+
+    suspend fun deleteServiceItem(
+        documentId: String,
+        serviceItemId: String,
+    ) {
+        val existing = requireNotNull(store.getServiceItem(serviceItemId)) { "Unknown serviceItemId: $serviceItemId" }
+        val event = requireNotNull(store.getEvent(documentId)) { "Document does not have a maintenance event." }
+        require(existing.eventId == event.eventId) { "Service item does not belong to documentId=$documentId" }
+
+        store.inTransaction {
+            deleteServiceItemById(serviceItemId)
         }
         derivedStateRebuilder.rebuild(documentId = documentId, markUserVerified = true)
     }

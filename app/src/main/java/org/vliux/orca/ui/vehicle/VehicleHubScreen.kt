@@ -1,5 +1,6 @@
 package org.vliux.orca.ui.vehicle
 
+import android.app.DatePickerDialog
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -70,6 +71,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import java.io.File
+import java.time.LocalDate
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -89,6 +91,7 @@ import org.vliux.orca.data.model.DocumentFactEntity
 import org.vliux.orca.data.model.ServiceItemEntity
 import org.vliux.orca.data.model.VehicleEntity
 import org.vliux.orca.importing.SourceImportRequest
+import org.vliux.orca.normalization.NormalizationRules
 import org.vliux.orca.worker.DocumentExtractionScheduler
 
 @Composable
@@ -534,6 +537,13 @@ private fun DocumentDetailScreen(
                                 request = request,
                             )
                             saveMessage = "Saved service item correction."
+                        },
+                        onDeleteServiceItem = { serviceItemId ->
+                            serviceItemRepository.deleteServiceItem(
+                                documentId = loadedDetail.document.documentId,
+                                serviceItemId = serviceItemId,
+                            )
+                            saveMessage = "Removed service item."
                         },
                     )
                 }
@@ -1332,6 +1342,7 @@ private fun CorrectionCard(
     detail: DocumentDetail,
     onSaveFact: suspend (factType: String, replacedFactId: String?, valueText: String, note: String?) -> Unit,
 ) {
+    val context = LocalContext.current
     val fields = remember(detail) { correctionFields(detail) }
     val scope = rememberCoroutineScope()
     var editingFactType by rememberSaveable(detail.document.documentId) { mutableStateOf<String?>(null) }
@@ -1405,16 +1416,34 @@ private fun CorrectionCard(
                             }
                         }
                         if (editingFactType == field.factType) {
-                            OutlinedTextField(
-                                value = draftValue,
-                                onValueChange = {
-                                    draftValue = it
-                                    saveError = null
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                singleLine = true,
-                                label = { Text(field.label) },
-                            )
+                            if (field.factType == "SERVICE_DATE") {
+                                val selectedDate = remember(draftValue) { NormalizationRules.normalizeDate(draftValue) }
+                                Button(
+                                    onClick = {
+                                        showDatePicker(
+                                            context = context,
+                                            initialDate = selectedDate ?: field.normalizedDate ?: LocalDate.now(),
+                                            onSelected = { pickedDate ->
+                                                draftValue = pickedDate.toString()
+                                                saveError = null
+                                            },
+                                        )
+                                    },
+                                ) {
+                                    Text(selectedDate?.toString() ?: "Pick Date")
+                                }
+                            } else {
+                                OutlinedTextField(
+                                    value = draftValue,
+                                    onValueChange = {
+                                        draftValue = it
+                                        saveError = null
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    singleLine = true,
+                                    label = { Text(field.label) },
+                                )
+                            }
                             OutlinedTextField(
                                 value = draftNote,
                                 onValueChange = { draftNote = it },
@@ -1551,6 +1580,7 @@ private fun ServiceItemsCard(
     appFileStorage: AppFileStorage,
     onOpenSourcePreview: (SourcePreviewRequest) -> Unit,
     onSaveServiceItem: suspend (serviceItemId: String, request: SaveServiceItemRequest) -> Unit,
+    onDeleteServiceItem: suspend (serviceItemId: String) -> Unit,
 ) {
     val serviceItemModels = remember(detail) { resolveServiceItemDisplayModels(detail) }
 
@@ -1579,6 +1609,7 @@ private fun ServiceItemsCard(
                         appFileStorage = appFileStorage,
                         onOpenSourcePreview = onOpenSourcePreview,
                         onSaveServiceItem = onSaveServiceItem,
+                        onDeleteServiceItem = onDeleteServiceItem,
                     )
                 }
             }
@@ -1592,9 +1623,11 @@ private fun ServiceItemRow(
     appFileStorage: AppFileStorage,
     onOpenSourcePreview: (SourcePreviewRequest) -> Unit,
     onSaveServiceItem: suspend (serviceItemId: String, request: SaveServiceItemRequest) -> Unit,
+    onDeleteServiceItem: suspend (serviceItemId: String) -> Unit,
 ) {
     var isExpanded by rememberSaveable(model.serviceItem.serviceItemId) { mutableStateOf(false) }
     var isEditing by rememberSaveable(model.serviceItem.serviceItemId) { mutableStateOf(false) }
+    var showDeleteConfirmation by rememberSaveable(model.serviceItem.serviceItemId) { mutableStateOf(false) }
     var editLabel by rememberSaveable(model.serviceItem.serviceItemId) { mutableStateOf(model.serviceItem.label) }
     var editCategory by rememberSaveable(model.serviceItem.serviceItemId) { mutableStateOf(model.serviceItem.category) }
     var editNotes by rememberSaveable(model.serviceItem.serviceItemId) { mutableStateOf(model.serviceItem.notes.orEmpty()) }
@@ -1650,6 +1683,12 @@ private fun ServiceItemRow(
                 Row {
                     TextButton(onClick = { isEditing = !isEditing }) {
                         Text(if (isEditing) "Hide edit" else "Edit")
+                    }
+                    TextButton(
+                        onClick = { showDeleteConfirmation = true },
+                        enabled = !isSaving,
+                    ) {
+                        Text("Remove")
                     }
                     TextButton(onClick = { isExpanded = !isExpanded }) {
                         Text(if (isExpanded) "Hide line item" else "Show line item")
@@ -1818,6 +1857,46 @@ private fun ServiceItemRow(
                 }
             }
         }
+    }
+
+    if (showDeleteConfirmation) {
+        AlertDialog(
+            onDismissRequest = {
+                if (!isSaving) {
+                    showDeleteConfirmation = false
+                }
+            },
+            title = { Text("Remove Service Item") },
+            text = { Text("Remove \"${serviceItem.label}\" from this document?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        isSaving = true
+                        scope.launch {
+                            runCatching {
+                                onDeleteServiceItem(serviceItem.serviceItemId)
+                            }.onSuccess {
+                                showDeleteConfirmation = false
+                            }.onFailure { error ->
+                                editError = error.message ?: "Unable to remove service item."
+                            }
+                            isSaving = false
+                        }
+                    },
+                    enabled = !isSaving,
+                ) {
+                    Text(if (isSaving) "Removing..." else "Remove")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showDeleteConfirmation = false },
+                    enabled = !isSaving,
+                ) {
+                    Text("Cancel")
+                }
+            },
+        )
     }
 }
 
@@ -2087,6 +2166,22 @@ private fun formatEditableCost(amountMinor: Long): String {
     return "$majorUnits.${minorUnits.toString().padStart(2, '0')}"
 }
 
+private fun showDatePicker(
+    context: Context,
+    initialDate: LocalDate,
+    onSelected: (LocalDate) -> Unit,
+) {
+    DatePickerDialog(
+        context,
+        { _, year, month, dayOfMonth ->
+            onSelected(LocalDate.of(year, month + 1, dayOfMonth))
+        },
+        initialDate.year,
+        initialDate.monthValue - 1,
+        initialDate.dayOfMonth,
+    ).show()
+}
+
 private fun lineItemCitationText(fact: DocumentFactEntity): String? {
     val sourceLabel = fact.sourceId?.takeLast(6)?.let { "Source $it" }
     val pageLabel = fact.sourcePage?.let { "Page $it" }
@@ -2105,6 +2200,7 @@ internal data class CorrectionFieldModel(
     val currentValue: String?,
     val editableValue: String?,
     val replacedFactId: String?,
+    val normalizedDate: LocalDate? = null,
 )
 
 internal fun correctionFields(detail: DocumentDetail): List<CorrectionFieldModel> {
@@ -2114,9 +2210,16 @@ internal fun correctionFields(detail: DocumentDetail): List<CorrectionFieldModel
         CorrectionFieldModel(
             factType = "SERVICE_DATE",
             label = "Service Date",
-            currentValue = activeFactsByType["SERVICE_DATE"]?.valueText ?: event?.eventDate?.toString(),
-            editableValue = activeFactsByType["SERVICE_DATE"]?.valueText ?: event?.eventDate?.toString(),
+            currentValue = activeFactsByType["SERVICE_DATE"]?.normalizedValue
+                ?: activeFactsByType["SERVICE_DATE"]?.valueText?.let { NormalizationRules.normalizeDate(it)?.toString() }
+                ?: event?.eventDate?.toString(),
+            editableValue = activeFactsByType["SERVICE_DATE"]?.normalizedValue
+                ?: activeFactsByType["SERVICE_DATE"]?.valueText?.let { NormalizationRules.normalizeDate(it)?.toString() }
+                ?: event?.eventDate?.toString(),
             replacedFactId = activeFactsByType["SERVICE_DATE"]?.factId,
+            normalizedDate = activeFactsByType["SERVICE_DATE"]?.normalizedValue?.let(NormalizationRules::normalizeDate)
+                ?: activeFactsByType["SERVICE_DATE"]?.valueText?.let(NormalizationRules::normalizeDate)
+                ?: event?.eventDate,
         ),
         CorrectionFieldModel(
             factType = "ODOMETER",

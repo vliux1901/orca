@@ -2,6 +2,10 @@ package org.vliux.orca.normalization
 
 import java.time.LocalDate
 import java.time.format.DateTimeParseException
+import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeFormatterBuilder
+import java.time.format.ResolverStyle
+import java.time.temporal.ChronoField
 import java.util.Locale
 
 internal object NormalizationRules {
@@ -68,11 +72,23 @@ internal object NormalizationRules {
 
     fun normalizeDate(raw: String?): LocalDate? {
         val value = normalizeWhitespace(raw) ?: return null
-        return try {
-            LocalDate.parse(value)
-        } catch (_: DateTimeParseException) {
-            null
+        val candidates = listOf(
+            value,
+            value.uppercase(Locale.US),
+            value.replace(" ", "").uppercase(Locale.US),
+            value.replace("-", "/"),
+            value.replace(".", "/"),
+        ).distinct()
+        candidates.forEach { candidate ->
+            dateFormatters.forEach { formatter ->
+                try {
+                    return LocalDate.parse(candidate, formatter)
+                } catch (_: DateTimeParseException) {
+                    Unit
+                }
+            }
         }
+        return null
     }
 
     fun normalizeMileage(raw: String?): Int? {
@@ -85,5 +101,48 @@ internal object NormalizationRules {
         return digits.toLongOrNull()?.takeIf { it >= 0 }
     }
 
+    fun shouldExcludeServiceItem(
+        category: String?,
+        label: String?,
+        notes: String?,
+    ): Boolean {
+        val combined = listOfNotNull(category, label, notes)
+            .joinToString(" ")
+            .lowercase(Locale.US)
+        if (combined.isBlank()) return false
+        if (nonServiceChargePatterns.any { it.containsMatchIn(combined) }) return true
+        return combined.contains('%') &&
+            (combined.contains("off") || combined.contains("discount") || combined.contains("coupon"))
+    }
+
     private fun String.containsAny(vararg terms: String): Boolean = terms.any { contains(it) }
+
+    private val dateFormatters = listOf(
+        DateTimeFormatter.ISO_LOCAL_DATE,
+        DateTimeFormatter.ofPattern("M/d/uuuu", Locale.US).withResolverStyle(ResolverStyle.SMART),
+        DateTimeFormatter.ofPattern("M/d/uu", Locale.US).withResolverStyle(ResolverStyle.SMART),
+        DateTimeFormatter.ofPattern("MM/dd/uuuu", Locale.US).withResolverStyle(ResolverStyle.SMART),
+        DateTimeFormatter.ofPattern("MM/dd/uu", Locale.US).withResolverStyle(ResolverStyle.SMART),
+        DateTimeFormatter.ofPattern("d MMM uuuu", Locale.US).withResolverStyle(ResolverStyle.SMART),
+        DateTimeFormatter.ofPattern("d MMM uu", Locale.US).withResolverStyle(ResolverStyle.SMART),
+        DateTimeFormatter.ofPattern("ddMMMyyyy", Locale.US).withResolverStyle(ResolverStyle.SMART),
+        DateTimeFormatterBuilder()
+            .parseCaseInsensitive()
+            .appendPattern("ddMMM")
+            .appendValueReduced(ChronoField.YEAR, 2, 2, 2000)
+            .toFormatter(Locale.US)
+            .withResolverStyle(ResolverStyle.SMART),
+    )
+
+    private val nonServiceChargePatterns = listOf(
+        Regex("\\bdiscount\\b"),
+        Regex("\\bcoupon\\b"),
+        Regex("\\bfee(s)?\\b"),
+        Regex("\\btax(es)?\\b"),
+        Regex("\\bdisposal\\b"),
+        Regex("\\bwaste\\s+disp(osal)?\\b"),
+        Regex("\\bshop\\s+suppl(y|ies)\\b"),
+        Regex("\\bhazmat\\b"),
+        Regex("\\benvironmental\\b"),
+    )
 }

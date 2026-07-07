@@ -170,6 +170,30 @@ class DocumentDetailScreenModelsTest {
         assertEquals("259.99", fields.first { it.factType == "TOTAL_COST" }.editableValue)
     }
 
+    @Test
+    fun correctionFieldsPreferNormalizedServiceDateOverRawDealerString() {
+        val detail = documentDetail(
+            facts = listOf(
+                fact(
+                    factId = "fact-date",
+                    valueText = "06JUL26",
+                    sourceId = "source-1",
+                    sourcePage = 1,
+                ).copy(
+                    factType = "SERVICE_DATE",
+                    normalizedValue = "2026-07-06",
+                ),
+            ),
+            serviceItems = emptyList(),
+        )
+
+        val field = correctionFields(detail).first { it.factType == "SERVICE_DATE" }
+
+        assertEquals("2026-07-06", field.currentValue)
+        assertEquals("2026-07-06", field.editableValue)
+        assertEquals(LocalDate.parse("2026-07-06"), field.normalizedDate)
+    }
+
     private fun documentDetail(
         sources: List<DocumentSourceEntity> = emptyList(),
         facts: List<DocumentFactEntity>,

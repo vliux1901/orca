@@ -283,6 +283,7 @@ class DocumentRepositoryCreateDocumentTest {
             sourceId = "source-001",
             sourcePage = 1,
             evidenceText = lineItem,
+            reviewWarning = null,
             confidence = 0.9,
             isUserEdited = false,
             replacesFactId = null,

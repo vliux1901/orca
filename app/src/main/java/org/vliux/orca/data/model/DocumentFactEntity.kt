@@ -45,6 +45,7 @@ data class DocumentFactEntity(
     val sourceId: String?,
     val sourcePage: Int?,
     val evidenceText: String?,
+    val reviewWarning: String?,
     val confidence: Double?,
     val isUserEdited: Boolean,
     val replacesFactId: String?,

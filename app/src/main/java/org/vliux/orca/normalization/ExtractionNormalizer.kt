@@ -162,6 +162,11 @@ class ExtractionNormalizer(
         val sanitizedConfidence = fact.confidence?.takeIf { it in 0.0..1.0 }
         val sanitizedEvidenceText = fact.evidenceText?.trim()?.takeIf { it.isNotEmpty() }
             ?: interpretedFromFact?.evidenceText
+        val reviewWarning = reviewWarningFor(
+            factType = trimmedType,
+            valueText = trimmedValue,
+            evidenceText = sanitizedEvidenceText,
+        )
         if (trimmedType == INTERPRETED_LINE_ITEM && sanitizedEvidenceText == null) {
             return FactDecision(
                 input = fact,
@@ -200,6 +205,7 @@ class ExtractionNormalizer(
                 sourceId = sanitizedSourceId,
                 sourcePage = sanitizedSourcePage,
                 evidenceText = sanitizedEvidenceText,
+                reviewWarning = reviewWarning,
                 confidence = sanitizedConfidence,
                 isUserEdited = false,
                 replacesFactId = null,
@@ -232,6 +238,9 @@ class ExtractionNormalizer(
                 }
                 if (fact.normalizedValue != null && normalizedValue == null && trimmedType in setOf("SERVICE_DATE", "ODOMETER", "TOTAL_COST")) {
                     append(" normalized_value was rejected because it failed ${trimmedType.lowercase()} validation.")
+                }
+                if (reviewWarning != null) {
+                    append(" reviewWarning=").append(reviewWarning)
                 }
             },
         )
@@ -359,6 +368,42 @@ class ExtractionNormalizer(
     private fun isInterpretedFact(fact: AiExtractedFact): Boolean =
         fact.factType.trim().uppercase() == INTERPRETED_LINE_ITEM
 
+    private fun reviewWarningFor(
+        factType: String,
+        valueText: String,
+        evidenceText: String?,
+    ): String? {
+        if (factType !in setOf("LINE_ITEM", "NOTE")) return null
+        val evidence = evidenceText?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+        if (normalizeMatchingText(valueText) == normalizeMatchingText(evidence)) return null
+
+        val evidenceCodeTokens = codeLikeTokens(evidence)
+        if (evidenceCodeTokens.isEmpty()) return null
+
+        val valueTokens = normalizeMatchingText(valueText)
+            .split(' ')
+            .filter { it.isNotBlank() }
+            .toSet()
+        return if (evidenceCodeTokens.any { it !in valueTokens }) {
+            "Extracted text may not match source evidence exactly. Review the original line."
+        } else {
+            null
+        }
+    }
+
+    private fun codeLikeTokens(text: String): Set<String> =
+        CODE_TOKEN_REGEX.findAll(text)
+            .map { normalizeMatchingText(it.value) }
+            .filter { token -> token.any(Char::isLetter) && token.any(Char::isDigit) }
+            .filter { it.isNotBlank() }
+            .toSet()
+
+    private fun normalizeMatchingText(text: String): String =
+        text.lowercase()
+            .replace(Regex("[^a-z0-9]+"), " ")
+            .replace(Regex("\\s+"), " ")
+            .trim()
+
     private data class RawFactKey(
         val factType: String,
         val valueText: String,
@@ -366,6 +411,7 @@ class ExtractionNormalizer(
 
     companion object {
         private const val INTERPRETED_LINE_ITEM = "INTERPRETED_LINE_ITEM"
+        private val CODE_TOKEN_REGEX = Regex("[A-Za-z0-9-]{3,}")
     }
 }
 

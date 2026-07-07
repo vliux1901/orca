@@ -48,6 +48,7 @@ object AppModule {
         OrcaDatabase.MIGRATION_1_2,
         OrcaDatabase.MIGRATION_2_3,
         OrcaDatabase.MIGRATION_3_4,
+        OrcaDatabase.MIGRATION_4_5,
     ).build()
 
     @Provides

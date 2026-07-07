@@ -163,6 +163,34 @@ class ExtractionNormalizerTest {
     }
 
     @Test
+    fun normalizeFlagsLineItemWhenCodeLikeEvidenceTokenDisappearsFromValueText() {
+        val result = normalizer.normalize(
+            documentId = "doc-1",
+            vehicleId = "vehicle-1",
+            runId = "run-1",
+            response = AiExtractionResponse(
+                facts = listOf(
+                    AiExtractedFact(
+                        factType = "line_item",
+                        valueText = "Recall: Replace starter battery",
+                        sourceId = "src-1",
+                        sourcePage = 1,
+                        evidenceText = "Recall: Replace Starter -B4x",
+                        confidence = 0.77,
+                    ),
+                ),
+            ),
+            sources = listOf(source("src-1")),
+        )
+
+        assertEquals(1, result.facts.size)
+        assertEquals(
+            "Extracted text may not match source evidence exactly. Review the original line.",
+            result.facts.single().reviewWarning,
+        )
+    }
+
+    @Test
     fun normalizeInterpretedLineItemInheritsRawCitationAndRequiresConfidence() {
         val result = normalizer.normalize(
             documentId = "doc-1",

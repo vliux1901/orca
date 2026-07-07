@@ -161,8 +161,12 @@ class OpenAiCloudExtractionAdapter(
             - Keep citations tied to the original source_id even if you infer a different reading order.
             - Each extracted fact should cite the best matching source_id, page number when available, and a short evidence_text snippet.
             - Use these fact_type values only when applicable: SERVICE_DATE, ODOMETER, TOTAL_COST, SHOP_NAME, VIN, LINE_ITEM, NOTE, INTERPRETED_LINE_ITEM.
+            - For LINE_ITEM and NOTE, copy the document text as literally as possible.
+            - Do not expand abbreviations, codes, or uncertain tokens inside LINE_ITEM or NOTE.
+            - If the text contains mixed letters, numbers, punctuation, or recall/bulletin codes such as B4x, 120K3, or P0A80, preserve them exactly in LINE_ITEM or NOTE.
             - Use INTERPRETED_LINE_ITEM only for a plain-language explanation of a raw LINE_ITEM or NOTE that appears in the document.
             - Keep INTERPRETED_LINE_ITEM concise, usually one short line, and avoid long explanations or advice.
+            - Put explanations only in INTERPRETED_LINE_ITEM, never inside LINE_ITEM or NOTE.
             - When you return INTERPRETED_LINE_ITEM, also fill interpreted_from_fact_type and interpreted_from_value_text to point at the raw dealer shorthand you are interpreting.
             - If a field is not present or is uncertain, return null or omit it where allowed instead of guessing.
             - TOTAL_COST and item prices must be returned as minor currency units when possible.

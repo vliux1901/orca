@@ -525,6 +525,7 @@ data class DocumentDetailModel(
               <li class="block" data-block-id="contracts-6">Normalize dates, costs, and mileage locally before persistence.</li>
               <li class="block" data-block-id="contracts-7">Allow missing low-confidence optional fields, but do not invent values to make the contract look complete.</li>
               <li class="block" data-block-id="contracts-7c">Require interpreted shorthand expansions to retain a pointer to the raw extracted fact and never persist without evidence text or citation.</li>
+              <li class="block" data-block-id="contracts-7d">Allow raw extracted facts to carry a local review warning when the app detects that the extracted line text may not match the cited evidence snippet exactly.</li>
             </ul>
           </article>
 

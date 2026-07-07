@@ -402,6 +402,7 @@ files/vehicles/{vehicleId}/documents/{documentId}/sources/source-003.{ext}</code
             <ul>
               <li class="block" data-block-id="extract-6">Prompt the model to mentally rotate the input upright before extraction when needed.</li>
               <li class="block" data-block-id="extract-7">Prompt the model to preserve structural meaning, reconstruct tables conservatively, and return strict JSON only.</li>
+              <li class="block" data-block-id="extract-7a">For raw LINE_ITEM and NOTE output, instruct the model to copy document text literally and never expand recall codes, abbreviations, or mixed letter-digit tokens inside the raw field.</li>
               <li class="block" data-block-id="extract-8">Require source-file reference, page number, and short evidence snippets for each extracted field.</li>
               <li class="block" data-block-id="extract-8b">Allow the model to propose a plain-language interpretation for abbreviations or dealer codes, but require it to keep the original raw text and mark the interpretation as inferred.</li>
               <li class="block" data-block-id="extract-9">Reject malformed JSON and locally validate dates, mileage, costs, and categories before persistence.</li>
@@ -428,6 +429,7 @@ files/vehicles/{vehicleId}/documents/{documentId}/sources/source-003.{ext}</code
             <ul>
               <li class="block" data-block-id="ops-1">Show processing status per document.</li>
               <li class="block" data-block-id="ops-2">Show source-file list, extracted facts, raw dealer text, AI interpretations, and unverified markers.</li>
+              <li class="block" data-block-id="ops-2a">When the app detects that a raw extracted line may not match its evidence snippet, keep the line but show a review warning so the user can compare the extracted text against the source before correcting it.</li>
               <li class="block" data-block-id="ops-2b">In document detail, prioritize service items directly below the summary. Keep source files, extracted facts, and timeline event in collapsed review sections by default, and let each service item reveal its linked raw line item on demand.</li>
               <li class="block" data-block-id="ops-2c">Show imported image-source thumbnails inside the document summary card in a simple grid, and allow tap-to-open full-screen review of the selected source image.</li>
               <li class="block" data-block-id="ops-2d">Show each service item's linked source file as a compact preview tile. Opening that tile should focus the related source page and evidence text when known, but V1 does not promise exact visual highlight regions inside the image or PDF.</li>

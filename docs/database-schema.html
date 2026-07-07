@@ -455,6 +455,7 @@ data class DocumentFactEntity(
     val sourceId: String?,
     val sourcePage: Int?,
     val evidenceText: String?,
+    val reviewWarning: String?,
     val confidence: Double?,
     val isUserEdited: Boolean,
     val replacesFactId: String?,
@@ -574,6 +575,7 @@ data class SearchEntryEntity(
               <li class="block" data-block-id="rules-8">Source review screens need <code>document_sources(documentId, sourceOrder)</code>.</li>
               <li class="block" data-block-id="rules-9">Fact review and replacement flows need <code>document_facts(documentId, factType, isActive)</code>.</li>
               <li class="block" data-block-id="rules-9e">Citation-style <code>sourceId</code> references in <code>document_facts</code> and <code>service_items</code> should use foreign keys back to <code>document_sources</code> with <code>ON DELETE SET NULL</code>.</li>
+              <li class="block" data-block-id="rules-9f">If a raw extracted line appears to diverge from its cited evidence, keep the fact row and persist a review warning so the UI can prompt user review instead of silently dropping the line.</li>
             </ul>
           </article>
 

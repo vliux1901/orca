@@ -172,6 +172,7 @@ class DocumentDetailScreenModelsTest {
         sourceId = sourceId,
         sourcePage = sourcePage,
         evidenceText = valueText,
+        reviewWarning = null,
         confidence = 0.9,
         isUserEdited = false,
         replacesFactId = null,

@@ -57,6 +57,8 @@ class OpenAiCloudExtractionAdapterTest {
         assertTrue(prompt.contains("INTERPRETED_LINE_ITEM"))
         assertTrue(prompt.contains("interpreted_from_fact_type"))
         assertTrue(prompt.contains("Keep INTERPRETED_LINE_ITEM concise"))
+        assertTrue(prompt.contains("copy the document text as literally as possible"))
+        assertTrue(prompt.contains("preserve them exactly in LINE_ITEM or NOTE"))
         assertTrue(prompt.contains("source_id=src-1, order=0"))
         assertTrue(prompt.contains("source_id=src-2, order=1"))
         assertTrue(body.contains("\"model\":\"gpt-5.4\""))

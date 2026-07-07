@@ -25,7 +25,7 @@ import org.vliux.orca.data.model.VehicleEntity
         ServiceItemEntity::class,
         SearchEntryEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 @TypeConverters(InstantTypeConverters::class)
@@ -152,6 +152,12 @@ abstract class OrcaDatabase : RoomDatabase() {
                 db.execSQL(
                     "CREATE INDEX IF NOT EXISTS `index_document_facts_interpretedFromFactId` ON `document_facts` (`interpretedFromFactId`)",
                 )
+            }
+        }
+
+        val MIGRATION_4_5: Migration = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `document_facts` ADD COLUMN `reviewWarning` TEXT")
             }
         }
     }

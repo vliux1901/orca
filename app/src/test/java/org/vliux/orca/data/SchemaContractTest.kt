@@ -12,11 +12,11 @@ import org.junit.Test
 
 class SchemaContractTest {
     @Test
-    fun version4SchemaDefinesCoreRelationshipsAndOptionalVehiclePlate() {
+    fun version5SchemaDefinesCoreRelationshipsAndOptionalVehiclePlate() {
         val schemaFile = sequenceOf(
-            File("schemas/org.vliux.orca.data.OrcaDatabase/4.json"),
-            File("app/schemas/org.vliux.orca.data.OrcaDatabase/4.json"),
-        ).firstOrNull(File::exists) ?: File("schemas/org.vliux.orca.data.OrcaDatabase/4.json")
+            File("schemas/org.vliux.orca.data.OrcaDatabase/5.json"),
+            File("app/schemas/org.vliux.orca.data.OrcaDatabase/5.json"),
+        ).firstOrNull(File::exists) ?: File("schemas/org.vliux.orca.data.OrcaDatabase/5.json")
         assertTrue("Expected exported schema at ${schemaFile.path}", schemaFile.exists())
 
         val root = Json.parseToJsonElement(schemaFile.readText()).jsonObject
@@ -53,6 +53,7 @@ class SchemaContractTest {
         assertHasIndex(searchEntries, "index_search_entries_sourceId")
         assertHasIndex(serviceItems, "index_service_items_sourceId")
         assertHasColumn(documentFacts, "interpretedFromFactId")
+        assertHasColumn(documentFacts, "reviewWarning")
         assertHasColumn(vehicles, "licensePlate")
         assertColumnNullable(vehicles, "licensePlate")
         assertHasColumn(vehicles, "vin")

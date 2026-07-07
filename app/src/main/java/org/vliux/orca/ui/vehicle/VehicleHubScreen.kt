@@ -44,6 +44,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -61,6 +62,8 @@ import org.vliux.orca.data.DocumentRepository
 import org.vliux.orca.data.DocumentDetail
 import org.vliux.orca.data.VehicleRepository
 import org.vliux.orca.data.model.DocumentListItem
+import org.vliux.orca.data.model.DocumentFactEntity
+import org.vliux.orca.data.model.ServiceItemEntity
 import org.vliux.orca.data.model.VehicleEntity
 import org.vliux.orca.importing.SourceImportRequest
 import org.vliux.orca.worker.DocumentExtractionScheduler
@@ -439,16 +442,34 @@ private fun DocumentDetailScreen(
 
             detail?.let { loadedDetail ->
                 item {
-                    SourceFilesCard(detail = loadedDetail)
+                    ServiceItemsCard(detail = loadedDetail)
                 }
                 item {
-                    PlaceholderFactsCard(detail = loadedDetail)
+                    ExpandableDetailSection(
+                        title = "Extracted Facts",
+                        collapsedLabel = "Show",
+                        expandedLabel = "Hide",
+                    ) {
+                        FactsSectionContent(detail = loadedDetail)
+                    }
                 }
                 item {
-                    PlaceholderEventCard(detail = loadedDetail)
+                    ExpandableDetailSection(
+                        title = "Source Files",
+                        collapsedLabel = "Show",
+                        expandedLabel = "Hide",
+                    ) {
+                        SourceFilesSectionContent(detail = loadedDetail)
+                    }
                 }
                 item {
-                    PlaceholderServiceItemsCard(detail = loadedDetail)
+                    ExpandableDetailSection(
+                        title = "Timeline Event",
+                        collapsedLabel = "Show",
+                        expandedLabel = "Hide",
+                    ) {
+                        EventSectionContent(detail = loadedDetail)
+                    }
                 }
             }
         }
@@ -847,103 +868,79 @@ private fun DocumentDetailHeader(
 }
 
 @Composable
-private fun SourceFilesCard(
+private fun SourceFilesSectionContent(
     detail: DocumentDetail,
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = vehicleCardColors(),
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
+    if (detail.sources.isEmpty()) {
+        Text(
+            text = "No source files are linked to this document.",
+            style = MaterialTheme.typography.bodyMedium,
+        )
+    } else {
+        detail.sources.forEach { source ->
             Text(
-                text = "Source Files",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
+                text = "${source.fileName} | ${source.mimeType} | ${source.byteSize} bytes",
+                style = MaterialTheme.typography.bodyMedium,
             )
-            detail.sources.forEach { source ->
-                Text(
-                    text = "${source.fileName} | ${source.mimeType} | ${source.byteSize} bytes",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            }
         }
     }
 }
 
 @Composable
-private fun PlaceholderFactsCard(
+private fun FactsSectionContent(
     detail: DocumentDetail,
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = vehicleCardColors(),
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
+    if (detail.facts.isEmpty()) {
+        Text(
+            text = placeholderTextFor(detail.document.extractionStatus),
+            style = MaterialTheme.typography.bodyMedium,
+        )
+    } else {
+        detail.facts.forEach { fact ->
             Text(
-                text = "Extracted Facts",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
+                text = "${fact.factType}: ${fact.valueText}",
+                style = MaterialTheme.typography.bodyMedium,
             )
-            if (detail.facts.isEmpty()) {
-                Text(
-                    text = placeholderTextFor(detail.document.extractionStatus),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            } else {
-                detail.facts.forEach { fact ->
-                    Text(
-                        text = "${fact.factType}: ${fact.valueText}",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
-            }
         }
     }
 }
 
 @Composable
-private fun PlaceholderEventCard(
+private fun EventSectionContent(
     detail: DocumentDetail,
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = vehicleCardColors(),
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
+    val event = detail.event
+    if (event == null) {
+        Text(
+            text = placeholderTextFor(detail.document.extractionStatus),
+            style = MaterialTheme.typography.bodyMedium,
+        )
+    } else {
+        Text(
+            text = "${event.eventDate} | ${event.shopName ?: "Unknown shop"} | ${event.status}",
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        event.mileage?.let { mileage ->
             Text(
-                text = "Timeline Event",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
+                text = "Mileage $mileage mi",
+                style = MaterialTheme.typography.bodySmall,
             )
-            val event = detail.event
-            if (event == null) {
-                Text(
-                    text = placeholderTextFor(detail.document.extractionStatus),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            } else {
-                Text(
-                    text = "${event.eventDate} | ${event.shopName ?: "Unknown shop"} | ${event.status}",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            }
+        }
+        event.totalCostMinor?.let { totalCostMinor ->
+            Text(
+                text = "Total ${formatMinorCurrency(totalCostMinor, event.currencyCode)}",
+                style = MaterialTheme.typography.bodySmall,
+            )
         }
     }
 }
 
 @Composable
-private fun PlaceholderServiceItemsCard(
+private fun ServiceItemsCard(
     detail: DocumentDetail,
 ) {
+    val serviceItemModels = remember(detail) { resolveServiceItemDisplayModels(detail) }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = vehicleCardColors(),
@@ -963,12 +960,149 @@ private fun PlaceholderServiceItemsCard(
                     style = MaterialTheme.typography.bodyMedium,
                 )
             } else {
-                detail.serviceItems.forEach { item ->
-                    Text(
-                        text = item.label,
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
+                serviceItemModels.forEach { model ->
+                    ServiceItemRow(model = model)
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ServiceItemRow(
+    model: ServiceItemDisplayModel,
+) {
+    var isExpanded by rememberSaveable(model.serviceItem.serviceItemId) { mutableStateOf(false) }
+    val serviceItem = model.serviceItem
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = serviceItem.label,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    val metadata = listOfNotNull(
+                        serviceItem.category.takeIf { it.isNotBlank() },
+                        serviceItem.costMinor?.let { formatMinorCurrency(it, serviceItem.currencyCode) },
+                        serviceItem.sourcePage?.let { "Page $it" },
+                    )
+                    if (metadata.isNotEmpty()) {
+                        Text(
+                            text = metadata.joinToString(" | "),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                    serviceItem.notes?.takeIf { it.isNotBlank() }?.let { notes ->
+                        Text(
+                            text = notes,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                }
+                TextButton(onClick = { isExpanded = !isExpanded }) {
+                    Text(if (isExpanded) "Hide line item" else "Show line item")
+                }
+            }
+
+            if (isExpanded) {
+                val linkedLineItem = model.linkedLineItem
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    ),
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text(
+                            text = "Linked Receipt Line",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        if (linkedLineItem == null) {
+                            Text(
+                                text = "No linked raw LINE_ITEM could be resolved from the current extraction data.",
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        } else {
+                            Text(
+                                text = linkedLineItem.valueText,
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                            linkedLineItem.evidenceText
+                                ?.takeIf { it.isNotBlank() && it != linkedLineItem.valueText }
+                                ?.let { evidenceText ->
+                                    Text(
+                                        text = evidenceText,
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
+                                }
+                            lineItemCitationText(linkedLineItem)?.let { citation ->
+                                Text(
+                                    text = citation,
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ExpandableDetailSection(
+    title: String,
+    collapsedLabel: String,
+    expandedLabel: String,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    var isExpanded by rememberSaveable(title) { mutableStateOf(false) }
+
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = vehicleCardColors(),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                TextButton(onClick = { isExpanded = !isExpanded }) {
+                    Text(if (isExpanded) expandedLabel else collapsedLabel)
+                }
+            }
+            if (isExpanded) {
+                content()
             }
         }
     }
@@ -1159,6 +1293,103 @@ private fun placeholderTextFor(extractionStatus: String): String = when (extract
     "RUNNING" -> "Extraction is running. Placeholder sections will populate when structured results persist."
     "FAILED" -> "Extraction failed. Placeholder sections remain empty until the document is retried."
     else -> "No extracted content yet. Placeholder sections will populate after extraction."
+}
+
+private fun formatMinorCurrency(
+    amountMinor: Long,
+    currencyCode: String?,
+): String {
+    val majorUnits = amountMinor / 100
+    val minorUnits = kotlin.math.abs(amountMinor % 100)
+    val currency = currencyCode?.uppercase()?.takeIf { it.isNotBlank() } ?: "USD"
+    return "$currency $majorUnits.${minorUnits.toString().padStart(2, '0')}"
+}
+
+private fun lineItemCitationText(fact: DocumentFactEntity): String? {
+    val sourceLabel = fact.sourceId?.takeLast(6)?.let { "Source $it" }
+    val pageLabel = fact.sourcePage?.let { "Page $it" }
+    return listOfNotNull(sourceLabel, pageLabel).takeIf { it.isNotEmpty() }?.joinToString(" | ")
+}
+
+internal data class ServiceItemDisplayModel(
+    val serviceItem: ServiceItemEntity,
+    val linkedLineItem: DocumentFactEntity?,
+)
+
+internal fun resolveServiceItemDisplayModels(detail: DocumentDetail): List<ServiceItemDisplayModel> {
+    val rawLineItems = detail.facts.filter { it.factType.trim().uppercase() == "LINE_ITEM" }
+    return detail.serviceItems.map { serviceItem ->
+        ServiceItemDisplayModel(
+            serviceItem = serviceItem,
+            linkedLineItem = resolveLinkedLineItem(serviceItem, rawLineItems),
+        )
+    }
+}
+
+private fun resolveLinkedLineItem(
+    serviceItem: ServiceItemEntity,
+    rawLineItems: List<DocumentFactEntity>,
+): DocumentFactEntity? {
+    val exactSourceMatches = rawLineItems.filter { fact ->
+        fact.sourceId == serviceItem.sourceId && fact.sourcePage == serviceItem.sourcePage
+    }
+    if (exactSourceMatches.isNotEmpty()) {
+        return exactSourceMatches.maxByOrNull { scoreLineItemMatch(serviceItem, it) }
+    }
+
+    val sourceOnlyMatches = rawLineItems.filter { fact ->
+        fact.sourceId != null && fact.sourceId == serviceItem.sourceId
+    }
+    if (sourceOnlyMatches.isNotEmpty()) {
+        return sourceOnlyMatches.maxByOrNull { scoreLineItemMatch(serviceItem, it) }
+    }
+
+    val pageOnlyMatches = rawLineItems.filter { fact ->
+        fact.sourcePage != null && fact.sourcePage == serviceItem.sourcePage
+    }
+    if (pageOnlyMatches.isNotEmpty()) {
+        return pageOnlyMatches.maxByOrNull { scoreLineItemMatch(serviceItem, it) }
+    }
+
+    return null
+}
+
+private fun scoreLineItemMatch(
+    serviceItem: ServiceItemEntity,
+    fact: DocumentFactEntity,
+): Int {
+    val lineText = normalizeMatchingText(listOfNotNull(fact.valueText, fact.evidenceText).joinToString(" "))
+    val labelText = normalizeMatchingText(serviceItem.label)
+    val notesText = normalizeMatchingText(serviceItem.notes.orEmpty())
+
+    var score = 0
+    if (labelText.isNotBlank() && lineText.isNotBlank() && (lineText.contains(labelText) || labelText.contains(lineText))) {
+        score += 10
+    }
+    if (notesText.isNotBlank() && (lineText.contains(notesText) || notesText.contains(lineText))) {
+        score += 6
+    }
+    score += sharedTokenScore(labelText, lineText) * 2
+    score += sharedTokenScore(notesText, lineText)
+    return score
+}
+
+private fun normalizeMatchingText(value: String): String = value
+    .lowercase()
+    .replace(Regex("[^a-z0-9 ]"), " ")
+    .replace(Regex("\\s+"), " ")
+    .trim()
+
+private fun sharedTokenScore(
+    left: String,
+    right: String,
+): Int {
+    if (left.isBlank() || right.isBlank()) {
+        return 0
+    }
+    val leftTokens = left.split(" ").filter { it.length >= 3 }.toSet()
+    val rightTokens = right.split(" ").filter { it.length >= 3 }.toSet()
+    return leftTokens.intersect(rightTokens).size
 }
 
 private sealed interface VehicleRoute {

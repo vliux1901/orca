@@ -48,13 +48,13 @@ class ExtractionNormalizerTest {
                 maintenanceEvent = AiMaintenanceEvent(
                     eventDate = "2026-05-01",
                     mileage = 32100,
-                    shopName = "Town Tire",
+                    shopName = "  town   tire llc ",
                     totalCostMinor = 25999,
                     currencyCode = "usd",
                 ),
                 serviceItems = listOf(
                     AiServiceItem(
-                        category = "brakes",
+                        category = "brake svc",
                         label = "Front pads",
                         costMinor = 12000,
                         currencyCode = "usd",
@@ -72,6 +72,7 @@ class ExtractionNormalizerTest {
         assertNull(result.facts.first().interpretedFromFactId)
         assertEquals(LocalDate.parse("2026-05-01"), result.event?.eventDate)
         assertEquals(32100, result.event?.mileage)
+        assertEquals("Town Tire LLC", result.event?.shopName)
         assertEquals("USD", result.event?.currencyCode)
         assertEquals(Instant.parse("2026-06-28T12:00:00Z"), result.facts.first().createdAt)
         assertEquals(Instant.parse("2026-06-28T12:00:00Z"), result.event?.createdAt)
@@ -159,6 +160,43 @@ class ExtractionNormalizerTest {
         assertEquals("LINE_ITEM", result.facts[0].factType)
         assertEquals("INTERPRETED_LINE_ITEM", result.facts[1].factType)
         assertEquals(result.facts[0].factId, result.facts[1].interpretedFromFactId)
+    }
+
+    @Test
+    fun normalizeShopNameFactsAndMapServiceCategoriesToCanonicalValues() {
+        val result = normalizer.normalize(
+            documentId = "doc-1",
+            vehicleId = "vehicle-1",
+            runId = "run-1",
+            response = AiExtractionResponse(
+                facts = listOf(
+                    AiExtractedFact(
+                        factType = "shop_name",
+                        valueText = "  bmw   seattle  llc ",
+                    ),
+                ),
+                serviceItems = listOf(
+                    AiServiceItem(
+                        category = "maintenance package",
+                        label = "120K package inspection",
+                        notes = "multipoint inspection and filters",
+                    ),
+                    AiServiceItem(
+                        category = "tire rotation",
+                        label = "Rotate all four tires",
+                    ),
+                ),
+                maintenanceEvent = AiMaintenanceEvent(
+                    eventDate = "2026-05-01",
+                    shopName = "",
+                ),
+            ),
+            sources = listOf(source("src-1")),
+        )
+
+        assertEquals("BMW Seattle LLC", result.facts.single().normalizedValue)
+        assertEquals("BMW Seattle LLC", result.event?.shopName)
+        assertEquals(listOf("INSPECTION", "TIRES"), result.serviceItems.map { it.category })
     }
 
     private fun source(sourceId: String) = DocumentSourceEntity(

@@ -413,6 +413,7 @@ files/vehicles/{vehicleId}/documents/{documentId}/sources/source-003.{ext}</code
             <ul>
               <li class="block" data-block-id="extract-10">Reject malformed JSON and impossible values.</li>
               <li class="block" data-block-id="extract-11">Normalize currency, dates, and categories locally.</li>
+              <li class="block" data-block-id="extract-11a">Canonicalize vendor labels and service categories locally so search, timeline, and later correction flows do not depend on provider spelling drift.</li>
               <li class="block" data-block-id="extract-11b">Treat dealer-code interpretations as secondary derived facts; they can inform review UI and search, but should not silently replace the raw extracted line item.</li>
               <li class="block" data-block-id="extract-12">Build one maintenance event per document in most V1 cases.</li>
               <li class="block" data-block-id="extract-13">Keep all extracted facts and timeline values marked unverified until corrected or confirmed.</li>

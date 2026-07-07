@@ -144,6 +144,7 @@ class ExtractionNormalizer(
             "SERVICE_DATE" -> normalizeDate(fact.normalizedValue ?: trimmedValue)?.toString()
             "ODOMETER" -> normalizeMileage(fact.normalizedValue ?: trimmedValue)?.toString()
             "TOTAL_COST" -> normalizeCost(fact.normalizedValue ?: trimmedValue)?.toString()
+            "SHOP_NAME" -> NormalizationRules.normalizeShopName(fact.normalizedValue ?: trimmedValue)
             else -> fact.normalizedValue?.trim()?.takeIf { it.isNotEmpty() }
         }
         val sanitizedSourceId = fact.sourceId?.takeIf(sourceIds::contains)
@@ -219,8 +220,8 @@ class ExtractionNormalizer(
         )
         val mileage = responseEvent?.mileage?.takeIf { it >= 0 }
             ?: facts.firstValue("ODOMETER")?.let(::normalizeMileage)
-        val shopName = responseEvent?.shopName?.trim()?.takeIf { it.isNotEmpty() }
-            ?: facts.firstValue("SHOP_NAME")
+        val shopName = NormalizationRules.normalizeShopName(responseEvent?.shopName)
+            ?: NormalizationRules.normalizeShopName(facts.firstValue("SHOP_NAME"))
         val totalCostMinor = responseEvent?.totalCostMinor?.takeIf { it >= 0 }
             ?: facts.firstValue("TOTAL_COST")?.let(::normalizeCost)
         val currencyCode = responseEvent?.currencyCode?.trim()?.uppercase()?.takeIf { it.isNotEmpty() }
@@ -259,8 +260,12 @@ class ExtractionNormalizer(
                 reason = "Dropped because no maintenance event was created for this document.",
             )
         }
-        val category = item.category.trim().uppercase()
-        val label = item.label.trim()
+        val category = NormalizationRules.normalizeServiceCategory(
+            rawCategory = item.category,
+            label = item.label,
+            notes = item.notes,
+        ).orEmpty()
+        val label = NormalizationRules.normalizeWhitespace(item.label).orEmpty()
         if (category.isBlank() || label.isBlank()) {
             return ServiceItemDecision(
                 input = item,
@@ -278,7 +283,7 @@ class ExtractionNormalizer(
             eventId = eventId,
             category = category,
             label = label,
-            notes = item.notes?.trim()?.takeIf { it.isNotEmpty() },
+            notes = NormalizationRules.normalizeWhitespace(item.notes),
             costMinor = item.costMinor?.takeIf { it >= 0 },
             currencyCode = item.currencyCode?.trim()?.uppercase()?.takeIf { it.isNotEmpty() },
             sourceId = sanitizedSourceId,

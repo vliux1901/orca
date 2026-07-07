@@ -1222,10 +1222,23 @@ private fun FactsSectionContent(
         )
     } else {
         detail.facts.forEach { fact ->
-            Text(
-                text = "${fact.factType}: ${fact.valueText}",
-                style = MaterialTheme.typography.bodyMedium,
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = "${fact.factType}: ${fact.valueText}",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                fact.reviewWarning?.let { warning ->
+                    FactReviewWarning(warning = warning)
+                }
+                fact.evidenceText
+                    ?.takeIf { it.isNotBlank() && it != fact.valueText }
+                    ?.let { evidenceText ->
+                        Text(
+                            text = "Evidence: $evidenceText",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+            }
         }
     }
 }
@@ -1381,6 +1394,9 @@ private fun ServiceItemRow(
                                 text = linkedLineItem.valueText,
                                 style = MaterialTheme.typography.bodyMedium,
                             )
+                            linkedLineItem.reviewWarning?.let { warning ->
+                                FactReviewWarning(warning = warning)
+                            }
                             linkedLineItem.evidenceText
                                 ?.takeIf { it.isNotBlank() && it != linkedLineItem.valueText }
                                 ?.let { evidenceText ->
@@ -1425,6 +1441,17 @@ private fun ServiceItemRow(
             }
         }
     }
+}
+
+@Composable
+private fun FactReviewWarning(
+    warning: String,
+) {
+    Text(
+        text = "Review warning: $warning",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.error,
+    )
 }
 
 @Composable

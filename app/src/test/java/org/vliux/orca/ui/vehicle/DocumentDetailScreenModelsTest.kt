@@ -116,6 +116,36 @@ class DocumentDetailScreenModelsTest {
         assertEquals(listOf("source-1"), previewable.map { it.sourceId })
     }
 
+    @Test
+    fun resolveServiceItemDisplayModelsPreservesLineItemReviewWarning() {
+        val warning = "Extracted text may not match source evidence exactly. Review the original line."
+        val detail = documentDetail(
+            facts = listOf(
+                fact(
+                    factId = "fact-1",
+                    valueText = "Recall: Replace starter battery",
+                    sourceId = "source-1",
+                    sourcePage = 1,
+                ).copy(
+                    evidenceText = "Recall: Replace Starter -B4x",
+                    reviewWarning = warning,
+                ),
+            ),
+            serviceItems = listOf(
+                serviceItem(
+                    serviceItemId = "service-1",
+                    label = "Starter recall",
+                    sourceId = "source-1",
+                    sourcePage = 1,
+                ),
+            ),
+        )
+
+        val models = resolveServiceItemDisplayModels(detail)
+
+        assertEquals(warning, models.single().linkedLineItem?.reviewWarning)
+    }
+
     private fun documentDetail(
         sources: List<DocumentSourceEntity> = emptyList(),
         facts: List<DocumentFactEntity>,

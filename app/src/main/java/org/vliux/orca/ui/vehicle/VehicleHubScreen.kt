@@ -1,6 +1,8 @@
 package org.vliux.orca.ui.vehicle
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.activity.compose.BackHandler
@@ -8,15 +10,18 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts.OpenMultipleDocuments
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -35,6 +40,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -47,21 +53,31 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import java.io.File
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.vliux.orca.R
 import org.vliux.orca.data.DocumentRepository
 import org.vliux.orca.data.DocumentDetail
 import org.vliux.orca.data.VehicleRepository
 import org.vliux.orca.data.model.DocumentListItem
+import org.vliux.orca.data.model.DocumentSourceEntity
+import org.vliux.orca.importing.AppFileStorage
 import org.vliux.orca.data.model.DocumentFactEntity
 import org.vliux.orca.data.model.ServiceItemEntity
 import org.vliux.orca.data.model.VehicleEntity
@@ -73,6 +89,7 @@ fun VehicleHubScreen(
     vehicleRepository: VehicleRepository,
     documentRepository: DocumentRepository,
     documentExtractionScheduler: DocumentExtractionScheduler,
+    appFileStorage: AppFileStorage,
     modifier: Modifier = Modifier,
 ) {
     var route by remember { mutableStateOf<VehicleRoute>(VehicleRoute.List) }
@@ -118,6 +135,7 @@ fun VehicleHubScreen(
         )
         is VehicleRoute.DocumentDetail -> DocumentDetailScreen(
             documentRepository = documentRepository,
+            appFileStorage = appFileStorage,
             modifier = modifier,
             vehicleId = currentRoute.vehicleId,
             documentId = currentRoute.documentId,
@@ -402,6 +420,7 @@ private fun VehicleDetailScreen(
 @Composable
 private fun DocumentDetailScreen(
     documentRepository: DocumentRepository,
+    appFileStorage: AppFileStorage,
     vehicleId: String,
     documentId: String,
     onBack: () -> Unit,
@@ -411,6 +430,8 @@ private fun DocumentDetailScreen(
         documentRepository.observeDocumentDetail(documentId)
     }
     val detail by detailFlow.collectAsStateWithLifecycle(initialValue = null)
+    var selectedPreviewSourceId by rememberSaveable(documentId) { mutableStateOf<String?>(null) }
+    val previewSource = detail?.sources?.firstOrNull { it.sourceId == selectedPreviewSourceId }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -436,7 +457,11 @@ private fun DocumentDetailScreen(
                         message = "The selected document could not be loaded from the local database.",
                     )
                 } else {
-                    DocumentDetailHeader(detail = requireNotNull(detail))
+                    DocumentDetailHeader(
+                        detail = requireNotNull(detail),
+                        appFileStorage = appFileStorage,
+                        onOpenSourcePreview = { sourceId -> selectedPreviewSourceId = sourceId },
+                    )
                 }
             }
 
@@ -473,6 +498,14 @@ private fun DocumentDetailScreen(
                 }
             }
         }
+    }
+
+    previewSource?.let { source ->
+        FullScreenSourcePreviewDialog(
+            source = source,
+            appFileStorage = appFileStorage,
+            onDismiss = { selectedPreviewSourceId = null },
+        )
     }
 }
 
@@ -835,7 +868,11 @@ private fun DocumentSummaryCard(
 @Composable
 private fun DocumentDetailHeader(
     detail: DocumentDetail,
+    appFileStorage: AppFileStorage,
+    onOpenSourcePreview: (String) -> Unit,
 ) {
+    val previewSources = remember(detail.sources) { previewableImageSources(detail.sources) }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = vehicleCardColors(),
@@ -862,6 +899,149 @@ private fun DocumentDetailHeader(
                     text = "Latest run ${run.status} via ${run.providerName}/${run.modelName}",
                     style = MaterialTheme.typography.bodySmall,
                 )
+            }
+            if (previewSources.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Imported Images",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text = "Tap a thumbnail to inspect the original picture full screen.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                SourcePreviewGrid(
+                    sources = previewSources,
+                    appFileStorage = appFileStorage,
+                    onOpenSourcePreview = onOpenSourcePreview,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SourcePreviewGrid(
+    sources: List<DocumentSourceEntity>,
+    appFileStorage: AppFileStorage,
+    onOpenSourcePreview: (String) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        sources.chunked(3).forEach { rowSources ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                rowSources.forEach { source ->
+                    Box(
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        SourcePreviewTile(
+                            source = source,
+                            appFileStorage = appFileStorage,
+                            onClick = { onOpenSourcePreview(source.sourceId) },
+                        )
+                    }
+                }
+                repeat(3 - rowSources.size) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SourcePreviewTile(
+    source: DocumentSourceEntity,
+    appFileStorage: AppFileStorage,
+    onClick: () -> Unit,
+) {
+    val file = remember(source.relativePath, appFileStorage) { appFileStorage.resolveFile(source.relativePath) }
+    val previewBitmap = rememberDecodedImageBitmap(file = file, maxDimension = 320)
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(1f)
+            .clip(MaterialTheme.shapes.medium)
+            .clickable(onClick = onClick),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surface,
+    ) {
+        if (previewBitmap != null) {
+            androidx.compose.foundation.Image(
+                bitmap = previewBitmap,
+                contentDescription = source.fileName,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            )
+        } else {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = source.fileName.take(10),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FullScreenSourcePreviewDialog(
+    source: DocumentSourceEntity,
+    appFileStorage: AppFileStorage,
+    onDismiss: () -> Unit,
+) {
+    val file = remember(source.relativePath, appFileStorage) { appFileStorage.resolveFile(source.relativePath) }
+    val imageBitmap = rememberDecodedImageBitmap(file = file, maxDimension = 2048)
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = Color.Black,
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable(onClick = onDismiss),
+            ) {
+                if (imageBitmap != null) {
+                    androidx.compose.foundation.Image(
+                        bitmap = imageBitmap,
+                        contentDescription = source.fileName,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit,
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = "Preview unavailable",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = Color.White,
+                        )
+                    }
+                }
+
+                TextButton(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(20.dp),
+                ) {
+                    Text("Close", color = Color.White)
+                }
             }
         }
     }
@@ -1390,6 +1570,68 @@ private fun sharedTokenScore(
     val leftTokens = left.split(" ").filter { it.length >= 3 }.toSet()
     val rightTokens = right.split(" ").filter { it.length >= 3 }.toSet()
     return leftTokens.intersect(rightTokens).size
+}
+
+@Composable
+private fun rememberDecodedImageBitmap(
+    file: File,
+    maxDimension: Int,
+) = produceState<androidx.compose.ui.graphics.ImageBitmap?>(
+    initialValue = null,
+    key1 = file.absolutePath,
+    key2 = maxDimension,
+) {
+    value = withContext(Dispatchers.IO) {
+        decodeScaledBitmap(file, maxDimension)?.asImageBitmap()
+    }
+}.value
+
+internal fun previewableImageSources(
+    sources: List<DocumentSourceEntity>,
+): List<DocumentSourceEntity> = sources.filter { source ->
+    source.mimeType.startsWith("image/")
+}
+
+private fun decodeScaledBitmap(
+    file: File,
+    maxDimension: Int,
+): Bitmap? {
+    if (!file.exists()) {
+        return null
+    }
+
+    val bounds = BitmapFactory.Options().apply {
+        inJustDecodeBounds = true
+    }
+    BitmapFactory.decodeFile(file.absolutePath, bounds)
+    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) {
+        return null
+    }
+
+    val sampleSize = calculateInSampleSize(bounds.outWidth, bounds.outHeight, maxDimension)
+    val options = BitmapFactory.Options().apply {
+        inSampleSize = sampleSize
+        inPreferredConfig = Bitmap.Config.ARGB_8888
+    }
+    return runCatching {
+        BitmapFactory.decodeFile(file.absolutePath, options)
+    }.getOrNull()
+}
+
+private fun calculateInSampleSize(
+    width: Int,
+    height: Int,
+    maxDimension: Int,
+): Int {
+    var sampleSize = 1
+    var currentWidth = width
+    var currentHeight = height
+    while (currentWidth > maxDimension || currentHeight > maxDimension) {
+        currentWidth /= 2
+        currentHeight /= 2
+        sampleSize *= 2
+    }
+    return sampleSize.coerceAtLeast(1)
 }
 
 private sealed interface VehicleRoute {

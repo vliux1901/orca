@@ -8,6 +8,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import org.vliux.orca.data.DocumentRepository
 import org.vliux.orca.data.VehicleRepository
+import org.vliux.orca.importing.AppFileStorage
 import org.vliux.orca.ui.theme.OrcaTheme
 import org.vliux.orca.ui.vehicle.VehicleHubScreen
 import org.vliux.orca.worker.DocumentExtractionScheduler
@@ -23,6 +24,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var documentExtractionScheduler: DocumentExtractionScheduler
 
+    @Inject
+    lateinit var appFileStorage: AppFileStorage
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -32,6 +36,7 @@ class MainActivity : ComponentActivity() {
                     vehicleRepository = vehicleRepository,
                     documentRepository = documentRepository,
                     documentExtractionScheduler = documentExtractionScheduler,
+                    appFileStorage = appFileStorage,
                 )
             }
         }

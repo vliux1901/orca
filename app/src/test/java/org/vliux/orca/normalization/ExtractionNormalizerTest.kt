@@ -163,6 +163,74 @@ class ExtractionNormalizerTest {
     }
 
     @Test
+    fun normalizeInterpretedLineItemInheritsRawCitationAndRequiresConfidence() {
+        val result = normalizer.normalize(
+            documentId = "doc-1",
+            vehicleId = "vehicle-1",
+            runId = "run-1",
+            response = AiExtractionResponse(
+                facts = listOf(
+                    AiExtractedFact(
+                        factType = "line_item",
+                        valueText = "120K3 service",
+                        sourceId = "src-1",
+                        sourcePage = 1,
+                        evidenceText = "120K3 service",
+                        confidence = 0.82,
+                    ),
+                    AiExtractedFact(
+                        factType = "interpreted_line_item",
+                        valueText = "Likely 120,000-mile scheduled service package",
+                        interpretedFromFactType = "line_item",
+                        interpretedFromValueText = "120K3 service",
+                        confidence = 0.64,
+                    ),
+                ),
+            ),
+            sources = listOf(source("src-1")),
+        )
+
+        assertEquals(2, result.facts.size)
+        assertEquals("src-1", result.facts[1].sourceId)
+        assertEquals(1, result.facts[1].sourcePage)
+        assertEquals("120K3 service", result.facts[1].evidenceText)
+    }
+
+    @Test
+    fun normalizeDropsInterpretedLineItemWithoutConfidence() {
+        val result = normalizer.normalize(
+            documentId = "doc-1",
+            vehicleId = "vehicle-1",
+            runId = "run-1",
+            response = AiExtractionResponse(
+                facts = listOf(
+                    AiExtractedFact(
+                        factType = "line_item",
+                        valueText = "120K3 service",
+                        sourceId = "src-1",
+                        sourcePage = 1,
+                        evidenceText = "120K3 service",
+                        confidence = 0.82,
+                    ),
+                    AiExtractedFact(
+                        factType = "interpreted_line_item",
+                        valueText = "Likely 120,000-mile scheduled service package",
+                        interpretedFromFactType = "line_item",
+                        interpretedFromValueText = "120K3 service",
+                    ),
+                ),
+            ),
+            sources = listOf(source("src-1")),
+        )
+
+        assertEquals(1, result.facts.size)
+        assertEquals(
+            "Dropped because INTERPRETED_LINE_ITEM requires confidence for review.",
+            result.debugReport.factDecisions.last().reason,
+        )
+    }
+
+    @Test
     fun normalizeShopNameFactsAndMapServiceCategoriesToCanonicalValues() {
         val result = normalizer.normalize(
             documentId = "doc-1",

@@ -140,6 +140,14 @@ class ExtractionNormalizer(
                 },
             )
         }
+        if (trimmedType == INTERPRETED_LINE_ITEM && interpretedFromKey?.factType !in setOf("LINE_ITEM", "NOTE")) {
+            return FactDecision(
+                input = fact,
+                savedFact = null,
+                savedTo = null,
+                reason = "Dropped because INTERPRETED_LINE_ITEM may only interpret a LINE_ITEM or NOTE raw fact.",
+            )
+        }
         val normalizedValue = when (trimmedType) {
             "SERVICE_DATE" -> normalizeDate(fact.normalizedValue ?: trimmedValue)?.toString()
             "ODOMETER" -> normalizeMileage(fact.normalizedValue ?: trimmedValue)?.toString()
@@ -147,16 +155,27 @@ class ExtractionNormalizer(
             "SHOP_NAME" -> NormalizationRules.normalizeShopName(fact.normalizedValue ?: trimmedValue)
             else -> fact.normalizedValue?.trim()?.takeIf { it.isNotEmpty() }
         }
-        val sanitizedSourceId = fact.sourceId?.takeIf(sourceIds::contains)
-        val sanitizedSourcePage = fact.sourcePage?.takeIf { it > 0 }
+        val sanitizedSourceId = (fact.sourceId?.takeIf(sourceIds::contains)
+            ?: interpretedFromFact?.sourceId)
+        val sanitizedSourcePage = (fact.sourcePage?.takeIf { it > 0 }
+            ?: interpretedFromFact?.sourcePage)
         val sanitizedConfidence = fact.confidence?.takeIf { it in 0.0..1.0 }
         val sanitizedEvidenceText = fact.evidenceText?.trim()?.takeIf { it.isNotEmpty() }
+            ?: interpretedFromFact?.evidenceText
         if (trimmedType == INTERPRETED_LINE_ITEM && sanitizedEvidenceText == null) {
             return FactDecision(
                 input = fact,
                 savedFact = null,
                 savedTo = null,
                 reason = "Dropped because INTERPRETED_LINE_ITEM requires evidence_text for review.",
+            )
+        }
+        if (trimmedType == INTERPRETED_LINE_ITEM && sanitizedConfidence == null) {
+            return FactDecision(
+                input = fact,
+                savedFact = null,
+                savedTo = null,
+                reason = "Dropped because INTERPRETED_LINE_ITEM requires confidence for review.",
             )
         }
         if (trimmedType == INTERPRETED_LINE_ITEM && sanitizedSourceId == null && sanitizedSourcePage == null) {
@@ -192,6 +211,15 @@ class ExtractionNormalizer(
                 append("Saved to document_facts after trimming type/value.")
                 if (interpretedFromFact != null) {
                     append(" Linked interpreted fact to raw factId=${interpretedFromFact.factId}.")
+                    if (fact.sourceId == null && sanitizedSourceId != null) {
+                        append(" source_id inherited from the raw fact citation.")
+                    }
+                    if (fact.sourcePage == null && sanitizedSourcePage != null) {
+                        append(" source_page inherited from the raw fact citation.")
+                    }
+                    if (fact.evidenceText.isNullOrBlank() && sanitizedEvidenceText != null) {
+                        append(" evidence_text inherited from the raw fact citation.")
+                    }
                 }
                 if (fact.sourceId != null && sanitizedSourceId == null) {
                     append(" source_id was dropped because it did not match an imported source.")

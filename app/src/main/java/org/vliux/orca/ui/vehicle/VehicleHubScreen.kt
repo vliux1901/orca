@@ -1681,22 +1681,43 @@ private fun ServiceItemRow(
                     }
                 }
                 Row {
-                    TextButton(onClick = { isEditing = !isEditing }) {
-                        Text(if (isEditing) "Hide edit" else "Edit")
+                    if (isExpanded) {
+                        IconButton(onClick = { isEditing = !isEditing }) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_action_edit),
+                                contentDescription = if (isEditing) "Hide edit service item" else "Edit service item",
+                            )
+                        }
+                        IconButton(
+                            onClick = { showDeleteConfirmation = true },
+                            enabled = !isSaving,
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_action_delete),
+                                contentDescription = "Remove service item",
+                            )
+                        }
                     }
-                    TextButton(
-                        onClick = { showDeleteConfirmation = true },
-                        enabled = !isSaving,
-                    ) {
-                        Text("Remove")
-                    }
-                    TextButton(onClick = { isExpanded = !isExpanded }) {
-                        Text(if (isExpanded) "Hide line item" else "Show line item")
+                    IconButton(onClick = { isExpanded = !isExpanded }) {
+                        Icon(
+                            painter = painterResource(
+                                if (isExpanded) {
+                                    R.drawable.ic_action_expand_less
+                                } else {
+                                    R.drawable.ic_action_expand_more
+                                },
+                            ),
+                            contentDescription = if (isExpanded) {
+                                "Hide linked line item"
+                            } else {
+                                "Show linked line item"
+                            },
+                        )
                     }
                 }
             }
 
-            if (isEditing) {
+            if (isExpanded && isEditing) {
                 Column(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {

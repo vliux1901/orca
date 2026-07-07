@@ -16,6 +16,13 @@ class DocumentDetailScreenModelsTest {
     @Test
     fun resolveServiceItemDisplayModelsPrefersMatchingLineItemOnSameSourceAndPage() {
         val detail = documentDetail(
+            sources = listOf(
+                source(
+                    sourceId = "source-1",
+                    fileName = "receipt.jpg",
+                    mimeType = "image/jpeg",
+                ),
+            ),
             facts = listOf(
                 fact(
                     factId = "fact-1",
@@ -44,6 +51,7 @@ class DocumentDetailScreenModelsTest {
 
         assertEquals(1, models.size)
         assertEquals("fact-1", models.single().linkedLineItem?.factId)
+        assertEquals("source-1", models.single().linkedSource?.sourceId)
     }
 
     @Test
@@ -109,6 +117,7 @@ class DocumentDetailScreenModelsTest {
     }
 
     private fun documentDetail(
+        sources: List<DocumentSourceEntity> = emptyList(),
         facts: List<DocumentFactEntity>,
         serviceItems: List<ServiceItemEntity>,
     ): DocumentDetail {
@@ -126,7 +135,7 @@ class DocumentDetailScreenModelsTest {
                 createdAt = now,
                 updatedAt = now,
             ),
-            sources = emptyList(),
+            sources = sources,
             latestRun = null,
             facts = facts,
             event = MaintenanceEventEntity(
@@ -185,6 +194,23 @@ class DocumentDetailScreenModelsTest {
         currencyCode = null,
         sourceId = sourceId,
         sourcePage = sourcePage,
+        createdAt = Instant.parse("2026-07-06T12:00:00Z"),
+    )
+
+    private fun source(
+        sourceId: String,
+        fileName: String,
+        mimeType: String,
+    ) = DocumentSourceEntity(
+        sourceId = sourceId,
+        documentId = "document-1",
+        sourceOrder = 0,
+        fileName = fileName,
+        mimeType = mimeType,
+        relativePath = "files/$fileName",
+        byteSize = 100L,
+        checksumSha256 = null,
+        pageCount = null,
         createdAt = Instant.parse("2026-07-06T12:00:00Z"),
     )
 }

@@ -3,7 +3,9 @@ package org.vliux.orca.ui.vehicle
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.pdf.PdfRenderer
 import android.net.Uri
+import android.os.ParcelFileDescriptor
 import android.provider.OpenableColumns
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -430,8 +432,7 @@ private fun DocumentDetailScreen(
         documentRepository.observeDocumentDetail(documentId)
     }
     val detail by detailFlow.collectAsStateWithLifecycle(initialValue = null)
-    var selectedPreviewSourceId by rememberSaveable(documentId) { mutableStateOf<String?>(null) }
-    val previewSource = detail?.sources?.firstOrNull { it.sourceId == selectedPreviewSourceId }
+    var previewRequest by remember(documentId) { mutableStateOf<SourcePreviewRequest?>(null) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -460,14 +461,18 @@ private fun DocumentDetailScreen(
                     DocumentDetailHeader(
                         detail = requireNotNull(detail),
                         appFileStorage = appFileStorage,
-                        onOpenSourcePreview = { sourceId -> selectedPreviewSourceId = sourceId },
+                        onOpenSourcePreview = { previewRequest = it },
                     )
                 }
             }
 
             detail?.let { loadedDetail ->
                 item {
-                    ServiceItemsCard(detail = loadedDetail)
+                    ServiceItemsCard(
+                        detail = loadedDetail,
+                        appFileStorage = appFileStorage,
+                        onOpenSourcePreview = { previewRequest = it },
+                    )
                 }
                 item {
                     ExpandableDetailSection(
@@ -500,11 +505,11 @@ private fun DocumentDetailScreen(
         }
     }
 
-    previewSource?.let { source ->
+    previewRequest?.let { request ->
         FullScreenSourcePreviewDialog(
-            source = source,
+            request = request,
             appFileStorage = appFileStorage,
-            onDismiss = { selectedPreviewSourceId = null },
+            onDismiss = { previewRequest = null },
         )
     }
 }
@@ -869,7 +874,7 @@ private fun DocumentSummaryCard(
 private fun DocumentDetailHeader(
     detail: DocumentDetail,
     appFileStorage: AppFileStorage,
-    onOpenSourcePreview: (String) -> Unit,
+    onOpenSourcePreview: (SourcePreviewRequest) -> Unit,
 ) {
     val previewSources = remember(detail.sources) { previewableImageSources(detail.sources) }
 
@@ -925,7 +930,7 @@ private fun DocumentDetailHeader(
 private fun SourcePreviewGrid(
     sources: List<DocumentSourceEntity>,
     appFileStorage: AppFileStorage,
-    onOpenSourcePreview: (String) -> Unit,
+    onOpenSourcePreview: (SourcePreviewRequest) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         sources.chunked(3).forEach { rowSources ->
@@ -940,7 +945,12 @@ private fun SourcePreviewGrid(
                         SourcePreviewTile(
                             source = source,
                             appFileStorage = appFileStorage,
-                            onClick = { onOpenSourcePreview(source.sourceId) },
+                            previewPage = null,
+                            onClick = {
+                                onOpenSourcePreview(
+                                    SourcePreviewRequest(source = source),
+                                )
+                            },
                         )
                     }
                 }
@@ -956,10 +966,16 @@ private fun SourcePreviewGrid(
 private fun SourcePreviewTile(
     source: DocumentSourceEntity,
     appFileStorage: AppFileStorage,
+    previewPage: Int?,
     onClick: () -> Unit,
 ) {
     val file = remember(source.relativePath, appFileStorage) { appFileStorage.resolveFile(source.relativePath) }
-    val previewBitmap = rememberDecodedImageBitmap(file = file, maxDimension = 320)
+    val previewBitmap = rememberSourceThumbnailBitmap(
+        file = file,
+        mimeType = source.mimeType,
+        page = previewPage,
+        maxDimension = 320,
+    )
 
     Surface(
         modifier = Modifier
@@ -982,11 +998,24 @@ private fun SourcePreviewTile(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    text = source.fileName.take(10),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Column(
+                    modifier = Modifier.padding(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        text = if (source.mimeType == "application/pdf") "PDF" else source.fileName.take(10),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    previewPage?.let { page ->
+                        Text(
+                            text = "Page $page",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
             }
         }
     }
@@ -994,11 +1023,20 @@ private fun SourcePreviewTile(
 
 @Composable
 private fun FullScreenSourcePreviewDialog(
-    source: DocumentSourceEntity,
+    request: SourcePreviewRequest,
     appFileStorage: AppFileStorage,
     onDismiss: () -> Unit,
 ) {
+    val source = request.source
     val file = remember(source.relativePath, appFileStorage) { appFileStorage.resolveFile(source.relativePath) }
+    var currentPage by rememberSaveable(source.sourceId, request.focusPage) {
+        mutableStateOf(request.focusPage?.coerceAtLeast(1) ?: 1)
+    }
+    val pdfPreview = rememberPdfPagePreview(
+        file = file,
+        page = currentPage,
+        maxDimension = 2048,
+    )
     val imageBitmap = rememberDecodedImageBitmap(file = file, maxDimension = 2048)
 
     Dialog(
@@ -1012,35 +1050,142 @@ private fun FullScreenSourcePreviewDialog(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .clickable(onClick = onDismiss),
             ) {
-                if (imageBitmap != null) {
-                    androidx.compose.foundation.Image(
-                        bitmap = imageBitmap,
-                        contentDescription = source.fileName,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Fit,
-                    )
+                if (source.mimeType == "application/pdf") {
+                    if (pdfPreview.bitmap != null) {
+                        androidx.compose.foundation.Image(
+                            bitmap = pdfPreview.bitmap,
+                            contentDescription = source.fileName,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Fit,
+                        )
+                    } else {
+                        PreviewUnavailableState()
+                    }
                 } else {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
+                    if (imageBitmap != null) {
+                        androidx.compose.foundation.Image(
+                            bitmap = imageBitmap,
+                            contentDescription = source.fileName,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Fit,
+                        )
+                    } else {
+                        PreviewUnavailableState()
+                    }
+                }
+
+                PreviewContextOverlay(
+                    request = request,
+                    pdfPageCount = pdfPreview.pageCount,
+                    currentPage = currentPage,
+                    onPreviousPage = {
+                        currentPage = (currentPage - 1).coerceAtLeast(1)
+                    },
+                    onNextPage = {
+                        currentPage = (currentPage + 1).coerceAtMost(pdfPreview.pageCount)
+                    },
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 20.dp, start = 16.dp, end = 16.dp),
+                    onClose = onDismiss,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PreviewUnavailableState() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = "Preview unavailable",
+            style = MaterialTheme.typography.titleMedium,
+            color = Color.White,
+        )
+    }
+}
+
+@Composable
+private fun PreviewContextOverlay(
+    request: SourcePreviewRequest,
+    pdfPageCount: Int,
+    currentPage: Int,
+    onPreviousPage: () -> Unit,
+    onNextPage: () -> Unit,
+    modifier: Modifier = Modifier,
+    onClose: () -> Unit,
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xCC101820),
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    Text(
+                        text = request.source.fileName,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = Color.White,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    val contextLabels = buildList {
+                        request.focusPage?.let { add("Related page $it") }
+                        if (request.source.mimeType == "application/pdf") {
+                            add("Viewing page $currentPage/$pdfPageCount")
+                        }
+                    }
+                    if (contextLabels.isNotEmpty()) {
                         Text(
-                            text = "Preview unavailable",
-                            style = MaterialTheme.typography.titleMedium,
+                            text = contextLabels.joinToString(" | "),
+                            style = MaterialTheme.typography.bodySmall,
                             color = Color.White,
                         )
                     }
                 }
-
-                TextButton(
-                    onClick = onDismiss,
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(20.dp),
-                ) {
+                TextButton(onClick = onClose) {
                     Text("Close", color = Color.White)
+                }
+            }
+            request.focusText?.takeIf { it.isNotBlank() }?.let { focusText ->
+                Text(
+                    text = "Related text: $focusText",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White,
+                )
+            }
+            if (request.source.mimeType == "application/pdf" && pdfPageCount > 1) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    TextButton(
+                        onClick = onPreviousPage,
+                        enabled = currentPage > 1,
+                    ) {
+                        Text("Prev", color = Color.White)
+                    }
+                    TextButton(
+                        onClick = onNextPage,
+                        enabled = currentPage < pdfPageCount,
+                    ) {
+                        Text("Next", color = Color.White)
+                    }
                 }
             }
         }
@@ -1118,6 +1263,8 @@ private fun EventSectionContent(
 @Composable
 private fun ServiceItemsCard(
     detail: DocumentDetail,
+    appFileStorage: AppFileStorage,
+    onOpenSourcePreview: (SourcePreviewRequest) -> Unit,
 ) {
     val serviceItemModels = remember(detail) { resolveServiceItemDisplayModels(detail) }
 
@@ -1141,7 +1288,11 @@ private fun ServiceItemsCard(
                 )
             } else {
                 serviceItemModels.forEach { model ->
-                    ServiceItemRow(model = model)
+                    ServiceItemRow(
+                        model = model,
+                        appFileStorage = appFileStorage,
+                        onOpenSourcePreview = onOpenSourcePreview,
+                    )
                 }
             }
         }
@@ -1151,6 +1302,8 @@ private fun ServiceItemsCard(
 @Composable
 private fun ServiceItemRow(
     model: ServiceItemDisplayModel,
+    appFileStorage: AppFileStorage,
+    onOpenSourcePreview: (SourcePreviewRequest) -> Unit,
 ) {
     var isExpanded by rememberSaveable(model.serviceItem.serviceItemId) { mutableStateOf(false) }
     val serviceItem = model.serviceItem
@@ -1240,6 +1393,30 @@ private fun ServiceItemRow(
                                 Text(
                                     text = citation,
                                     style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
+                        }
+                        model.linkedSource?.let { linkedSource ->
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Linked Source",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            Box(modifier = Modifier.size(96.dp)) {
+                                SourcePreviewTile(
+                                    source = linkedSource,
+                                    appFileStorage = appFileStorage,
+                                    previewPage = serviceItem.sourcePage,
+                                    onClick = {
+                                        onOpenSourcePreview(
+                                            SourcePreviewRequest(
+                                                source = linkedSource,
+                                                focusPage = serviceItem.sourcePage,
+                                                focusText = model.linkedLineItem?.evidenceText ?: model.linkedLineItem?.valueText,
+                                            ),
+                                        )
+                                    },
                                 )
                             }
                         }
@@ -1494,16 +1671,29 @@ private fun lineItemCitationText(fact: DocumentFactEntity): String? {
 internal data class ServiceItemDisplayModel(
     val serviceItem: ServiceItemEntity,
     val linkedLineItem: DocumentFactEntity?,
+    val linkedSource: DocumentSourceEntity?,
 )
 
 internal fun resolveServiceItemDisplayModels(detail: DocumentDetail): List<ServiceItemDisplayModel> {
     val rawLineItems = detail.facts.filter { it.factType.trim().uppercase() == "LINE_ITEM" }
+    val sourcesById = detail.sources.associateBy { it.sourceId }
     return detail.serviceItems.map { serviceItem ->
+        val linkedLineItem = resolveLinkedLineItem(serviceItem, rawLineItems)
         ServiceItemDisplayModel(
             serviceItem = serviceItem,
-            linkedLineItem = resolveLinkedLineItem(serviceItem, rawLineItems),
+            linkedLineItem = linkedLineItem,
+            linkedSource = resolveLinkedSource(serviceItem, linkedLineItem, sourcesById),
         )
     }
+}
+
+private fun resolveLinkedSource(
+    serviceItem: ServiceItemEntity,
+    linkedLineItem: DocumentFactEntity?,
+    sourcesById: Map<String, DocumentSourceEntity>,
+): DocumentSourceEntity? {
+    val sourceId = serviceItem.sourceId ?: linkedLineItem?.sourceId ?: return null
+    return sourcesById[sourceId]
 }
 
 private fun resolveLinkedLineItem(
@@ -1592,6 +1782,55 @@ internal fun previewableImageSources(
     source.mimeType.startsWith("image/")
 }
 
+private data class PdfPagePreview(
+    val bitmap: androidx.compose.ui.graphics.ImageBitmap?,
+    val pageCount: Int,
+)
+
+private data class SourcePreviewRequest(
+    val source: DocumentSourceEntity,
+    val focusPage: Int? = null,
+    val focusText: String? = null,
+)
+
+@Composable
+private fun rememberSourceThumbnailBitmap(
+    file: File,
+    mimeType: String,
+    page: Int?,
+    maxDimension: Int,
+): androidx.compose.ui.graphics.ImageBitmap? = produceState(
+    initialValue = null as androidx.compose.ui.graphics.ImageBitmap?,
+    file.absolutePath,
+    mimeType,
+    page,
+    maxDimension,
+) {
+    value = withContext(Dispatchers.IO) {
+        if (mimeType == "application/pdf") {
+            decodePdfPageBitmap(file, page ?: 1, maxDimension)?.asImageBitmap()
+        } else {
+            decodeScaledBitmap(file, maxDimension)?.asImageBitmap()
+        }
+    }
+}.value
+
+@Composable
+private fun rememberPdfPagePreview(
+    file: File,
+    page: Int,
+    maxDimension: Int,
+) = produceState(
+    initialValue = PdfPagePreview(bitmap = null, pageCount = 0),
+    key1 = file.absolutePath,
+    key2 = page,
+    key3 = maxDimension,
+) {
+    value = withContext(Dispatchers.IO) {
+        decodePdfPagePreview(file, page, maxDimension)
+    }
+}.value
+
 private fun decodeScaledBitmap(
     file: File,
     maxDimension: Int,
@@ -1616,6 +1855,70 @@ private fun decodeScaledBitmap(
     return runCatching {
         BitmapFactory.decodeFile(file.absolutePath, options)
     }.getOrNull()
+}
+
+private fun decodePdfPagePreview(
+    file: File,
+    page: Int,
+    maxDimension: Int,
+): PdfPagePreview {
+    if (!file.exists()) {
+        return PdfPagePreview(bitmap = null, pageCount = 0)
+    }
+    return runCatching {
+        ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY).use { descriptor ->
+            PdfRenderer(descriptor).use { renderer ->
+                if (renderer.pageCount == 0) {
+                    return@runCatching PdfPagePreview(bitmap = null, pageCount = 0)
+                }
+                val clampedPage = page.coerceIn(1, renderer.pageCount)
+                val bitmap = renderer.openPage(clampedPage - 1).use { pdfPage ->
+                    renderPdfPage(pdfPage, maxDimension)?.asImageBitmap()
+                }
+                PdfPagePreview(bitmap = bitmap, pageCount = renderer.pageCount)
+            }
+        }
+    }.getOrElse {
+        PdfPagePreview(bitmap = null, pageCount = 0)
+    }
+}
+
+private fun decodePdfPageBitmap(
+    file: File,
+    page: Int,
+    maxDimension: Int,
+): Bitmap? {
+    if (!file.exists()) {
+        return null
+    }
+    return runCatching {
+        ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY).use { descriptor ->
+            PdfRenderer(descriptor).use { renderer ->
+                if (renderer.pageCount == 0) {
+                    return@runCatching null
+                }
+                val clampedPage = page.coerceIn(1, renderer.pageCount)
+                renderer.openPage(clampedPage - 1).use { pdfPage ->
+                    renderPdfPage(pdfPage, maxDimension)
+                }
+            }
+        }
+    }.getOrNull()
+}
+
+private fun renderPdfPage(
+    page: PdfRenderer.Page,
+    maxDimension: Int,
+): Bitmap? {
+    if (page.width <= 0 || page.height <= 0) {
+        return null
+    }
+    val scale = (maxDimension.toFloat() / maxOf(page.width, page.height).toFloat()).coerceAtMost(1f)
+    val width = (page.width * scale).toInt().coerceAtLeast(1)
+    val height = (page.height * scale).toInt().coerceAtLeast(1)
+    return Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).also { bitmap ->
+        page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+    }
 }
 
 private fun calculateInSampleSize(

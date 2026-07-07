@@ -1,6 +1,5 @@
 package org.vliux.orca.ui.theme
 
-import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -12,32 +11,42 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
+    primary = SkyBlue80,
+    onPrimary = SkyBlue20,
+    secondary = TealBlue80,
+    onSecondary = TealBlue20,
+    tertiary = CoralAccent80,
+    onTertiary = CoralAccent20,
+    background = BackgroundDark,
+    onBackground = SurfaceLight,
+    surface = SurfaceDark,
+    onSurface = SurfaceLight,
+    surfaceVariant = SurfaceVariantDark,
+    onSurfaceVariant = SkyBlue80,
+    outline = OutlineDark
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+    primary = SkyBlue40,
+    onPrimary = SurfaceLight,
+    secondary = TealBlue40,
+    onSecondary = SurfaceLight,
+    tertiary = CoralAccent40,
+    onTertiary = SurfaceLight,
+    background = BackgroundLight,
+    onBackground = TealBlue20,
+    surface = SurfaceLight,
+    onSurface = TealBlue20,
+    surfaceVariant = SurfaceVariantLight,
+    onSurfaceVariant = TealBlue40,
+    outline = OutlineLight
 )
 
 @Composable
 fun OrcaTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {

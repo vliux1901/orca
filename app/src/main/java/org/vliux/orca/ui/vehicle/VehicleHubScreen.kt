@@ -24,6 +24,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -157,7 +158,11 @@ private fun VehicleListScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = onCreateVehicle) {
+            FloatingActionButton(
+                onClick = onCreateVehicle,
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+            ) {
                 Text(
                     text = "+",
                     style = MaterialTheme.typography.headlineMedium,
@@ -607,7 +612,10 @@ private fun VehicleTopBar(
 private fun EmptyVehicleState(
     onCreateVehicle: () -> Unit,
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = vehicleCardColors(),
+    ) {
         Column(
             modifier = Modifier.padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -637,6 +645,7 @@ private fun VehicleSummaryCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onOpenVehicle),
+        colors = vehicleCardColors(),
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -684,7 +693,10 @@ private fun VehicleDetailHeaderCard(
     vehicle: VehicleEntity,
     extractionConfigured: Boolean,
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = vehicleCardColors(),
+    ) {
         Column(
             modifier = Modifier.padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -725,7 +737,10 @@ private fun VehicleDetailHeaderCard(
 private fun EmptyDocumentState(
     onImport: () -> Unit,
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = vehicleCardColors(),
+    ) {
         Column(
             modifier = Modifier.padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -755,6 +770,7 @@ private fun DocumentSummaryCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onOpenDocument),
+        colors = vehicleCardColors(),
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -799,7 +815,10 @@ private fun DocumentSummaryCard(
 private fun DocumentDetailHeader(
     detail: DocumentDetail,
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = vehicleCardColors(),
+    ) {
         Column(
             modifier = Modifier.padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -831,7 +850,10 @@ private fun DocumentDetailHeader(
 private fun SourceFilesCard(
     detail: DocumentDetail,
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = vehicleCardColors(),
+    ) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -855,7 +877,10 @@ private fun SourceFilesCard(
 private fun PlaceholderFactsCard(
     detail: DocumentDetail,
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = vehicleCardColors(),
+    ) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -886,7 +911,10 @@ private fun PlaceholderFactsCard(
 private fun PlaceholderEventCard(
     detail: DocumentDetail,
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = vehicleCardColors(),
+    ) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -916,7 +944,10 @@ private fun PlaceholderEventCard(
 private fun PlaceholderServiceItemsCard(
     detail: DocumentDetail,
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = vehicleCardColors(),
+    ) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -966,7 +997,10 @@ private fun MissingEntityCard(
     title: String,
     message: String,
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = vehicleCardColors(),
+    ) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -988,7 +1022,10 @@ private fun MissingEntityCard(
 private fun ErrorCard(
     message: String,
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = vehicleCardColors(),
+    ) {
         Text(
             text = message,
             modifier = Modifier.padding(16.dp),
@@ -1003,7 +1040,10 @@ private fun InfoCard(
     title: String,
     message: String,
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = vehicleCardColors(),
+    ) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -1022,11 +1062,19 @@ private fun InfoCard(
 }
 
 @Composable
+private fun vehicleCardColors() = CardDefaults.cardColors(
+    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+)
+
+@Composable
 private fun VehicleForm(
     draft: VehicleFormDraft,
     onDraftChange: (VehicleFormDraft) -> Unit,
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = vehicleCardColors(),
+    ) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),

@@ -20,6 +20,7 @@ interface DocumentStore {
     suspend fun insertExtractionRun(run: ExtractionRunEntity)
     suspend fun insertFacts(facts: List<DocumentFactEntity>)
     suspend fun insertEvent(event: MaintenanceEventEntity)
+    suspend fun updateEvent(event: MaintenanceEventEntity)
     suspend fun insertServiceItems(items: List<ServiceItemEntity>)
     suspend fun insertSearchEntries(entries: List<SearchEntryEntity>)
 

@@ -33,6 +33,30 @@ interface DocumentDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertEvent(event: MaintenanceEventEntity)
 
+    @Query(
+        """
+        UPDATE maintenance_events
+        SET eventDate = :eventDate,
+            mileage = :mileage,
+            shopName = :shopName,
+            totalCostMinor = :totalCostMinor,
+            currencyCode = :currencyCode,
+            status = :status,
+            updatedAt = :updatedAt
+        WHERE eventId = :eventId
+        """,
+    )
+    suspend fun updateEvent(
+        eventId: String,
+        eventDate: LocalDate?,
+        mileage: Int?,
+        shopName: String?,
+        totalCostMinor: Long?,
+        currencyCode: String?,
+        status: String,
+        updatedAt: Instant,
+    )
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertServiceItems(items: List<ServiceItemEntity>)
 

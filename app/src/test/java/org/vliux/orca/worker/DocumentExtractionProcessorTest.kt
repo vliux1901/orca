@@ -338,6 +338,15 @@ private class ProcessorDocumentStore(
     }
 
     override suspend fun insertEvent(event: MaintenanceEventEntity) {
+        events[event.documentId]?.takeIf { it.eventId == event.eventId }?.let { existingEvent ->
+            serviceItems.remove(existingEvent.eventId)
+            serviceItemFlow(existingEvent.eventId).value = emptyList()
+        }
+        events[event.documentId] = event
+        eventFlow(event.documentId).value = event
+    }
+
+    override suspend fun updateEvent(event: MaintenanceEventEntity) {
         events[event.documentId] = event
         eventFlow(event.documentId).value = event
     }

@@ -338,6 +338,44 @@ class DocumentRepositoryCreateDocumentTest {
     }
 
     @Test
+    fun updateServiceItemPreservesOtherServiceItems() = runTest {
+        val rootDir = createTempDirectory(prefix = "orca-files-").toFile()
+        try {
+            val store = InMemoryDocumentStore(knownVehicleIds = setOf("vehicle-123"))
+            val repository = DocumentRepository(
+                store = store,
+                fileStorage = AppFileStorage(rootDir) { error("Uri path should not be used in prepared-import tests.") },
+            )
+            val rebuilder = DocumentDerivedStateRebuilder(store = store, searchIndexBuilder = SearchIndexBuilder())
+            val serviceItemRepository = ServiceItemRepository(store = store, derivedStateRebuilder = rebuilder)
+            val documentId = repository.createDocument(
+                vehicleId = "vehicle-123",
+                imports = listOf(preparedImport("receipt.png", "image/png", byteArrayOf(1, 2, 3), rootDir)),
+            )
+            seedCorrectionState(store, documentId, "vehicle-123", includeSecondServiceItem = true)
+
+            serviceItemRepository.updateServiceItem(
+                documentId = documentId,
+                serviceItemId = "service-1",
+                request = SaveServiceItemRequest(
+                    label = "Rear brake pads",
+                    category = "brakes",
+                    notes = "Corrected item label",
+                    costText = "189.50",
+                ),
+            )
+
+            val remaining = store.getServiceItems("event-1")
+
+            assertEquals(2, remaining.size)
+            assertTrue(remaining.any { it.serviceItemId == "service-1" && it.label == "Rear brake pads" })
+            assertTrue(remaining.any { it.serviceItemId == "service-2" && it.label == "Brake fluid flush" })
+        } finally {
+            rootDir.deleteRecursively()
+        }
+    }
+
+    @Test
     fun deleteServiceItemRemovesCanonicalRowAndRebuildsSearch() = runTest {
         val rootDir = createTempDirectory(prefix = "orca-files-").toFile()
         try {
@@ -481,6 +519,7 @@ class DocumentRepositoryCreateDocumentTest {
         store: InMemoryDocumentStore,
         documentId: String,
         vehicleId: String,
+        includeSecondServiceItem: Boolean = false,
     ) {
         val now = Instant.parse("2026-07-01T00:00:00Z")
         val shopFact = DocumentFactEntity(
@@ -548,17 +587,35 @@ class DocumentRepositoryCreateDocumentTest {
             sourcePage = 1,
             createdAt = now,
         )
+        val secondItem = ServiceItemEntity(
+            serviceItemId = "service-2",
+            eventId = "event-1",
+            category = "FLUIDS",
+            label = "Brake fluid flush",
+            notes = null,
+            costMinor = 8500,
+            currencyCode = "USD",
+            sourceId = "source-001",
+            sourcePage = 1,
+            createdAt = now,
+        )
+        val serviceItems = buildList {
+            add(item)
+            if (includeSecondServiceItem) {
+                add(secondItem)
+            }
+        }
         store.inTransaction {
             insertFacts(listOf(shopFact, totalCostFact))
             insertEvent(event)
-            insertServiceItems(listOf(item))
+            insertServiceItems(serviceItems)
             insertSearchEntries(
                 SearchIndexBuilder().build(
                     document = requireNotNull(getDocument(documentId)),
                     title = getDocument(documentId)?.title,
                     facts = listOf(shopFact, totalCostFact),
                     event = event,
-                    serviceItems = listOf(item),
+                    serviceItems = serviceItems,
                     createdAt = now,
                 ),
             )
@@ -619,6 +676,15 @@ private class InMemoryDocumentStore(
     }
 
     override suspend fun insertEvent(event: MaintenanceEventEntity) {
+        events[event.documentId]?.takeIf { it.eventId == event.eventId }?.let { existingEvent ->
+            serviceItems.remove(existingEvent.eventId)
+            serviceItemFlow(existingEvent.eventId).value = emptyList()
+        }
+        events[event.documentId] = event
+        eventFlow(event.documentId).value = event
+    }
+
+    override suspend fun updateEvent(event: MaintenanceEventEntity) {
         events[event.documentId] = event
         eventFlow(event.documentId).value = event
     }

@@ -26,6 +26,16 @@ class RoomDocumentStore(
     override suspend fun insertExtractionRun(run: ExtractionRunEntity) = dao.insertExtractionRun(run)
     override suspend fun insertFacts(facts: List<DocumentFactEntity>) = dao.insertFacts(facts)
     override suspend fun insertEvent(event: MaintenanceEventEntity) = dao.insertEvent(event)
+    override suspend fun updateEvent(event: MaintenanceEventEntity) = dao.updateEvent(
+        eventId = event.eventId,
+        eventDate = event.eventDate,
+        mileage = event.mileage,
+        shopName = event.shopName,
+        totalCostMinor = event.totalCostMinor,
+        currencyCode = event.currencyCode,
+        status = event.status,
+        updatedAt = event.updatedAt,
+    )
     override suspend fun insertServiceItems(items: List<ServiceItemEntity>) = dao.insertServiceItems(items)
     override suspend fun insertSearchEntries(entries: List<SearchEntryEntity>) = dao.insertSearchEntries(entries)
     override suspend fun deleteFactsByDocument(documentId: String) = dao.deleteFactsByDocument(documentId)

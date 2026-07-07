@@ -44,6 +44,7 @@ class DocumentDerivedStateRebuilder(
         store.inTransaction {
             when {
                 rebuiltEvent == null && existingEvent != null -> deleteEventByDocument(documentId)
+                rebuiltEvent != null && existingEvent != null -> updateEvent(rebuiltEvent)
                 rebuiltEvent != null -> insertEvent(rebuiltEvent)
             }
             deleteSearchEntriesByDocument(documentId)

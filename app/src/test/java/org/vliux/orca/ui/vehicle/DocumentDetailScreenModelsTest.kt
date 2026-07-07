@@ -155,6 +155,21 @@ class DocumentDetailScreenModelsTest {
         assertTrue(documentDeleteConfirmationMessage(null).contains("This cannot be undone."))
     }
 
+    @Test
+    fun correctionFieldsFallbackToEventValuesWhenFactsAreMissing() {
+        val detail = documentDetail(
+            facts = emptyList(),
+            serviceItems = emptyList(),
+        )
+
+        val fields = correctionFields(detail)
+
+        assertEquals("2026-05-01", fields.first { it.factType == "SERVICE_DATE" }.editableValue)
+        assertEquals("120000", fields.first { it.factType == "ODOMETER" }.editableValue)
+        assertEquals("Town Tire", fields.first { it.factType == "SHOP_NAME" }.editableValue)
+        assertEquals("259.99", fields.first { it.factType == "TOTAL_COST" }.editableValue)
+    }
+
     private fun documentDetail(
         sources: List<DocumentSourceEntity> = emptyList(),
         facts: List<DocumentFactEntity>,
@@ -212,6 +227,7 @@ class DocumentDetailScreenModelsTest {
         sourcePage = sourcePage,
         evidenceText = valueText,
         reviewWarning = null,
+        userNote = null,
         confidence = 0.9,
         isUserEdited = false,
         replacesFactId = null,

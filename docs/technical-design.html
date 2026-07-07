@@ -434,6 +434,8 @@ files/vehicles/{vehicleId}/documents/{documentId}/sources/source-003.{ext}</code
               <li class="block" data-block-id="ops-2e">Allow document deletion directly from document detail, with a confirmation prompt and the existing repository-backed cascade cleanup of source files and related rows.</li>
               <li class="block" data-block-id="ops-2c">Show imported image-source thumbnails inside the document summary card in a simple grid, and allow tap-to-open full-screen review of the selected source image.</li>
               <li class="block" data-block-id="ops-2d">Show each service item's linked source file as a compact preview tile. Opening that tile should focus the related source page and evidence text when known, but V1 does not promise exact visual highlight regions inside the image or PDF.</li>
+              <li class="block" data-block-id="ops-2f">Expose correction controls in document detail for service date, mileage, vendor, and total cost. Saving one of those edits creates a user-verified replacement fact and rebuilds the effective event/search state.</li>
+              <li class="block" data-block-id="ops-2g">Allow in-place editing of extracted service items from document detail. In V1 those edits rewrite the canonical service-item row, mark the parent event as user-verified, and keep the linked source evidence visible for review.</li>
               <li class="block" data-block-id="ops-3">Disclose when cloud AI was used to process a document.</li>
               <li class="block" data-block-id="ops-4">Fail safely on provider errors, malformed responses, render failures, and unsupported file types.</li>
             </ul>

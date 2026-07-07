@@ -77,6 +77,10 @@ import kotlinx.coroutines.withContext
 import org.vliux.orca.R
 import org.vliux.orca.data.DocumentRepository
 import org.vliux.orca.data.DocumentDetail
+import org.vliux.orca.data.FactReplacement
+import org.vliux.orca.data.FactRepository
+import org.vliux.orca.data.SaveServiceItemRequest
+import org.vliux.orca.data.ServiceItemRepository
 import org.vliux.orca.data.VehicleRepository
 import org.vliux.orca.data.model.DocumentListItem
 import org.vliux.orca.data.model.DocumentSourceEntity
@@ -93,6 +97,8 @@ fun VehicleHubScreen(
     documentRepository: DocumentRepository,
     documentExtractionScheduler: DocumentExtractionScheduler,
     appFileStorage: AppFileStorage,
+    factRepository: FactRepository,
+    serviceItemRepository: ServiceItemRepository,
     modifier: Modifier = Modifier,
 ) {
     var route by remember { mutableStateOf<VehicleRoute>(VehicleRoute.List) }
@@ -139,6 +145,8 @@ fun VehicleHubScreen(
         is VehicleRoute.DocumentDetail -> DocumentDetailScreen(
             documentRepository = documentRepository,
             appFileStorage = appFileStorage,
+            factRepository = factRepository,
+            serviceItemRepository = serviceItemRepository,
             modifier = modifier,
             vehicleId = currentRoute.vehicleId,
             documentId = currentRoute.documentId,
@@ -424,6 +432,8 @@ private fun VehicleDetailScreen(
 private fun DocumentDetailScreen(
     documentRepository: DocumentRepository,
     appFileStorage: AppFileStorage,
+    factRepository: FactRepository,
+    serviceItemRepository: ServiceItemRepository,
     vehicleId: String,
     documentId: String,
     onBack: () -> Unit,
@@ -438,6 +448,7 @@ private fun DocumentDetailScreen(
     var showDeleteConfirmation by remember(documentId) { mutableStateOf(false) }
     var isDeleting by remember(documentId) { mutableStateOf(false) }
     var deleteError by remember(documentId) { mutableStateOf<String?>(null) }
+    var saveMessage by remember(documentId) { mutableStateOf<String?>(null) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -472,6 +483,12 @@ private fun DocumentDetailScreen(
                 }
             }
 
+            saveMessage?.let { message ->
+                item {
+                    InfoCard(title = "Saved", message = message)
+                }
+            }
+
             item {
                 if (detail == null) {
                     MissingEntityCard(
@@ -489,10 +506,41 @@ private fun DocumentDetailScreen(
 
             detail?.let { loadedDetail ->
                 item {
+                    CorrectionCard(
+                        detail = loadedDetail,
+                        onSaveFact = { factType, replacedFactId, valueText, note ->
+                            factRepository.replaceFact(
+                                documentId = loadedDetail.document.documentId,
+                                replacedFactId = replacedFactId,
+                                replacement = FactReplacement(
+                                    factType = factType,
+                                    valueText = valueText,
+                                    note = note,
+                                ),
+                            )
+                            saveMessage = "Saved $factType correction."
+                        },
+                    )
+                }
+                item {
                     ServiceItemsCard(
                         detail = loadedDetail,
                         appFileStorage = appFileStorage,
                         onOpenSourcePreview = { previewRequest = it },
+                        onSaveServiceItem = { serviceItemId, request ->
+                            serviceItemRepository.updateServiceItem(
+                                documentId = loadedDetail.document.documentId,
+                                serviceItemId = serviceItemId,
+                                request = request,
+                            )
+                            saveMessage = "Saved service item correction."
+                        },
+                    )
+                }
+                item {
+                    Text(
+                        text = "All corrections preserve extracted fact history. Active corrected values become the effective review state.",
+                        style = MaterialTheme.typography.bodySmall,
                     )
                 }
                 item {
@@ -1280,6 +1328,149 @@ private fun SourceFilesSectionContent(
 }
 
 @Composable
+private fun CorrectionCard(
+    detail: DocumentDetail,
+    onSaveFact: suspend (factType: String, replacedFactId: String?, valueText: String, note: String?) -> Unit,
+) {
+    val fields = remember(detail) { correctionFields(detail) }
+    val scope = rememberCoroutineScope()
+    var editingFactType by rememberSaveable(detail.document.documentId) { mutableStateOf<String?>(null) }
+    var draftValue by rememberSaveable(detail.document.documentId) { mutableStateOf("") }
+    var draftNote by rememberSaveable(detail.document.documentId) { mutableStateOf("") }
+    var isSaving by rememberSaveable(detail.document.documentId) { mutableStateOf(false) }
+    var saveError by rememberSaveable(detail.document.documentId) { mutableStateOf<String?>(null) }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = vehicleCardColors(),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                text = "Corrections",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = "Correct service date, mileage, vendor, or total cost. Saving creates a verified replacement fact without deleting extraction history.",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            saveError?.let { message ->
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+            fields.forEach { field ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                    ),
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                Text(
+                                    text = field.label,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                                Text(
+                                    text = field.currentValue ?: "Not set yet",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                            }
+                            TextButton(
+                                onClick = {
+                                    editingFactType = field.factType
+                                    draftValue = field.editableValue ?: ""
+                                    draftNote = ""
+                                    saveError = null
+                                },
+                            ) {
+                                Text(if (editingFactType == field.factType) "Editing" else "Edit")
+                            }
+                        }
+                        if (editingFactType == field.factType) {
+                            OutlinedTextField(
+                                value = draftValue,
+                                onValueChange = {
+                                    draftValue = it
+                                    saveError = null
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                label = { Text(field.label) },
+                            )
+                            OutlinedTextField(
+                                value = draftNote,
+                                onValueChange = { draftNote = it },
+                                modifier = Modifier.fillMaxWidth(),
+                                label = { Text("Correction Note (optional)") },
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End,
+                            ) {
+                                TextButton(
+                                    onClick = {
+                                        editingFactType = null
+                                        draftValue = ""
+                                        draftNote = ""
+                                        saveError = null
+                                    },
+                                    enabled = !isSaving,
+                                ) {
+                                    Text("Cancel")
+                                }
+                                Button(
+                                    onClick = {
+                                        isSaving = true
+                                        scope.launch {
+                                            runCatching {
+                                                onSaveFact(
+                                                    field.factType,
+                                                    field.replacedFactId,
+                                                    draftValue,
+                                                    draftNote.takeIf { it.isNotBlank() },
+                                                )
+                                            }.onSuccess {
+                                                editingFactType = null
+                                                draftValue = ""
+                                                draftNote = ""
+                                            }.onFailure { error ->
+                                                saveError = error.message ?: "Unable to save correction."
+                                            }
+                                            isSaving = false
+                                        }
+                                    },
+                                    enabled = !isSaving && draftValue.isNotBlank(),
+                                ) {
+                                    Text(if (isSaving) "Saving..." else "Save")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun FactsSectionContent(
     detail: DocumentDetail,
 ) {
@@ -1295,8 +1486,21 @@ private fun FactsSectionContent(
                     text = "${fact.factType}: ${fact.valueText}",
                     style = MaterialTheme.typography.bodyMedium,
                 )
+                if (fact.isUserEdited) {
+                    Text(
+                        text = "User corrected",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
                 fact.reviewWarning?.let { warning ->
                     FactReviewWarning(warning = warning)
+                }
+                fact.userNote?.let { note ->
+                    Text(
+                        text = "Note: $note",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
                 }
                 fact.evidenceText
                     ?.takeIf { it.isNotBlank() && it != fact.valueText }
@@ -1346,6 +1550,7 @@ private fun ServiceItemsCard(
     detail: DocumentDetail,
     appFileStorage: AppFileStorage,
     onOpenSourcePreview: (SourcePreviewRequest) -> Unit,
+    onSaveServiceItem: suspend (serviceItemId: String, request: SaveServiceItemRequest) -> Unit,
 ) {
     val serviceItemModels = remember(detail) { resolveServiceItemDisplayModels(detail) }
 
@@ -1373,6 +1578,7 @@ private fun ServiceItemsCard(
                         model = model,
                         appFileStorage = appFileStorage,
                         onOpenSourcePreview = onOpenSourcePreview,
+                        onSaveServiceItem = onSaveServiceItem,
                     )
                 }
             }
@@ -1385,8 +1591,19 @@ private fun ServiceItemRow(
     model: ServiceItemDisplayModel,
     appFileStorage: AppFileStorage,
     onOpenSourcePreview: (SourcePreviewRequest) -> Unit,
+    onSaveServiceItem: suspend (serviceItemId: String, request: SaveServiceItemRequest) -> Unit,
 ) {
     var isExpanded by rememberSaveable(model.serviceItem.serviceItemId) { mutableStateOf(false) }
+    var isEditing by rememberSaveable(model.serviceItem.serviceItemId) { mutableStateOf(false) }
+    var editLabel by rememberSaveable(model.serviceItem.serviceItemId) { mutableStateOf(model.serviceItem.label) }
+    var editCategory by rememberSaveable(model.serviceItem.serviceItemId) { mutableStateOf(model.serviceItem.category) }
+    var editNotes by rememberSaveable(model.serviceItem.serviceItemId) { mutableStateOf(model.serviceItem.notes.orEmpty()) }
+    var editCost by rememberSaveable(model.serviceItem.serviceItemId) {
+        mutableStateOf(model.serviceItem.costMinor?.let(::formatEditableCost).orEmpty())
+    }
+    var editError by rememberSaveable(model.serviceItem.serviceItemId) { mutableStateOf<String?>(null) }
+    var isSaving by rememberSaveable(model.serviceItem.serviceItemId) { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     val serviceItem = model.serviceItem
 
     Card(
@@ -1430,8 +1647,101 @@ private fun ServiceItemRow(
                         )
                     }
                 }
-                TextButton(onClick = { isExpanded = !isExpanded }) {
-                    Text(if (isExpanded) "Hide line item" else "Show line item")
+                Row {
+                    TextButton(onClick = { isEditing = !isEditing }) {
+                        Text(if (isEditing) "Hide edit" else "Edit")
+                    }
+                    TextButton(onClick = { isExpanded = !isExpanded }) {
+                        Text(if (isExpanded) "Hide line item" else "Show line item")
+                    }
+                }
+            }
+
+            if (isEditing) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    editError?.let { message ->
+                        Text(
+                            text = message,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                    OutlinedTextField(
+                        value = editLabel,
+                        onValueChange = {
+                            editLabel = it
+                            editError = null
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        label = { Text("Service Item") },
+                    )
+                    OutlinedTextField(
+                        value = editCategory,
+                        onValueChange = { editCategory = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        label = { Text("Category") },
+                    )
+                    OutlinedTextField(
+                        value = editNotes,
+                        onValueChange = { editNotes = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Notes") },
+                    )
+                    OutlinedTextField(
+                        value = editCost,
+                        onValueChange = { editCost = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        label = { Text("Cost") },
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                    ) {
+                        TextButton(
+                            onClick = {
+                                isEditing = false
+                                editLabel = serviceItem.label
+                                editCategory = serviceItem.category
+                                editNotes = serviceItem.notes.orEmpty()
+                                editCost = serviceItem.costMinor?.let(::formatEditableCost).orEmpty()
+                                editError = null
+                            },
+                            enabled = !isSaving,
+                        ) {
+                            Text("Cancel")
+                        }
+                        Button(
+                            onClick = {
+                                isSaving = true
+                                scope.launch {
+                                    runCatching {
+                                        onSaveServiceItem(
+                                            serviceItem.serviceItemId,
+                                            SaveServiceItemRequest(
+                                                label = editLabel,
+                                                category = editCategory,
+                                                notes = editNotes.takeIf { it.isNotBlank() },
+                                                costText = editCost.takeIf { it.isNotBlank() },
+                                            ),
+                                        )
+                                    }.onSuccess {
+                                        isEditing = false
+                                    }.onFailure { error ->
+                                        editError = error.message ?: "Unable to save service item."
+                                    }
+                                    isSaving = false
+                                }
+                            },
+                            enabled = !isSaving && editLabel.isNotBlank(),
+                        ) {
+                            Text(if (isSaving) "Saving..." else "Save")
+                        }
+                    }
                 }
             }
 
@@ -1771,6 +2081,12 @@ private fun formatMinorCurrency(
     return "$currency $majorUnits.${minorUnits.toString().padStart(2, '0')}"
 }
 
+private fun formatEditableCost(amountMinor: Long): String {
+    val majorUnits = amountMinor / 100
+    val minorUnits = kotlin.math.abs(amountMinor % 100)
+    return "$majorUnits.${minorUnits.toString().padStart(2, '0')}"
+}
+
 private fun lineItemCitationText(fact: DocumentFactEntity): String? {
     val sourceLabel = fact.sourceId?.takeLast(6)?.let { "Source $it" }
     val pageLabel = fact.sourcePage?.let { "Page $it" }
@@ -1782,6 +2098,51 @@ internal data class ServiceItemDisplayModel(
     val linkedLineItem: DocumentFactEntity?,
     val linkedSource: DocumentSourceEntity?,
 )
+
+internal data class CorrectionFieldModel(
+    val factType: String,
+    val label: String,
+    val currentValue: String?,
+    val editableValue: String?,
+    val replacedFactId: String?,
+)
+
+internal fun correctionFields(detail: DocumentDetail): List<CorrectionFieldModel> {
+    val activeFactsByType = detail.facts.associateBy { it.factType }
+    val event = detail.event
+    return listOf(
+        CorrectionFieldModel(
+            factType = "SERVICE_DATE",
+            label = "Service Date",
+            currentValue = activeFactsByType["SERVICE_DATE"]?.valueText ?: event?.eventDate?.toString(),
+            editableValue = activeFactsByType["SERVICE_DATE"]?.valueText ?: event?.eventDate?.toString(),
+            replacedFactId = activeFactsByType["SERVICE_DATE"]?.factId,
+        ),
+        CorrectionFieldModel(
+            factType = "ODOMETER",
+            label = "Mileage",
+            currentValue = activeFactsByType["ODOMETER"]?.valueText ?: event?.mileage?.toString()?.let { "$it mi" },
+            editableValue = activeFactsByType["ODOMETER"]?.valueText ?: event?.mileage?.toString(),
+            replacedFactId = activeFactsByType["ODOMETER"]?.factId,
+        ),
+        CorrectionFieldModel(
+            factType = "SHOP_NAME",
+            label = "Vendor",
+            currentValue = activeFactsByType["SHOP_NAME"]?.valueText ?: event?.shopName,
+            editableValue = activeFactsByType["SHOP_NAME"]?.valueText ?: event?.shopName,
+            replacedFactId = activeFactsByType["SHOP_NAME"]?.factId,
+        ),
+        CorrectionFieldModel(
+            factType = "TOTAL_COST",
+            label = "Total Cost",
+            currentValue = activeFactsByType["TOTAL_COST"]?.valueText
+                ?: event?.totalCostMinor?.let { formatMinorCurrency(it, event.currencyCode) },
+            editableValue = activeFactsByType["TOTAL_COST"]?.valueText
+                ?: event?.totalCostMinor?.let(::formatEditableCost),
+            replacedFactId = activeFactsByType["TOTAL_COST"]?.factId,
+        ),
+    )
+}
 
 internal fun resolveServiceItemDisplayModels(detail: DocumentDetail): List<ServiceItemDisplayModel> {
     val rawLineItems = detail.facts.filter { it.factType.trim().uppercase() == "LINE_ITEM" }

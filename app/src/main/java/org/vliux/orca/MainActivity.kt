@@ -7,6 +7,8 @@ import androidx.activity.enableEdgeToEdge
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import org.vliux.orca.data.DocumentRepository
+import org.vliux.orca.data.FactRepository
+import org.vliux.orca.data.ServiceItemRepository
 import org.vliux.orca.data.VehicleRepository
 import org.vliux.orca.importing.AppFileStorage
 import org.vliux.orca.ui.theme.OrcaTheme
@@ -27,6 +29,12 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var appFileStorage: AppFileStorage
 
+    @Inject
+    lateinit var factRepository: FactRepository
+
+    @Inject
+    lateinit var serviceItemRepository: ServiceItemRepository
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -37,6 +45,8 @@ class MainActivity : ComponentActivity() {
                     documentRepository = documentRepository,
                     documentExtractionScheduler = documentExtractionScheduler,
                     appFileStorage = appFileStorage,
+                    factRepository = factRepository,
+                    serviceItemRepository = serviceItemRepository,
                 )
             }
         }

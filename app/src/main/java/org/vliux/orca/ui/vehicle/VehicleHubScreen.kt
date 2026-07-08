@@ -346,6 +346,7 @@ private fun VehicleDetailScreen(
     var importError by remember(vehicleId) { mutableStateOf<String?>(null) }
     var importMessage by remember(vehicleId) { mutableStateOf<String?>(null) }
     var isImporting by remember(vehicleId) { mutableStateOf(false) }
+    var actionMenuExpanded by remember(vehicleId) { mutableStateOf(false) }
     val loadedVehicle = screenState.vehicle
 
     val launcher = rememberLauncherForActivityResult(OpenMultipleDocuments()) { uris ->
@@ -382,9 +383,13 @@ private fun VehicleDetailScreen(
                 title = loadedVehicle?.displayName ?: "View Vehicle",
                 onBack = onBack,
                 actionContent = {
-                    TextButton(onClick = onEditVehicle) {
-                        Text("Edit")
-                    }
+                    VehicleDetailActionsMenu(
+                        expanded = actionMenuExpanded,
+                        onExpandedChange = { actionMenuExpanded = it },
+                        onEditVehicle = onEditVehicle,
+                        onImportFiles = { launcher.launch(SUPPORTED_IMPORT_MIME_TYPES) },
+                        isImporting = isImporting,
+                    )
                 },
             )
         },
@@ -406,7 +411,6 @@ private fun VehicleDetailScreen(
                     )
                     else -> VehicleDetailHeaderCard(
                         vehicle = loadedVehicle,
-                        extractionConfigured = documentExtractionScheduler.extractionConfigured,
                     )
                 }
             }
@@ -440,21 +444,8 @@ private fun VehicleDetailScreen(
                 item {
                     SectionHeader(
                         title = "Documents",
-                        subtitle = "Imported files are grouped into one logical document and queued for extraction when configuration is available.",
+                        subtitle = "Imported files are grouped into logical maintenance documents for this vehicle.",
                     )
-                }
-                item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End,
-                    ) {
-                        Button(
-                            onClick = { launcher.launch(SUPPORTED_IMPORT_MIME_TYPES) },
-                            enabled = !isImporting,
-                        ) {
-                            Text(if (isImporting) "Importing..." else "Import Files")
-                        }
-                    }
                 }
 
                 if (!screenState.documentsLoaded) {
@@ -853,6 +844,42 @@ private fun VehicleTopBar(
 }
 
 @Composable
+private fun RowScope.VehicleDetailActionsMenu(
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    onEditVehicle: () -> Unit,
+    onImportFiles: () -> Unit,
+    isImporting: Boolean,
+) {
+    IconButton(onClick = { onExpandedChange(!expanded) }) {
+        Text(
+            text = "\u22ee",
+            style = MaterialTheme.typography.titleLarge,
+        )
+    }
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = { onExpandedChange(false) },
+    ) {
+        DropdownMenuItem(
+            text = { Text("Edit Vehicle") },
+            onClick = {
+                onExpandedChange(false)
+                onEditVehicle()
+            },
+        )
+        DropdownMenuItem(
+            text = { Text(if (isImporting) "Importing..." else "Import Files") },
+            onClick = {
+                onExpandedChange(false)
+                onImportFiles()
+            },
+            enabled = !isImporting,
+        )
+    }
+}
+
+@Composable
 private fun EmptyVehicleState(
     onCreateVehicle: () -> Unit,
 ) {
@@ -935,11 +962,12 @@ private fun VehicleSummaryCard(
 @Composable
 private fun VehicleDetailHeaderCard(
     vehicle: VehicleEntity,
-    extractionConfigured: Boolean,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = vehicleCardColors(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondary,
+        ),
     ) {
         Column(
             modifier = Modifier.padding(20.dp),
@@ -951,29 +979,49 @@ private fun VehicleDetailHeaderCard(
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                text = "${vehicle.year} ${vehicle.make} ${vehicle.model}",
-                style = MaterialTheme.typography.bodyMedium,
+                text = "Vehicle Profile",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSecondary,
+                fontWeight = FontWeight.SemiBold,
             )
-            val metadata = listOfNotNull(
-                vehicle.licensePlate?.takeIf { it.isNotBlank() }?.let { "Plate $it" },
-                vehicle.currentMileage?.let { "$it mi" },
-                vehicle.vin?.takeIf { it.isNotBlank() }?.let { "VIN ${it.takeLast(6)}" },
-            )
-            if (metadata.isNotEmpty()) {
-                Text(
-                    text = metadata.joinToString(" | "),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
             Text(
-                text = if (extractionConfigured) {
-                    "Imports will be queued for background extraction after files are copied into app storage."
-                } else {
-                    "Imports are available now, but background extraction is not configured on this build."
-                },
-                style = MaterialTheme.typography.bodyMedium,
+                text = "${vehicle.year} ${vehicle.make} ${vehicle.model}",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSecondary,
             )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                VehicleProfileChip(
+                    label = vehicle.currentMileage?.let { "$it mi" } ?: "Mileage unknown",
+                )
+                vehicle.licensePlate?.takeIf { it.isNotBlank() }?.let { plate ->
+                    VehicleProfileChip(label = "Plate $plate")
+                }
+                vehicle.vin?.takeIf { it.isNotBlank() }?.let { vin ->
+                    VehicleProfileChip(label = "VIN ${vin.takeLast(6)}")
+                }
+            }
         }
+    }
+}
+
+@Composable
+private fun VehicleProfileChip(
+    label: String,
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.onSecondary.copy(alpha = 0.12f),
+        contentColor = MaterialTheme.colorScheme.onSecondary,
+        shape = MaterialTheme.shapes.small,
+    ) {
+        Text(
+            text = label,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Medium,
+        )
     }
 }
 
@@ -1116,14 +1164,6 @@ private fun DocumentSummaryCard(
                 text = "Updated ${document.updatedAt}",
                 style = MaterialTheme.typography.bodySmall,
             )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-            ) {
-                TextButton(onClick = onOpenDocument) {
-                    Text("Open")
-                }
-            }
         }
     }
 }

@@ -54,6 +54,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -74,6 +75,8 @@ import java.io.File
 import java.time.LocalDate
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -321,24 +324,25 @@ private fun VehicleDetailScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val vehicleState by produceState<VehicleEditorLoadState>(
-        initialValue = VehicleEditorLoadState(isLoading = true, vehicle = null),
-        key1 = vehicleId,
-        key2 = vehicleRepository,
-    ) {
-        value = VehicleEditorLoadState(
-            isLoading = false,
-            vehicle = vehicleRepository.getVehicle(vehicleId),
-        )
-    }
-    val documentFlow = remember(documentRepository, vehicleId) {
-        documentRepository.observeDocumentList(vehicleId)
-    }
-    val documents by documentFlow.collectAsStateWithLifecycle(initialValue = emptyList())
+    val vehicleDetailViewModel: VehicleDetailViewModel = viewModel(
+        key = "vehicleDetail:$vehicleId",
+        factory = remember(vehicleId, vehicleRepository, documentRepository) {
+            viewModelFactory {
+                initializer {
+                    VehicleDetailViewModel(
+                        vehicleId = vehicleId,
+                        observeVehicle = vehicleRepository::observeVehicle,
+                        observeDocuments = documentRepository::observeDocumentList,
+                    )
+                }
+            }
+        },
+    )
+    val screenState by vehicleDetailViewModel.uiState.collectAsStateWithLifecycle()
     var importError by remember(vehicleId) { mutableStateOf<String?>(null) }
     var importMessage by remember(vehicleId) { mutableStateOf<String?>(null) }
     var isImporting by remember(vehicleId) { mutableStateOf(false) }
-    val loadedVehicle = vehicleState.vehicle
+    val loadedVehicle = screenState.vehicle
 
     val launcher = rememberLauncherForActivityResult(OpenMultipleDocuments()) { uris ->
         if (uris.isEmpty()) {
@@ -391,7 +395,7 @@ private fun VehicleDetailScreen(
         ) {
             item {
                 when {
-                    vehicleState.isLoading -> CircularProgressIndicator()
+                    !screenState.vehicleLoaded -> CircularProgressIndicator()
                     loadedVehicle == null -> MissingEntityCard(
                         title = "Vehicle not found.",
                         message = "The selected vehicle could not be loaded from the local database.",
@@ -436,12 +440,16 @@ private fun VehicleDetailScreen(
                     }
                 }
 
-                if (documents.isEmpty()) {
+                if (!screenState.documentsLoaded) {
+                    item {
+                        CircularProgressIndicator()
+                    }
+                } else if (screenState.documents.isEmpty()) {
                     item {
                         EmptyDocumentState(onImport = { launcher.launch(SUPPORTED_IMPORT_MIME_TYPES) })
                     }
                 } else {
-                    items(documents, key = { it.documentId }) { document ->
+                    items(screenState.documents, key = { it.documentId }) { document ->
                         DocumentSummaryCard(
                             document = document,
                             onOpenDocument = { onOpenDocument(document.documentId) },
@@ -464,11 +472,22 @@ private fun DocumentDetailScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val detailFlow = remember(documentRepository, documentId) {
-        documentRepository.observeDocumentDetail(documentId)
-    }
+    val documentDetailViewModel: DocumentDetailViewModel = viewModel(
+        key = "documentDetail:$documentId",
+        factory = remember(documentId, documentRepository) {
+            viewModelFactory {
+                initializer {
+                    DocumentDetailViewModel(
+                        documentId = documentId,
+                        observeDetail = documentRepository::observeDocumentDetail,
+                    )
+                }
+            }
+        },
+    )
     val scope = rememberCoroutineScope()
-    val detail by detailFlow.collectAsStateWithLifecycle(initialValue = null)
+    val screenState by documentDetailViewModel.uiState.collectAsStateWithLifecycle()
+    val detail = screenState.detail
     var previewRequest by remember(documentId) { mutableStateOf<SourcePreviewRequest?>(null) }
     var showDeleteConfirmation by remember(documentId) { mutableStateOf(false) }
     var isDeleting by remember(documentId) { mutableStateOf(false) }
@@ -479,7 +498,7 @@ private fun DocumentDetailScreen(
         modifier = modifier.fillMaxSize(),
         topBar = {
             VehicleTopBar(
-                title = detail?.document?.title ?: "Document Detail",
+                title = detail?.document?.title ?: if (screenState.loaded) "Document Detail" else "Loading Document",
                 onBack = onBack,
                 actionContent = {
                     if (detail != null) {
@@ -515,7 +534,9 @@ private fun DocumentDetailScreen(
             }
 
             item {
-                if (detail == null) {
+                if (!screenState.loaded) {
+                    CircularProgressIndicator()
+                } else if (detail == null) {
                     MissingEntityCard(
                         title = "Document not found.",
                         message = "The selected document could not be loaded from the local database.",
@@ -671,30 +692,29 @@ private fun VehicleEditorScreen(
     modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
-    val loadState by produceState(
-        initialValue = VehicleEditorLoadState(
-            isLoading = vehicleId != null,
-            vehicle = null,
-        ),
-        key1 = vehicleId,
-        key2 = vehicleRepository,
-    ) {
-        value = if (vehicleId == null) {
-            VehicleEditorLoadState(isLoading = false, vehicle = null)
-        } else {
-            VehicleEditorLoadState(
-                isLoading = false,
-                vehicle = vehicleRepository.getVehicle(vehicleId),
-            )
-        }
+    val vehicleEditorViewModel: VehicleEditorViewModel = viewModel(
+        key = "vehicleEditor:${vehicleId ?: "new"}",
+        factory = remember(vehicleId, vehicleRepository) {
+            viewModelFactory {
+                initializer {
+                    VehicleEditorViewModel(
+                        vehicleId = vehicleId,
+                        observeVehicle = vehicleRepository::observeVehicle,
+                    )
+                }
+            }
+        },
+    )
+    val loadState by vehicleEditorViewModel.uiState.collectAsStateWithLifecycle()
+    var formDraft by rememberSaveable(vehicleId, stateSaver = vehicleFormDraftSaver) {
+        mutableStateOf(VehicleFormDraft())
     }
-    var formDraft by remember(vehicleId) { mutableStateOf(VehicleFormDraft()) }
-    var initialized by remember(vehicleId) { mutableStateOf(vehicleId == null) }
+    var initialized by rememberSaveable(vehicleId) { mutableStateOf(vehicleId == null) }
     var isSaving by remember(vehicleId) { mutableStateOf(false) }
     var saveError by remember(vehicleId) { mutableStateOf<String?>(null) }
 
     LaunchedEffect(vehicleId, loadState) {
-        if (!initialized && vehicleId != null && !loadState.isLoading) {
+        if (!initialized && vehicleId != null && loadState.loaded) {
             formDraft = loadState.vehicle?.let(VehicleFormDraft::fromEntity) ?: VehicleFormDraft()
             initialized = true
         }
@@ -725,7 +745,7 @@ private fun VehicleEditorScreen(
                 style = MaterialTheme.typography.bodyMedium,
             )
 
-            if (vehicleId != null && (!initialized || loadState.isLoading)) {
+            if (vehicleId != null && (!initialized || !loadState.loaded)) {
                 CircularProgressIndicator()
             } else if (vehicleId != null && loadState.vehicle == null) {
                 MissingEntityCard(
@@ -2640,9 +2660,30 @@ private fun VehicleRoute.navigateBack(): VehicleRoute = when (this) {
     }
 }
 
-private data class VehicleEditorLoadState(
-    val isLoading: Boolean,
-    val vehicle: VehicleEntity?,
+private val vehicleFormDraftSaver: Saver<VehicleFormDraft, Any> = Saver(
+    save = { draft ->
+        listOf(
+            draft.displayName,
+            draft.make,
+            draft.model,
+            draft.year,
+            draft.licensePlate,
+            draft.vin,
+            draft.currentMileage,
+        )
+    },
+    restore = { restored ->
+        val values = restored as? List<*> ?: return@Saver null
+        VehicleFormDraft(
+            displayName = values.getOrNull(0) as? String ?: "",
+            make = values.getOrNull(1) as? String ?: "",
+            model = values.getOrNull(2) as? String ?: "",
+            year = values.getOrNull(3) as? String ?: "",
+            licensePlate = values.getOrNull(4) as? String ?: "",
+            vin = values.getOrNull(5) as? String ?: "",
+            currentMileage = values.getOrNull(6) as? String ?: "",
+        )
+    },
 )
 
 private data class ImportResult(

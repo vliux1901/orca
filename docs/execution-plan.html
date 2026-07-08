@@ -306,25 +306,35 @@
           </article>
 
           <article class="content-card">
-            <h2>Phase 6: Search And Simple QA</h2>
+            <h2>Phase 6: Vehicle Summary Views</h2>
             <ul>
-              <li class="block" data-block-id="phase6-1">Build keyword search over <code>SearchEntryEntity</code>.</li>
-              <li class="block" data-block-id="phase6-2">Build simple factual QA over stored facts, events, service items, and citations.</li>
-              <li class="block" data-block-id="phase6-3">Return concise answers, dates, mileage, and uncertainty notes when records conflict or are incomplete.</li>
-              <li class="block" data-block-id="phase6-4">Keep V1 QA deterministic where possible and do not expand into open-ended recommendation behavior.</li>
+              <li class="block" data-block-id="phase6-1">Build the Vehicle Detail maintenance summary table from normalized <code>maintenance_events</code> and <code>service_items</code>, showing the most recent known maintenance row per vehicle component.</li>
+              <li class="block" data-block-id="phase6-2">Add the repository and query support needed for that table so the UI can observe a vehicle-scoped derived summary without re-parsing document detail state in Compose.</li>
+              <li class="block" data-block-id="phase6-3">Humanize normalized component categories for display while preserving the canonical stored category values underneath.</li>
             </ul>
-            <p class="block" data-block-id="phase6-5">Exit criteria: supported factual questions return grounded answers with citations and explicit uncertainty.</p>
+            <p class="block" data-block-id="phase6-4">Exit criteria: Vehicle Detail shows the latest-known maintenance row per component and updates correctly as normalized events or service items change.</p>
           </article>
 
           <article class="content-card">
-            <h2>Phase 7: Release Hardening</h2>
+            <h2>Phase 7: Search And Simple QA</h2>
             <ul>
-              <li class="block" data-block-id="phase7-1">Add provider timeout, retry, and offline handling polish.</li>
-              <li class="block" data-block-id="phase7-2">Add privacy disclosure, cloud-processing disclosure, and failure messaging in the UI.</li>
-              <li class="block" data-block-id="phase7-3">Tune import/extraction UX for large PDFs and multi-file documents.</li>
-              <li class="block" data-block-id="phase7-4">Run regression pass on representative fixtures and real sample docs.</li>
+              <li class="block" data-block-id="phase7-1">Build keyword search over <code>SearchEntryEntity</code>.</li>
+              <li class="block" data-block-id="phase7-2">Build simple factual QA over stored facts, events, service items, and citations.</li>
+              <li class="block" data-block-id="phase7-3">Return concise answers, dates, mileage, and uncertainty notes when records conflict or are incomplete.</li>
+              <li class="block" data-block-id="phase7-4">Keep V1 QA deterministic where possible and do not expand into open-ended recommendation behavior.</li>
             </ul>
-            <p class="block" data-block-id="phase7-5">Exit criteria: release candidate meets core flows, quality checks, and documented V1 scope boundaries.</p>
+            <p class="block" data-block-id="phase7-5">Exit criteria: supported factual questions return grounded answers with citations and explicit uncertainty.</p>
+          </article>
+
+          <article class="content-card">
+            <h2>Phase 8: Release Hardening</h2>
+            <ul>
+              <li class="block" data-block-id="phase8-1">Add provider timeout, retry, and offline handling polish.</li>
+              <li class="block" data-block-id="phase8-2">Add privacy disclosure, cloud-processing disclosure, and failure messaging in the UI.</li>
+              <li class="block" data-block-id="phase8-3">Tune import/extraction UX for large PDFs and multi-file documents.</li>
+              <li class="block" data-block-id="phase8-4">Run regression pass on representative fixtures and real sample docs.</li>
+            </ul>
+            <p class="block" data-block-id="phase8-5">Exit criteria: release candidate meets core flows, quality checks, and documented V1 scope boundaries.</p>
           </article>
         </section>
 

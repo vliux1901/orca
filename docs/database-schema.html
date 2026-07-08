@@ -320,6 +320,7 @@ files/vehicles/{vehicleId}/documents/{documentId}/sources/source-003.{ext}</code
               <li class="block" data-block-id="tables-7"><code>service_items</code>: itemized maintenance work attached to an event, with optional per-item cost.</li>
               <li class="block" data-block-id="tables-8"><code>search_entries</code>: flattened search rows derived from facts, events, and evidence snippets.</li>
             </ul>
+            <p class="block" data-block-id="tables-8c">The Vehicle Detail maintenance summary table should be derived from <code>maintenance_events</code> plus <code>service_items</code>. No extra persistence table is required for V1 as long as <code>service_items.category</code> remains the normalized component or system key.</p>
           </article>
 
           <article class="content-card">
@@ -576,6 +577,7 @@ data class SearchEntryEntity(
               <li class="block" data-block-id="rules-7">Timeline queries need an index on <code>maintenance_events(vehicleId, eventDate)</code>.</li>
               <li class="block" data-block-id="rules-8">Source review screens need <code>document_sources(documentId, sourceOrder)</code>.</li>
               <li class="block" data-block-id="rules-9">Fact review and replacement flows need <code>document_facts(documentId, factType, isActive)</code>.</li>
+              <li class="block" data-block-id="rules-9h">Vehicle-detail maintenance summary queries should join <code>maintenance_events</code> to <code>service_items</code>, partition by <code>service_items.category</code>, and prefer the newest parent <code>eventDate</code> so one row represents the latest known work for each component.</li>
               <li class="block" data-block-id="rules-9e">Citation-style <code>sourceId</code> references in <code>document_facts</code> and <code>service_items</code> should use foreign keys back to <code>document_sources</code> with <code>ON DELETE SET NULL</code>.</li>
               <li class="block" data-block-id="rules-9f">If a raw extracted line appears to diverge from its cited evidence, keep the fact row and persist a review warning so the UI can prompt user review instead of silently dropping the line.</li>
               <li class="block" data-block-id="rules-9g">V1 service-item edits rewrite the canonical <code>service_items</code> row directly and then rebuild the parent event/search state. Only fact rows preserve full replacement history in V1.</li>

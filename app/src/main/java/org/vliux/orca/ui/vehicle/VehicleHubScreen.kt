@@ -73,6 +73,7 @@ import androidx.compose.ui.window.DialogProperties
 import java.io.File
 import java.time.LocalDate
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -104,25 +105,38 @@ fun VehicleHubScreen(
     serviceItemRepository: ServiceItemRepository,
     modifier: Modifier = Modifier,
 ) {
-    var route by remember { mutableStateOf<VehicleRoute>(VehicleRoute.List) }
+    val routeViewModel: VehicleHubViewModel = viewModel()
+    val route = routeViewModel.route
     BackHandler(enabled = route != VehicleRoute.List) {
-        route = route.navigateBack()
+        routeViewModel.updateRoute { navigateBack() }
     }
 
     when (val currentRoute = route) {
         VehicleRoute.List -> VehicleListScreen(
             vehicleRepository = vehicleRepository,
             modifier = modifier,
-            onCreateVehicle = { route = VehicleRoute.Editor(vehicleId = null) },
-            onOpenVehicle = { route = VehicleRoute.Detail(vehicleId = it) },
+            onCreateVehicle = {
+                routeViewModel.updateRoute {
+                    VehicleRoute.Editor(vehicleId = null)
+                }
+            },
+            onOpenVehicle = { vehicleId ->
+                routeViewModel.updateRoute {
+                    VehicleRoute.Detail(vehicleId = vehicleId)
+                }
+            },
         )
         is VehicleRoute.Editor -> VehicleEditorScreen(
             vehicleRepository = vehicleRepository,
             modifier = modifier,
             vehicleId = currentRoute.vehicleId,
-            onBack = { route = route.navigateBack() },
+            onBack = {
+                routeViewModel.updateRoute { navigateBack() }
+            },
             onSaved = { vehicleId ->
-                route = VehicleRoute.Detail(vehicleId = vehicleId)
+                routeViewModel.updateRoute {
+                    VehicleRoute.Detail(vehicleId = vehicleId)
+                }
             },
         )
         is VehicleRoute.Detail -> VehicleDetailScreen(
@@ -131,18 +145,24 @@ fun VehicleHubScreen(
             documentExtractionScheduler = documentExtractionScheduler,
             modifier = modifier,
             vehicleId = currentRoute.vehicleId,
-            onBack = { route = route.navigateBack() },
+            onBack = {
+                routeViewModel.updateRoute { navigateBack() }
+            },
             onEditVehicle = {
-                route = VehicleRoute.Editor(
-                    vehicleId = currentRoute.vehicleId,
-                    parent = currentRoute,
-                )
+                routeViewModel.updateRoute {
+                    VehicleRoute.Editor(
+                        vehicleId = currentRoute.vehicleId,
+                        parent = currentRoute,
+                    )
+                }
             },
             onOpenDocument = { documentId ->
-                route = VehicleRoute.DocumentDetail(
-                    vehicleId = currentRoute.vehicleId,
-                    documentId = documentId,
-                )
+                routeViewModel.updateRoute {
+                    VehicleRoute.DocumentDetail(
+                        vehicleId = currentRoute.vehicleId,
+                        documentId = documentId,
+                    )
+                }
             },
         )
         is VehicleRoute.DocumentDetail -> DocumentDetailScreen(
@@ -153,7 +173,9 @@ fun VehicleHubScreen(
             modifier = modifier,
             vehicleId = currentRoute.vehicleId,
             documentId = currentRoute.documentId,
-            onBack = { route = route.navigateBack() },
+            onBack = {
+                routeViewModel.updateRoute { navigateBack() }
+            },
         )
     }
 }
@@ -2531,7 +2553,7 @@ private fun calculateInSampleSize(
     return sampleSize.coerceAtLeast(1)
 }
 
-private sealed interface VehicleRoute {
+internal sealed interface VehicleRoute {
     data object List : VehicleRoute
     data class Editor(
         val vehicleId: String?,
@@ -2542,6 +2564,67 @@ private sealed interface VehicleRoute {
         val vehicleId: String,
         val documentId: String,
     ) : VehicleRoute
+}
+
+internal fun VehicleRoute.serializeForSave(): String = when (this) {
+    VehicleRoute.List -> "list"
+    is VehicleRoute.Detail -> "detail:$vehicleId"
+    is VehicleRoute.DocumentDetail -> "document:$vehicleId:$documentId"
+    is VehicleRoute.Editor -> buildString {
+        append("editor:")
+        append(vehicleId.orEmpty())
+        append(':')
+        append(parent?.serializeForSave().orEmpty())
+    }
+}
+
+internal fun List<String>.toVehicleRouteOrNull(): VehicleRoute? {
+    val kind = firstOrNull() ?: return null
+    return when (kind) {
+        "list" -> VehicleRoute.List
+        "detail" -> getOrNull(1)?.takeIf { it.isNotEmpty() }?.let(VehicleRoute::Detail)
+        "document" -> {
+            val vehicleId = getOrNull(1)?.takeIf { it.isNotEmpty() } ?: return null
+            val documentId = getOrNull(2)?.takeIf { it.isNotEmpty() } ?: return null
+            VehicleRoute.DocumentDetail(vehicleId = vehicleId, documentId = documentId)
+        }
+        "editor" -> {
+            val vehicleId = getOrNull(1)?.takeIf { it.isNotEmpty() }
+            val parent = getOrNull(2)
+                ?.takeIf { it.isNotEmpty() }
+                ?.deserializeVehicleRouteOrNull()
+            VehicleRoute.Editor(vehicleId = vehicleId, parent = parent)
+        }
+        else -> null
+    }
+}
+
+internal fun String.deserializeVehicleRouteOrNull(): VehicleRoute? {
+    val parts = split(':')
+    return when (parts.firstOrNull()) {
+        "list" -> VehicleRoute.List
+        "detail" -> parts.getOrNull(1)?.takeIf { it.isNotEmpty() }?.let(VehicleRoute::Detail)
+        "document" -> {
+            val vehicleId = parts.getOrNull(1)?.takeIf { it.isNotEmpty() } ?: return null
+            val documentId = parts.getOrNull(2)?.takeIf { it.isNotEmpty() } ?: return null
+            VehicleRoute.DocumentDetail(vehicleId = vehicleId, documentId = documentId)
+        }
+        "editor" -> {
+            val vehicleId = parts.getOrNull(1)?.takeIf { it.isNotEmpty() }
+            val parent = parts.drop(2).joinToString(":")
+                .takeIf { it.isNotEmpty() }
+                ?.deserializeVehicleRouteOrNull()
+            VehicleRoute.Editor(vehicleId = vehicleId, parent = parent)
+        }
+        else -> null
+    }
+}
+
+internal fun VehicleRoute.logLabel(): String = when (this) {
+    VehicleRoute.List -> "list"
+    is VehicleRoute.Detail -> "detail(vehicleId=$vehicleId)"
+    is VehicleRoute.DocumentDetail -> "document(vehicleId=$vehicleId, documentId=$documentId)"
+    is VehicleRoute.Editor -> "editor(vehicleId=$vehicleId,parent=${parent?.logLabel()})"
 }
 
 private fun VehicleRoute.navigateBack(): VehicleRoute = when (this) {

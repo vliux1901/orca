@@ -1,11 +1,17 @@
 package org.vliux.orca.data
 
 import java.time.Instant
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.currentTime
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Assert.assertNull
 import org.junit.Test
 import org.vliux.orca.data.model.VehicleEntity
@@ -121,6 +127,42 @@ class VehicleRepositoryTest {
         assertEquals("Family SUV", vehicle.displayName)
         assertNull(vehicle.vin)
     }
+
+    @Test
+    fun observeVehiclesReplaysCachedRowsToNewCollectors() = runTest {
+        val dao = SlowVehicleDao(emissionDelayMillis = 1_000)
+        val repository = VehicleRepository(
+            dao = dao,
+            nowProvider = { now },
+            idProvider = { "vehicle-123" },
+            repositoryScope = backgroundScope,
+        )
+
+        repository.createVehicle(
+            SaveVehicleRequest(
+                displayName = "Family SUV",
+                make = "Toyota",
+                model = "Highlander",
+                year = 2020,
+                licensePlate = null,
+                vin = null,
+                currentMileage = 45123,
+            ),
+        )
+
+        val warmup = launch {
+            repository.observeVehicles().first { it.isNotEmpty() }
+        }
+        advanceUntilIdle()
+        warmup.join()
+
+        val startedAt = currentTime
+        val replayed = repository.observeVehicles().first()
+
+        assertEquals(0, currentTime - startedAt)
+        assertEquals(listOf("Family SUV"), replayed.map { it.displayName })
+        assertTrue(dao.observeVehiclesCollectionCount >= 1)
+    }
 }
 
 private class FakeVehicleDao(
@@ -149,6 +191,34 @@ private class FakeVehicleDao(
     private fun publish() {
         state.value = vehicles.values.sortedWith(
             compareByDescending<VehicleEntity> { it.updatedAt }.thenByDescending { it.createdAt },
+        )
+    }
+}
+
+private class SlowVehicleDao(
+    private val emissionDelayMillis: Long,
+) : VehicleDao {
+    private val vehicles = linkedMapOf<String, VehicleEntity>()
+    var observeVehiclesCollectionCount: Int = 0
+        private set
+
+    override suspend fun upsertVehicle(vehicle: VehicleEntity) {
+        vehicles[vehicle.vehicleId] = vehicle
+    }
+
+    override suspend fun getVehicle(vehicleId: String): VehicleEntity? = vehicles[vehicleId]
+
+    override fun observeVehicle(vehicleId: String): Flow<VehicleEntity?> = flow {
+        emit(vehicles[vehicleId])
+    }
+
+    override fun observeVehicles(): Flow<List<VehicleEntity>> = flow {
+        observeVehiclesCollectionCount += 1
+        delay(emissionDelayMillis)
+        emit(
+            vehicles.values.sortedWith(
+                compareByDescending<VehicleEntity> { it.updatedAt }.thenByDescending { it.createdAt },
+            ),
         )
     }
 }

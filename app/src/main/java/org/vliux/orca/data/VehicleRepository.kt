@@ -2,7 +2,15 @@ package org.vliux.orca.data
 
 import java.time.Instant
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
+import javax.inject.Singleton
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.shareIn
 import org.vliux.orca.data.model.VehicleEntity
 
 data class SaveVehicleRequest(
@@ -15,14 +23,31 @@ data class SaveVehicleRequest(
     val currentMileage: Int?,
 )
 
+@Singleton
 class VehicleRepository(
     private val dao: VehicleDao,
     private val nowProvider: () -> Instant = { Instant.now() },
     private val idProvider: () -> String = { UUID.randomUUID().toString() },
+    private val repositoryScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
 ) {
-    fun observeVehicles(): Flow<List<VehicleEntity>> = dao.observeVehicles()
+    private val vehiclesFlow by lazy {
+        dao.observeVehicles().shareIn(
+            scope = repositoryScope,
+            started = SharingStarted.Eagerly,
+            replay = 1,
+        )
+    }
+    private val vehicleFlows = ConcurrentHashMap<String, SharedFlow<VehicleEntity?>>()
 
-    fun observeVehicle(vehicleId: String): Flow<VehicleEntity?> = dao.observeVehicle(vehicleId)
+    fun observeVehicles(): Flow<List<VehicleEntity>> = vehiclesFlow
+
+    fun observeVehicle(vehicleId: String): Flow<VehicleEntity?> = vehicleFlows.getOrPut(vehicleId) {
+        dao.observeVehicle(vehicleId).shareIn(
+            scope = repositoryScope,
+            started = SharingStarted.Eagerly,
+            replay = 1,
+        )
+    }
 
     suspend fun getVehicle(vehicleId: String): VehicleEntity? = dao.getVehicle(vehicleId)
 

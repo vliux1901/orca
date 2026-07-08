@@ -3,11 +3,18 @@ package org.vliux.orca.data
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.shareIn
 import org.vliux.orca.logging.OrcaLog
 import org.vliux.orca.importing.AppFileStorage
 import org.vliux.orca.importing.DocumentImportPlanner
@@ -33,7 +40,11 @@ class DocumentRepository(
     private val fileStorage: AppFileStorage,
     private val planner: DocumentImportPlanner = DocumentImportPlanner(),
     private val searchIndexBuilder: SearchIndexBuilder = SearchIndexBuilder(),
+    private val repositoryScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
 ) {
+    private val documentListFlows = ConcurrentHashMap<String, SharedFlow<List<DocumentListItem>>>()
+    private val documentDetailFlows = ConcurrentHashMap<String, SharedFlow<DocumentDetail?>>()
+
     suspend fun createDocument(
         vehicleId: String,
         imports: List<SourceImportRequest>,
@@ -107,7 +118,13 @@ class DocumentRepository(
     }
 
     fun observeDocumentList(vehicleId: String): Flow<List<DocumentListItem>> =
-        store.observeDocumentList(vehicleId)
+        documentListFlows.getOrPut(vehicleId) {
+            store.observeDocumentList(vehicleId).shareIn(
+                scope = repositoryScope,
+                started = SharingStarted.Eagerly,
+                replay = 1,
+            )
+        }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     fun observeDocumentDetail(documentId: String): Flow<DocumentDetail?> {
@@ -128,7 +145,8 @@ class DocumentRepository(
         ) { facts, event, serviceItems ->
             Triple(facts, event, serviceItems)
         }
-        return combine(documentBundleFlow, extractionFlow) { documentBundle, extractionBundle ->
+        return documentDetailFlows.getOrPut(documentId) {
+            combine(documentBundleFlow, extractionFlow) { documentBundle, extractionBundle ->
             val (document, sources, latestRun) = documentBundle
             val (facts, event, serviceItems) = extractionBundle
             document?.let {
@@ -141,6 +159,11 @@ class DocumentRepository(
                     serviceItems = serviceItems,
                 )
             }
+            }.shareIn(
+                scope = repositoryScope,
+                started = SharingStarted.Eagerly,
+                replay = 1,
+            )
         }
     }
 

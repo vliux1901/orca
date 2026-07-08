@@ -205,6 +205,119 @@ interface DocumentDao {
     @Query(
         """
         SELECT
+            se.entryId AS entryId,
+            se.vehicleId AS vehicleId,
+            se.documentId AS documentId,
+            d.title AS documentTitle,
+            se.entryType AS entryType,
+            se.title AS title,
+            se.body AS body,
+            se.sourceId AS sourceId,
+            se.sourcePage AS sourcePage,
+            d.occurredAt AS occurredOn,
+            se.createdAt AS createdAt
+        FROM search_entries se
+        JOIN documents d ON d.documentId = se.documentId
+        WHERE
+            :query = '' OR
+            LOWER(se.title) LIKE '%' || LOWER(:query) || '%' OR
+            LOWER(se.body) LIKE '%' || LOWER(:query) || '%'
+        ORDER BY
+            CASE
+                WHEN LOWER(se.title) = LOWER(:query) THEN 0
+                WHEN LOWER(se.title) LIKE LOWER(:query) || '%' THEN 1
+                WHEN LOWER(se.body) LIKE LOWER(:query) || '%' THEN 2
+                ELSE 3
+            END,
+            CASE WHEN d.occurredAt IS NULL THEN 1 ELSE 0 END,
+            d.occurredAt DESC,
+            se.createdAt DESC
+        LIMIT :limit
+        """,
+    )
+    fun observeSearchEntries(
+        query: String,
+        limit: Int,
+    ): Flow<List<SearchQueryResultRow>>
+
+    @Query(
+        """
+        SELECT
+            me.eventId AS eventId,
+            me.vehicleId AS vehicleId,
+            me.documentId AS documentId,
+            d.title AS documentTitle,
+            me.eventDate AS eventDate,
+            me.mileage AS mileage,
+            me.shopName AS shopName,
+            me.totalCostMinor AS totalCostMinor,
+            me.currencyCode AS currencyCode,
+            me.createdAt AS createdAt
+        FROM maintenance_events me
+        JOIN documents d ON d.documentId = me.documentId
+        ORDER BY
+            CASE WHEN me.eventDate IS NULL THEN 1 ELSE 0 END,
+            me.eventDate DESC,
+            me.createdAt DESC
+        """,
+    )
+    suspend fun getQaEvents(): List<QaEventRecord>
+
+    @Query(
+        """
+        SELECT
+            si.serviceItemId AS serviceItemId,
+            si.eventId AS eventId,
+            me.vehicleId AS vehicleId,
+            me.documentId AS documentId,
+            d.title AS documentTitle,
+            si.category AS category,
+            si.label AS label,
+            si.notes AS notes,
+            si.costMinor AS costMinor,
+            si.currencyCode AS currencyCode,
+            me.eventDate AS eventDate,
+            me.mileage AS mileage,
+            me.shopName AS shopName,
+            si.sourceId AS sourceId,
+            si.sourcePage AS sourcePage,
+            si.createdAt AS createdAt
+        FROM service_items si
+        JOIN maintenance_events me ON me.eventId = si.eventId
+        JOIN documents d ON d.documentId = me.documentId
+        ORDER BY
+            CASE WHEN me.eventDate IS NULL THEN 1 ELSE 0 END,
+            me.eventDate DESC,
+            si.createdAt DESC
+        """,
+    )
+    suspend fun getQaServices(): List<QaServiceRecord>
+
+    @Query(
+        """
+        SELECT
+            df.factId AS factId,
+            d.vehicleId AS vehicleId,
+            df.documentId AS documentId,
+            d.title AS documentTitle,
+            df.factType AS factType,
+            df.valueText AS valueText,
+            df.normalizedValue AS normalizedValue,
+            df.sourceId AS sourceId,
+            df.sourcePage AS sourcePage,
+            df.isUserEdited AS isUserEdited,
+            df.createdAt AS createdAt
+        FROM document_facts df
+        JOIN documents d ON d.documentId = df.documentId
+        WHERE df.isActive = 1
+        ORDER BY df.createdAt DESC
+        """,
+    )
+    suspend fun getQaFacts(): List<QaFactRecord>
+
+    @Query(
+        """
+        SELECT
             si.category AS category,
             si.label AS label,
             me.eventDate AS eventDate,

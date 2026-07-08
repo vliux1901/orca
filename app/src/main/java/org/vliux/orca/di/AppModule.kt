@@ -16,8 +16,10 @@ import org.vliux.orca.data.DocumentStore
 import org.vliux.orca.data.FactRepository
 import org.vliux.orca.data.OrcaDatabase
 import org.vliux.orca.data.RoomDocumentStore
+import org.vliux.orca.data.SearchRepository
 import org.vliux.orca.data.ServiceItemRepository
 import org.vliux.orca.data.VehicleRepository
+import org.vliux.orca.search.SearchAnswerEngine
 import org.vliux.orca.extraction.CloudExtractionAdapter
 import org.vliux.orca.extraction.DefaultMaintenanceExtractionEngine
 import org.vliux.orca.extraction.MaintenanceExtractionEngine
@@ -116,6 +118,20 @@ object AppModule {
     @Provides
     @Reusable
     fun provideSearchIndexBuilder(): SearchIndexBuilder = SearchIndexBuilder()
+
+    @Provides
+    @Reusable
+    fun provideSearchAnswerEngine(): SearchAnswerEngine = SearchAnswerEngine()
+
+    @Provides
+    @Singleton
+    fun provideSearchRepository(
+        database: OrcaDatabase,
+        searchAnswerEngine: SearchAnswerEngine,
+    ): SearchRepository = SearchRepository(
+        dao = database.documentDao(),
+        answerEngine = searchAnswerEngine,
+    )
 
     @Provides
     @Singleton

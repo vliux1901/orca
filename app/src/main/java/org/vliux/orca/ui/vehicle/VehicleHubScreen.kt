@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -62,12 +63,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -87,6 +93,7 @@ import org.vliux.orca.data.DocumentRepository
 import org.vliux.orca.data.DocumentDetail
 import org.vliux.orca.data.FactReplacement
 import org.vliux.orca.data.FactRepository
+import org.vliux.orca.data.SearchRepository
 import org.vliux.orca.data.SaveServiceItemRequest
 import org.vliux.orca.data.ServiceItemRepository
 import org.vliux.orca.data.VehicleMaintenanceSummaryItem
@@ -99,6 +106,9 @@ import org.vliux.orca.data.model.ServiceItemEntity
 import org.vliux.orca.data.model.VehicleEntity
 import org.vliux.orca.importing.SourceImportRequest
 import org.vliux.orca.normalization.NormalizationRules
+import org.vliux.orca.search.SearchAnswer
+import org.vliux.orca.search.SearchCitation
+import org.vliux.orca.search.SearchResultItem
 import org.vliux.orca.worker.DocumentExtractionScheduler
 
 @Composable
@@ -109,6 +119,7 @@ fun VehicleHubScreen(
     appFileStorage: AppFileStorage,
     factRepository: FactRepository,
     serviceItemRepository: ServiceItemRepository,
+    searchRepository: SearchRepository,
     modifier: Modifier = Modifier,
 ) {
     val routeViewModel: VehicleHubViewModel = viewModel()
@@ -121,6 +132,11 @@ fun VehicleHubScreen(
         VehicleRoute.List -> VehicleListScreen(
             vehicleRepository = vehicleRepository,
             modifier = modifier,
+            onOpenSearch = { query ->
+                routeViewModel.updateRoute {
+                    VehicleRoute.Search(query = query)
+                }
+            },
             onCreateVehicle = {
                 routeViewModel.updateRoute {
                     VehicleRoute.Editor(vehicleId = null)
@@ -142,6 +158,22 @@ fun VehicleHubScreen(
             onSaved = { vehicleId ->
                 routeViewModel.updateRoute {
                     VehicleRoute.Detail(vehicleId = vehicleId)
+                }
+            },
+        )
+        is VehicleRoute.Search -> SearchScreen(
+            searchRepository = searchRepository,
+            modifier = modifier,
+            initialQuery = currentRoute.query,
+            onBack = {
+                routeViewModel.updateRoute { navigateBack() }
+            },
+            onOpenDocument = { vehicleId, documentId ->
+                routeViewModel.updateRoute {
+                    VehicleRoute.DocumentDetail(
+                        vehicleId = vehicleId,
+                        documentId = documentId,
+                    )
                 }
             },
         )
@@ -190,6 +222,7 @@ fun VehicleHubScreen(
 @Composable
 private fun VehicleListScreen(
     vehicleRepository: VehicleRepository,
+    onOpenSearch: (String) -> Unit,
     onCreateVehicle: () -> Unit,
     onOpenVehicle: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -243,7 +276,7 @@ private fun VehicleListScreen(
             contentPadding = PaddingValues(bottom = 96.dp),
         ) {
             item {
-                SearchPlaceholderField()
+                SearchPlaceholderField(onOpenSearch = onOpenSearch)
             }
             if (vehicles.isEmpty()) {
                 item {
@@ -275,17 +308,244 @@ private fun AppIcon() {
 }
 
 @Composable
-private fun SearchPlaceholderField() {
+internal fun SearchPlaceholderField(
+    onOpenSearch: (String) -> Unit,
+) {
+    var query by rememberSaveable { mutableStateOf("") }
+
     OutlinedTextField(
-        value = "",
-        onValueChange = {},
-        modifier = Modifier.fillMaxWidth(),
-        enabled = false,
+        value = query,
+        onValueChange = { query = it },
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(SearchPlaceholderFieldTestTag),
         singleLine = true,
         placeholder = {
-            Text("Search vehicles and records (coming soon)")
+            Text("Search maintenance records or ask a question")
+        },
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Search),
+        keyboardActions = KeyboardActions(
+            onSearch = {
+                onOpenSearch(query.trim())
+            },
+        ),
+    )
+}
+
+internal const val SearchPlaceholderFieldTestTag = "searchPlaceholderField"
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SearchScreen(
+    searchRepository: SearchRepository,
+    initialQuery: String,
+    onBack: () -> Unit,
+    onOpenDocument: (String, String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val searchViewModel: SearchScreenViewModel = viewModel(
+        key = "search:$initialQuery",
+        factory = remember(initialQuery, searchRepository) {
+            viewModelFactory {
+                initializer {
+                    SearchScreenViewModel(
+                        initialQuery = initialQuery,
+                        searchRepository = searchRepository,
+                    )
+                }
+            }
         },
     )
+    val screenState by searchViewModel.uiState.collectAsStateWithLifecycle()
+    val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+        keyboardController?.show()
+    }
+
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            VehicleTopBar(
+                title = "Search & Ask",
+                onBack = onBack,
+            )
+        },
+    ) { innerPadding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(bottom = 32.dp),
+        ) {
+            item {
+                OutlinedTextField(
+                    value = screenState.query,
+                    onValueChange = searchViewModel::updateQuery,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(focusRequester),
+                    singleLine = true,
+                    placeholder = {
+                        Text("Try: When was the last service?")
+                    },
+                )
+            }
+            if (screenState.query.isBlank()) {
+                item {
+                    InfoCard(
+                        title = "Supported Questions",
+                        message = "Ask things like \"When was the last service?\" or \"What was last done to the brakes?\" Keyword search also matches indexed facts, events, and service items.",
+                    )
+                }
+            } else {
+                item {
+                    when {
+                        screenState.answerLoading -> CircularProgressIndicator()
+                        screenState.answer != null -> SearchAnswerCard(
+                            answer = requireNotNull(screenState.answer),
+                            onOpenDocument = onOpenDocument,
+                        )
+                    }
+                }
+                item {
+                    SectionHeader(
+                        title = "Matching Records",
+                        subtitle = "Keyword matches come from the deterministic local search index.",
+                    )
+                }
+                if (!screenState.resultsLoaded) {
+                    item {
+                        CircularProgressIndicator()
+                    }
+                } else if (screenState.results.isEmpty()) {
+                    item {
+                        InfoCard(
+                            title = "No Matches",
+                            message = "No indexed records matched this search yet.",
+                        )
+                    }
+                } else {
+                    items(screenState.results, key = { it.entryId }) { result ->
+                        SearchResultCard(
+                            result = result,
+                            onOpenDocument = {
+                                onOpenDocument(result.vehicleId, result.documentId)
+                            },
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchAnswerCard(
+    answer: SearchAnswer,
+    onOpenDocument: (String, String) -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = vehicleCardColors(),
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                text = "Answer",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = answer.answer,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            answer.relatedDate?.let { relatedDate ->
+                Text(
+                    text = "Date: ${relatedDate.format(vehicleSummaryDateFormatter)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            answer.relatedMileage?.let { mileage ->
+                Text(
+                    text = "Mileage: $mileage mi",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            answer.uncertaintyNote?.let { note ->
+                Text(
+                    text = note,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+            if (answer.citations.isNotEmpty()) {
+                HorizontalDivider()
+                Text(
+                    text = "Citations",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                answer.citations.forEach { citation ->
+                    TextButton(
+                        onClick = { onOpenDocument(citation.vehicleId, citation.documentId) },
+                    ) {
+                        Text(citationLabel(citation))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchResultCard(
+    result: SearchResultItem,
+    onOpenDocument: () -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onOpenDocument),
+        colors = vehicleCardColors(),
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = result.title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = result.body,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Text(
+                text = buildString {
+                    append(result.documentTitle)
+                    result.occurredOn?.let { append(" | ${it.format(vehicleSummaryDateFormatter)}") }
+                    result.sourcePage?.let { append(" | page $it") }
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+private fun citationLabel(citation: SearchCitation): String = buildString {
+    append(citation.documentTitle)
+    citation.sourcePage?.let { append(" (page $it)") }
 }
 
 @Composable
@@ -2705,6 +2965,7 @@ private fun calculateInSampleSize(
 
 internal sealed interface VehicleRoute {
     data object List : VehicleRoute
+    data class Search(val query: String) : VehicleRoute
     data class Editor(
         val vehicleId: String?,
         val parent: VehicleRoute? = null,
@@ -2718,6 +2979,7 @@ internal sealed interface VehicleRoute {
 
 internal fun VehicleRoute.serializeForSave(): String = when (this) {
     VehicleRoute.List -> "list"
+    is VehicleRoute.Search -> "search:$query"
     is VehicleRoute.Detail -> "detail:$vehicleId"
     is VehicleRoute.DocumentDetail -> "document:$vehicleId:$documentId"
     is VehicleRoute.Editor -> buildString {
@@ -2732,6 +2994,7 @@ internal fun List<String>.toVehicleRouteOrNull(): VehicleRoute? {
     val kind = firstOrNull() ?: return null
     return when (kind) {
         "list" -> VehicleRoute.List
+        "search" -> VehicleRoute.Search(query = getOrNull(1).orEmpty())
         "detail" -> getOrNull(1)?.takeIf { it.isNotEmpty() }?.let(VehicleRoute::Detail)
         "document" -> {
             val vehicleId = getOrNull(1)?.takeIf { it.isNotEmpty() } ?: return null
@@ -2753,6 +3016,7 @@ internal fun String.deserializeVehicleRouteOrNull(): VehicleRoute? {
     val parts = split(':')
     return when (parts.firstOrNull()) {
         "list" -> VehicleRoute.List
+        "search" -> VehicleRoute.Search(query = parts.drop(1).joinToString(":"))
         "detail" -> parts.getOrNull(1)?.takeIf { it.isNotEmpty() }?.let(VehicleRoute::Detail)
         "document" -> {
             val vehicleId = parts.getOrNull(1)?.takeIf { it.isNotEmpty() } ?: return null
@@ -2772,6 +3036,7 @@ internal fun String.deserializeVehicleRouteOrNull(): VehicleRoute? {
 
 internal fun VehicleRoute.logLabel(): String = when (this) {
     VehicleRoute.List -> "list"
+    is VehicleRoute.Search -> "search(queryLength=${query.length})"
     is VehicleRoute.Detail -> "detail(vehicleId=$vehicleId)"
     is VehicleRoute.DocumentDetail -> "document(vehicleId=$vehicleId, documentId=$documentId)"
     is VehicleRoute.Editor -> "editor(vehicleId=$vehicleId,parent=${parent?.logLabel()})"
@@ -2779,12 +3044,14 @@ internal fun VehicleRoute.logLabel(): String = when (this) {
 
 private fun VehicleRoute.navigateBack(): VehicleRoute = when (this) {
     VehicleRoute.List -> VehicleRoute.List
+    is VehicleRoute.Search -> VehicleRoute.List
     is VehicleRoute.Detail -> VehicleRoute.List
     is VehicleRoute.DocumentDetail -> VehicleRoute.Detail(vehicleId)
     is VehicleRoute.Editor -> when (val parent = parent) {
         null -> VehicleRoute.List
         is VehicleRoute.Detail -> parent
         is VehicleRoute.DocumentDetail -> parent
+        is VehicleRoute.Search -> parent
         VehicleRoute.List -> VehicleRoute.List
         is VehicleRoute.Editor -> VehicleRoute.List
     }

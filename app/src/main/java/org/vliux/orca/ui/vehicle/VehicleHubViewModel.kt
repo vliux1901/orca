@@ -35,6 +35,7 @@ internal fun VehicleRoute.transition(
 internal fun VehicleRoute.toSavedState(): ArrayList<String> = ArrayList(
     when (this) {
         VehicleRoute.List -> listOf("list")
+        is VehicleRoute.Search -> listOf("search", query)
         is VehicleRoute.Detail -> listOf("detail", vehicleId)
         is VehicleRoute.DocumentDetail -> listOf("document", vehicleId, documentId)
         is VehicleRoute.Editor -> listOf(

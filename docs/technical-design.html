@@ -429,6 +429,7 @@ files/vehicles/{vehicleId}/documents/{documentId}/sources/source-003.{ext}</code
             <ul>
               <li class="block" data-block-id="ops-1">Show processing status per document.</li>
               <li class="block" data-block-id="ops-2">Show source-file list, extracted facts, raw dealer text, AI interpretations, and unverified markers.</li>
+              <li class="block" data-block-id="ops-2l">Provide a dedicated ask/search screen from the vehicle list. In V1, deterministic QA should support latest-service questions and latest-known work for a recognized vehicle component or system, while broader natural-language prompts fall back to keyword search plus an explicit scope note.</li>
               <li class="block" data-block-id="ops-2j">In vehicle detail, show a two-column maintenance summary table between the vehicle summary card and the document list. The first column should show a humanized vehicle component or system derived from <code>service_items.category</code>, and the second should show the corresponding maintenance or repair label.</li>
               <li class="block" data-block-id="ops-2k">Populate the vehicle-detail maintenance summary from normalized <code>service_items</code> joined to their parent <code>maintenance_events</code>. Sort by the parent event date descending and keep only the most recent known row per component so the table answers "what was last done to this part of the vehicle?" at a glance.</li>
               <li class="block" data-block-id="ops-2a">When the app detects that a raw extracted line may not match its evidence snippet, keep the line but show a review warning in document detail so the user can compare the extracted text against the source before correcting it.</li>
@@ -449,6 +450,7 @@ files/vehicles/{vehicleId}/documents/{documentId}/sources/source-003.{ext}</code
             <h2>Testing And Milestones</h2>
             <ul>
               <li class="block" data-block-id="ops-5">Test normalization, malformed JSON rejection, conflicting values, event building, and deterministic QA.</li>
+              <li class="block" data-block-id="ops-5b">Deterministic-QA tests should cover latest service overall, latest component work, unsupported recommendation-style prompts, and explicit uncertainty when multiple records share the newest matching date.</li>
               <li class="block" data-block-id="ops-6">Use fixture tests for digital invoices, scanned invoices, receipts, rotated images, and multi-file logical documents.</li>
               <li class="block" data-block-id="ops-7">Milestone 2 centers on cloud vision extraction and timeline creation.</li>
               <li class="block" data-block-id="ops-8">Milestone 4 introduces privacy mode with a local backend behind the same interface.</li>

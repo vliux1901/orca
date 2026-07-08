@@ -8,6 +8,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import org.vliux.orca.data.DocumentRepository
 import org.vliux.orca.data.FactRepository
+import org.vliux.orca.data.SearchRepository
 import org.vliux.orca.data.ServiceItemRepository
 import org.vliux.orca.data.VehicleRepository
 import org.vliux.orca.importing.AppFileStorage
@@ -35,6 +36,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var serviceItemRepository: ServiceItemRepository
 
+    @Inject
+    lateinit var searchRepository: SearchRepository
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -47,6 +51,7 @@ class MainActivity : ComponentActivity() {
                     appFileStorage = appFileStorage,
                     factRepository = factRepository,
                     serviceItemRepository = serviceItemRepository,
+                    searchRepository = searchRepository,
                 )
             }
         }

@@ -40,6 +40,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -73,6 +74,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import java.io.File
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
@@ -87,6 +89,7 @@ import org.vliux.orca.data.FactReplacement
 import org.vliux.orca.data.FactRepository
 import org.vliux.orca.data.SaveServiceItemRequest
 import org.vliux.orca.data.ServiceItemRepository
+import org.vliux.orca.data.VehicleMaintenanceSummaryItem
 import org.vliux.orca.data.VehicleRepository
 import org.vliux.orca.data.model.DocumentListItem
 import org.vliux.orca.data.model.DocumentSourceEntity
@@ -332,6 +335,7 @@ private fun VehicleDetailScreen(
                     VehicleDetailViewModel(
                         vehicleId = vehicleId,
                         observeVehicle = vehicleRepository::observeVehicle,
+                        observeMaintenanceSummary = vehicleRepository::observeVehicleMaintenanceSummary,
                         observeDocuments = documentRepository::observeDocumentList,
                     )
                 }
@@ -420,6 +424,19 @@ private fun VehicleDetailScreen(
             }
 
             if (loadedVehicle != null) {
+                item {
+                    SectionHeader(
+                        title = "Maintenance Summary",
+                        subtitle = "Latest known maintenance or repair per vehicle component.",
+                    )
+                }
+                item {
+                    if (!screenState.maintenanceSummaryLoaded) {
+                        CircularProgressIndicator()
+                    } else {
+                        VehicleMaintenanceSummaryCard(items = screenState.maintenanceSummary)
+                    }
+                }
                 item {
                     SectionHeader(
                         title = "Documents",
@@ -956,6 +973,79 @@ private fun VehicleDetailHeaderCard(
                 },
                 style = MaterialTheme.typography.bodyMedium,
             )
+        }
+    }
+}
+
+@Composable
+private fun VehicleMaintenanceSummaryCard(
+    items: List<VehicleMaintenanceSummaryItem>,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = vehicleCardColors(),
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                Text(
+                    text = "Component",
+                    modifier = Modifier.weight(0.38f),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text = "Maintenance / Repair",
+                    modifier = Modifier.weight(0.62f),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+            HorizontalDivider()
+            if (items.isEmpty()) {
+                Text(
+                    text = "No normalized maintenance items yet. Import a maintenance document to populate this summary.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            } else {
+                items.forEachIndexed { index, item ->
+                    if (index > 0) {
+                        HorizontalDivider()
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        Text(
+                            text = item.component,
+                            modifier = Modifier.weight(0.38f),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                        )
+                        Column(
+                            modifier = Modifier.weight(0.62f),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Text(
+                                text = item.label,
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                            item.eventDate?.let { eventDate ->
+                                Text(
+                                    text = "Last recorded ${eventDate.format(vehicleSummaryDateFormatter)}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -2659,6 +2749,8 @@ private fun VehicleRoute.navigateBack(): VehicleRoute = when (this) {
         is VehicleRoute.Editor -> VehicleRoute.List
     }
 }
+
+private val vehicleSummaryDateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy")
 
 private val vehicleFormDraftSaver: Saver<VehicleFormDraft, Any> = Saver(
     save = { draft ->

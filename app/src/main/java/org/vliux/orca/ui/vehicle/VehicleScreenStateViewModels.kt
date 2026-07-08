@@ -10,12 +10,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.vliux.orca.data.DocumentDetail
+import org.vliux.orca.data.VehicleMaintenanceSummaryItem
 import org.vliux.orca.data.model.DocumentListItem
 import org.vliux.orca.data.model.VehicleEntity
 
 internal data class VehicleDetailUiState(
     val vehicleLoaded: Boolean = false,
     val vehicle: VehicleEntity? = null,
+    val maintenanceSummaryLoaded: Boolean = false,
+    val maintenanceSummary: List<VehicleMaintenanceSummaryItem> = emptyList(),
     val documentsLoaded: Boolean = false,
     val documents: List<DocumentListItem> = emptyList(),
 )
@@ -23,6 +26,7 @@ internal data class VehicleDetailUiState(
 internal class VehicleDetailViewModel(
     vehicleId: String,
     observeVehicle: (String) -> Flow<VehicleEntity?>,
+    observeMaintenanceSummary: (String) -> Flow<List<VehicleMaintenanceSummaryItem>>,
     observeDocuments: (String) -> Flow<List<DocumentListItem>>,
     coroutineScope: CoroutineScope? = null,
 ) : ViewModel() {
@@ -38,6 +42,16 @@ internal class VehicleDetailViewModel(
                     current.copy(
                         vehicleLoaded = true,
                         vehicle = vehicle,
+                    )
+                }
+            }
+        }
+        scope.launch {
+            observeMaintenanceSummary(vehicleId).collect { maintenanceSummary ->
+                _uiState.update { current ->
+                    current.copy(
+                        maintenanceSummaryLoaded = true,
+                        maintenanceSummary = maintenanceSummary,
                     )
                 }
             }

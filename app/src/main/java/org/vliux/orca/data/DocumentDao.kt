@@ -201,4 +201,23 @@ interface DocumentDao {
         """,
     )
     fun observeDocumentList(vehicleId: String): Flow<List<DocumentListItem>>
+
+    @Query(
+        """
+        SELECT
+            si.category AS category,
+            si.label AS label,
+            me.eventDate AS eventDate,
+            me.documentId AS documentId
+        FROM maintenance_events me
+        JOIN service_items si ON si.eventId = me.eventId
+        WHERE me.vehicleId = :vehicleId
+        ORDER BY
+            CASE WHEN me.eventDate IS NULL THEN 1 ELSE 0 END,
+            me.eventDate DESC,
+            si.createdAt DESC,
+            si.label ASC
+        """,
+    )
+    fun observeVehicleMaintenanceHistory(vehicleId: String): Flow<List<VehicleMaintenanceHistoryEntry>>
 }

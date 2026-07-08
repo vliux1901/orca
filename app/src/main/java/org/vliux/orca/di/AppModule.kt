@@ -87,7 +87,10 @@ object AppModule {
     @Singleton
     fun provideVehicleRepository(
         database: OrcaDatabase,
-    ): VehicleRepository = VehicleRepository(database.vehicleDao())
+    ): VehicleRepository = VehicleRepository(
+        dao = database.vehicleDao(),
+        observeVehicleMaintenanceHistory = database.documentDao()::observeVehicleMaintenanceHistory,
+    )
 
     @Provides
     @Reusable

@@ -1,6 +1,7 @@
 package org.vliux.orca.data
 
 import java.time.Instant
+import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Singleton
@@ -10,6 +11,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.shareIn
 import org.vliux.orca.data.model.VehicleEntity
 
@@ -26,6 +28,7 @@ data class SaveVehicleRequest(
 @Singleton
 class VehicleRepository(
     private val dao: VehicleDao,
+    private val observeVehicleMaintenanceHistory: (String) -> Flow<List<VehicleMaintenanceHistoryEntry>>,
     private val nowProvider: () -> Instant = { Instant.now() },
     private val idProvider: () -> String = { UUID.randomUUID().toString() },
     private val repositoryScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
@@ -38,6 +41,7 @@ class VehicleRepository(
         )
     }
     private val vehicleFlows = ConcurrentHashMap<String, SharedFlow<VehicleEntity?>>()
+    private val maintenanceSummaryFlows = ConcurrentHashMap<String, SharedFlow<List<VehicleMaintenanceSummaryItem>>>()
 
     fun observeVehicles(): Flow<List<VehicleEntity>> = vehiclesFlow
 
@@ -48,6 +52,17 @@ class VehicleRepository(
             replay = 1,
         )
     }
+
+    fun observeVehicleMaintenanceSummary(vehicleId: String): Flow<List<VehicleMaintenanceSummaryItem>> =
+        maintenanceSummaryFlows.getOrPut(vehicleId) {
+            observeVehicleMaintenanceHistory(vehicleId)
+                .map(::buildMaintenanceSummary)
+                .shareIn(
+                    scope = repositoryScope,
+                    started = SharingStarted.Eagerly,
+                    replay = 1,
+                )
+        }
 
     suspend fun getVehicle(vehicleId: String): VehicleEntity? = dao.getVehicle(vehicleId)
 
@@ -89,4 +104,32 @@ class VehicleRepository(
             ),
         )
     }
+
+    private fun buildMaintenanceSummary(
+        history: List<VehicleMaintenanceHistoryEntry>,
+    ): List<VehicleMaintenanceSummaryItem> = history
+        .asSequence()
+        .mapNotNull { entry ->
+            val category = entry.category.trim()
+            val label = entry.label.trim()
+            if (category.isEmpty() || label.isEmpty()) {
+                null
+            } else {
+                VehicleMaintenanceSummaryItem(
+                    component = humanizeCategory(category),
+                    label = label,
+                    eventDate = entry.eventDate,
+                    documentId = entry.documentId,
+                ) to category
+            }
+        }
+        .distinctBy { (_, category) -> category }
+        .map { (item, _) -> item }
+        .toList()
+
+    private fun humanizeCategory(raw: String): String = raw
+        .lowercase(Locale.US)
+        .split('_', '-', ' ')
+        .filter { it.isNotBlank() }
+        .joinToString(" ") { token -> token.replaceFirstChar { it.titlecase(Locale.US) } }
 }

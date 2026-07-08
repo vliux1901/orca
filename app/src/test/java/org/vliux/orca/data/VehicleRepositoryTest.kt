@@ -1,11 +1,13 @@
 package org.vliux.orca.data
 
 import java.time.Instant
+import java.time.LocalDate
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -25,6 +27,7 @@ class VehicleRepositoryTest {
         val dao = FakeVehicleDao()
         val repository = VehicleRepository(
             dao = dao,
+            observeVehicleMaintenanceHistory = { flowOf(emptyList()) },
             nowProvider = { now },
             idProvider = { "vehicle-123" },
         )
@@ -77,6 +80,7 @@ class VehicleRepositoryTest {
         )
         val repository = VehicleRepository(
             dao = dao,
+            observeVehicleMaintenanceHistory = { flowOf(emptyList()) },
             nowProvider = { now },
         )
 
@@ -108,6 +112,7 @@ class VehicleRepositoryTest {
         val dao = FakeVehicleDao()
         val repository = VehicleRepository(
             dao = dao,
+            observeVehicleMaintenanceHistory = { flowOf(emptyList()) },
             nowProvider = { now },
             idProvider = { "vehicle-123" },
         )
@@ -135,6 +140,7 @@ class VehicleRepositoryTest {
         val dao = SlowVehicleDao(emissionDelayMillis = 1_000)
         val repository = VehicleRepository(
             dao = dao,
+            observeVehicleMaintenanceHistory = { flowOf(emptyList()) },
             nowProvider = { now },
             idProvider = { "vehicle-123" },
             repositoryScope = backgroundScope,
@@ -164,6 +170,48 @@ class VehicleRepositoryTest {
         assertEquals(0, currentTime - startedAt)
         assertEquals(listOf("Family SUV"), replayed.map { it.displayName })
         assertTrue(dao.observeVehiclesCollectionCount >= 1)
+    }
+
+    @Test
+    fun observeVehicleMaintenanceSummaryKeepsNewestRowPerCategory() = runTest {
+        val historyFlow = MutableStateFlow(
+            listOf(
+                VehicleMaintenanceHistoryEntry(
+                    category = "brake_system",
+                    label = "Brake fluid replaced",
+                    eventDate = LocalDate.parse("2026-07-01"),
+                    documentId = "document-3",
+                ),
+                VehicleMaintenanceHistoryEntry(
+                    category = "engine",
+                    label = "Engine air filter replaced",
+                    eventDate = LocalDate.parse("2026-04-01"),
+                    documentId = "document-2",
+                ),
+                VehicleMaintenanceHistoryEntry(
+                    category = "brake_system",
+                    label = "Brake pad inspection",
+                    eventDate = LocalDate.parse("2026-01-10"),
+                    documentId = "document-1",
+                ),
+            ),
+        )
+        val repository = VehicleRepository(
+            dao = FakeVehicleDao(),
+            observeVehicleMaintenanceHistory = { historyFlow },
+        )
+
+        val summary = repository.observeVehicleMaintenanceSummary("vehicle-123").first()
+
+        assertEquals(listOf("Brake System", "Engine"), summary.map { it.component })
+        assertEquals(
+            listOf("Brake fluid replaced", "Engine air filter replaced"),
+            summary.map { it.label },
+        )
+        assertEquals(
+            listOf(LocalDate.parse("2026-07-01"), LocalDate.parse("2026-04-01")),
+            summary.map { it.eventDate },
+        )
     }
 }
 

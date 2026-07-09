@@ -42,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.platform.testTag
@@ -60,7 +61,6 @@ import org.vliux.orca.data.model.VehicleEntity
 import org.vliux.orca.worker.DocumentExtractionScheduler
 
 internal const val VehicleDetailHeaderImageTestTag = "vehicleDetailHeaderImage"
-private const val VehicleDetailScreenTitle = "Vehicle details"
 
 @Composable
 internal fun VehicleDetailScreen(
@@ -74,6 +74,9 @@ internal fun VehicleDetailScreen(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    val importQueuedMessage = stringResource(R.string.vehicle_import_queued)
+    val importNotConfiguredMessage = stringResource(R.string.vehicle_import_not_configured)
+    val importFailedMessage = stringResource(R.string.vehicle_import_failed)
     val scope = rememberCoroutineScope()
     val vehicleDetailViewModel: VehicleDetailViewModel = viewModel(
         key = "vehicleDetail:$vehicleId",
@@ -112,13 +115,13 @@ internal fun VehicleDetailScreen(
                 ImportResult(documentId = documentId, queued = queued)
             }.onSuccess { result ->
                 importMessage = if (result.queued) {
-                    "Imported document and queued extraction."
+                    importQueuedMessage
                 } else {
-                    "Imported document. Extraction is not configured on this build."
+                    importNotConfiguredMessage
                 }
                 onOpenDocument(result.documentId)
             }.onFailure { error ->
-                importError = error.message ?: "Failed to import files."
+                importError = error.message ?: importFailedMessage
             }
             isImporting = false
         }
@@ -128,7 +131,7 @@ internal fun VehicleDetailScreen(
         modifier = modifier.fillMaxSize(),
         topBar = {
             VehicleTopBar(
-                title = VehicleDetailScreenTitle,
+                title = stringResource(R.string.vehicle_details_title),
                 onBack = onBack,
                 actionContent = {
                     VehicleDetailActionsMenu(
@@ -154,8 +157,8 @@ internal fun VehicleDetailScreen(
                 when {
                     !screenState.vehicleLoaded -> CircularProgressIndicator()
                     loadedVehicle == null -> MissingEntityCard(
-                        title = "Vehicle not found.",
-                        message = "The selected vehicle could not be loaded from the local database.",
+                        title = stringResource(R.string.vehicle_not_found_title),
+                        message = stringResource(R.string.vehicle_not_found_message),
                     )
                     else -> VehicleDetailHeaderCard(
                         vehicle = loadedVehicle,
@@ -165,7 +168,7 @@ internal fun VehicleDetailScreen(
 
             importMessage?.let { message ->
                 item {
-                    InfoCard(title = "Import Result", message = message)
+                    InfoCard(title = stringResource(R.string.import_result_title), message = message)
                 }
             }
 
@@ -178,8 +181,8 @@ internal fun VehicleDetailScreen(
             if (loadedVehicle != null) {
                 item {
                     SectionHeader(
-                        title = "Maintenance Summary",
-                        subtitle = "Latest known maintenance or repair per vehicle component.",
+                        title = stringResource(R.string.maintenance_summary_title),
+                        subtitle = stringResource(R.string.maintenance_summary_subtitle),
                     )
                 }
                 item {
@@ -191,8 +194,8 @@ internal fun VehicleDetailScreen(
                 }
                 item {
                     SectionHeader(
-                        title = "Documents",
-                        subtitle = "Imported files are grouped into logical maintenance documents for this vehicle.",
+                        title = stringResource(R.string.documents_title),
+                        subtitle = stringResource(R.string.documents_subtitle),
                     )
                 }
 
@@ -225,6 +228,7 @@ internal fun VehicleEditorScreen(
     onSaved: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val saveVehicleFailedMessage = stringResource(R.string.save_vehicle_failed)
     val scope = rememberCoroutineScope()
     val vehicleEditorViewModel: VehicleEditorViewModel = viewModel(
         key = "vehicleEditor:${vehicleId ?: "new"}",
@@ -255,7 +259,11 @@ internal fun VehicleEditorScreen(
     }
 
     val validation = formDraft.validate()
-    val screenTitle = if (vehicleId == null) "New Vehicle" else "Edit Vehicle"
+    val screenTitle = if (vehicleId == null) {
+        stringResource(R.string.new_vehicle_title)
+    } else {
+        stringResource(R.string.edit_vehicle_title)
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -275,7 +283,7 @@ internal fun VehicleEditorScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(
-                text = "Vehicle profiles own imported maintenance documents and later extraction results.",
+                text = stringResource(R.string.vehicle_editor_intro),
                 style = MaterialTheme.typography.bodyMedium,
             )
 
@@ -283,8 +291,8 @@ internal fun VehicleEditorScreen(
                 CircularProgressIndicator()
             } else if (vehicleId != null && loadState.vehicle == null) {
                 MissingEntityCard(
-                    title = "Vehicle not found.",
-                    message = "The selected vehicle could not be loaded from the local database.",
+                    title = stringResource(R.string.vehicle_not_found_title),
+                    message = stringResource(R.string.vehicle_not_found_message),
                 )
             } else {
                 VehicleForm(
@@ -327,14 +335,18 @@ internal fun VehicleEditorScreen(
                                 }.onSuccess { savedVehicleId ->
                                     onSaved(savedVehicleId)
                                 }.onFailure { error ->
-                                    saveError = error.message ?: "Failed to save vehicle."
+                                    saveError = error.message ?: saveVehicleFailedMessage
                                 }
                                 isSaving = false
                             }
                         },
                         enabled = !isSaving && validation.request != null,
                     ) {
-                        Text(if (isSaving) "Saving..." else "Save Vehicle")
+                        Text(
+                            stringResource(
+                                if (isSaving) R.string.saving else R.string.save_vehicle,
+                            ),
+                        )
                     }
                 }
             }
@@ -361,14 +373,20 @@ private fun RowScope.VehicleDetailActionsMenu(
         onDismissRequest = { onExpandedChange(false) },
     ) {
         DropdownMenuItem(
-            text = { Text("Edit Vehicle") },
+            text = { Text(stringResource(R.string.edit_vehicle_action)) },
             onClick = {
                 onExpandedChange(false)
                 onEditVehicle()
             },
         )
         DropdownMenuItem(
-            text = { Text(if (isImporting) "Importing..." else "Import Files") },
+            text = {
+                Text(
+                    stringResource(
+                        if (isImporting) R.string.importing else R.string.import_files,
+                    ),
+                )
+            },
             onClick = {
                 onExpandedChange(false)
                 onImportFiles()
@@ -414,13 +432,15 @@ internal fun VehicleDetailHeaderCard(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     VehicleProfileChip(
-                        label = vehicle.currentMileage?.let { "$it mi" } ?: "Mileage unknown",
+                        label = vehicle.currentMileage?.let {
+                            stringResource(R.string.vehicle_mileage_mi, it)
+                        } ?: stringResource(R.string.vehicle_mileage_unknown),
                     )
                     vehicle.licensePlate?.takeIf { it.isNotBlank() }?.let { plate ->
-                        VehicleProfileChip(label = "Plate $plate")
+                        VehicleProfileChip(label = stringResource(R.string.vehicle_plate, plate))
                     }
                     vehicle.vin?.takeIf { it.isNotBlank() }?.let { vin ->
-                        VehicleProfileChip(label = "VIN ${vin.takeLast(6)}")
+                        VehicleProfileChip(label = stringResource(R.string.vehicle_vin_suffix, vin.takeLast(6)))
                     }
                 }
             }
@@ -471,13 +491,13 @@ private fun VehicleMaintenanceSummaryCard(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 Text(
-                    text = "Component",
+                    text = stringResource(R.string.maintenance_summary_component),
                     modifier = Modifier.weight(0.38f),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
-                    text = "Maintenance / Repair",
+                    text = stringResource(R.string.maintenance_summary_repair),
                     modifier = Modifier.weight(0.62f),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
@@ -486,7 +506,7 @@ private fun VehicleMaintenanceSummaryCard(
             androidx.compose.material3.HorizontalDivider()
             if (items.isEmpty()) {
                 Text(
-                    text = "No normalized maintenance items yet. Import a maintenance document to populate this summary.",
+                    text = stringResource(R.string.maintenance_summary_empty),
                     style = MaterialTheme.typography.bodyMedium,
                 )
             } else {
@@ -514,7 +534,10 @@ private fun VehicleMaintenanceSummaryCard(
                             )
                             item.eventDate?.let { eventDate ->
                                 Text(
-                                    text = "Last recorded ${eventDate.format(vehicleSummaryDateFormatter)}",
+                                    text = stringResource(
+                                        R.string.maintenance_summary_last_recorded,
+                                        eventDate.format(vehicleSummaryDateFormatter),
+                                    ),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -540,16 +563,16 @@ private fun EmptyDocumentState(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Text(
-                text = "No documents yet",
+                text = stringResource(R.string.no_documents_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
-                text = "Import one or more PDFs or photos to create the first logical maintenance document for this vehicle.",
+                text = stringResource(R.string.no_documents_message),
                 style = MaterialTheme.typography.bodyMedium,
             )
             Button(onClick = onImport) {
-                Text("Import Files")
+                Text(stringResource(R.string.import_files))
             }
         }
     }
@@ -571,26 +594,27 @@ private fun DocumentSummaryCard(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
-                text = document.title ?: "Imported document",
+                text = document.title ?: stringResource(R.string.imported_document_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
-                text = buildString {
-                    append("Sources ${document.sourceCount}")
-                    append(" | Import ${document.importStatus}")
-                    append(" | Extraction ${document.extractionStatus}")
-                },
+                text = stringResource(
+                    R.string.document_summary_status,
+                    document.sourceCount,
+                    document.importStatus,
+                    document.extractionStatus,
+                ),
                 style = MaterialTheme.typography.bodyMedium,
             )
             document.occurredOn?.let { occurredOn ->
                 Text(
-                    text = "Occurred on $occurredOn",
+                    text = stringResource(R.string.document_occurred_on, occurredOn),
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
             Text(
-                text = "Updated ${document.updatedAt}",
+                text = stringResource(R.string.document_updated, document.updatedAt),
                 style = MaterialTheme.typography.bodySmall,
             )
         }
@@ -611,38 +635,38 @@ private fun VehicleForm(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             VehicleTextField(
-                label = "Display Name",
+                label = stringResource(R.string.vehicle_display_name_label),
                 value = draft.displayName,
                 onValueChange = { onDraftChange(draft.copy(displayName = it)) },
             )
             VehicleTextField(
-                label = "Make",
+                label = stringResource(R.string.vehicle_make_label),
                 value = draft.make,
                 onValueChange = { onDraftChange(draft.copy(make = it)) },
             )
             VehicleTextField(
-                label = "Model",
+                label = stringResource(R.string.vehicle_model_label),
                 value = draft.model,
                 onValueChange = { onDraftChange(draft.copy(model = it)) },
             )
             VehicleTextField(
-                label = "Year",
+                label = stringResource(R.string.vehicle_year_label),
                 value = draft.year,
                 onValueChange = { onDraftChange(draft.copy(year = it)) },
                 keyboardType = KeyboardType.Number,
             )
             VehicleTextField(
-                label = "License Plate (Optional)",
+                label = stringResource(R.string.vehicle_license_plate_optional_label),
                 value = draft.licensePlate,
                 onValueChange = { onDraftChange(draft.copy(licensePlate = it)) },
             )
             VehicleTextField(
-                label = "VIN (Optional)",
+                label = stringResource(R.string.vehicle_vin_optional_label),
                 value = draft.vin,
                 onValueChange = { onDraftChange(draft.copy(vin = it)) },
             )
             VehicleTextField(
-                label = "Current Mileage (Optional)",
+                label = stringResource(R.string.vehicle_current_mileage_optional_label),
                 value = draft.currentMileage,
                 onValueChange = { onDraftChange(draft.copy(currentMileage = it)) },
                 keyboardType = KeyboardType.Number,

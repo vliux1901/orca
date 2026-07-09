@@ -37,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -61,8 +62,6 @@ import java.time.LocalDate
 import kotlin.math.ln
 import kotlin.math.pow
 
-private const val DocumentDetailScreenTitle = "Document details"
-
 @Composable
 internal fun DocumentDetailScreen(
     documentRepository: DocumentRepository,
@@ -74,6 +73,10 @@ internal fun DocumentDetailScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val savedFactCorrectionTemplate = stringResource(R.string.saved_fact_correction, "%s")
+    val savedServiceItemCorrectionMessage = stringResource(R.string.saved_service_item_correction)
+    val removedServiceItemMessage = stringResource(R.string.removed_service_item)
+    val unableDeleteDocumentMessage = stringResource(R.string.unable_delete_document)
     val documentDetailViewModel: DocumentDetailViewModel = viewModel(
         key = "documentDetail:$documentId",
         factory = remember(documentId, documentRepository) {
@@ -100,7 +103,7 @@ internal fun DocumentDetailScreen(
         modifier = modifier.fillMaxSize(),
         topBar = {
             VehicleTopBar(
-                title = DocumentDetailScreenTitle,
+                title = stringResource(R.string.document_details_title),
                 onBack = onBack,
                 actionContent = {
                     if (detail != null) {
@@ -131,7 +134,7 @@ internal fun DocumentDetailScreen(
 
             saveMessage?.let { message ->
                 item {
-                    InfoCard(title = "Saved", message = message)
+                    InfoCard(title = stringResource(R.string.saved_title), message = message)
                 }
             }
 
@@ -140,8 +143,8 @@ internal fun DocumentDetailScreen(
                     CircularProgressIndicator()
                 } else if (detail == null) {
                     MissingEntityCard(
-                        title = "Document not found.",
-                        message = "The selected document could not be loaded from the local database.",
+                        title = stringResource(R.string.document_not_found_title),
+                        message = stringResource(R.string.document_not_found_message),
                     )
                 } else {
                     DocumentDetailHeader(
@@ -169,7 +172,7 @@ internal fun DocumentDetailScreen(
                                     note = note,
                                 ),
                             )
-                            saveMessage = "Saved $factType correction."
+                            saveMessage = savedFactCorrectionTemplate.replace("%s", factType)
                         },
                     )
                 }
@@ -184,46 +187,46 @@ internal fun DocumentDetailScreen(
                                 serviceItemId = serviceItemId,
                                 request = request,
                             )
-                            saveMessage = "Saved service item correction."
+                            saveMessage = savedServiceItemCorrectionMessage
                         },
                         onDeleteServiceItem = { serviceItemId ->
                             serviceItemRepository.deleteServiceItem(
                                 documentId = loadedDetail.document.documentId,
                                 serviceItemId = serviceItemId,
                             )
-                            saveMessage = "Removed service item."
+                            saveMessage = removedServiceItemMessage
                         },
                     )
                 }
                 item {
                     Text(
-                        text = "All corrections preserve extracted fact history. Active corrected values become the effective review state.",
+                        text = stringResource(R.string.corrections_history_message),
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
                 item {
                     ExpandableDetailSection(
-                        title = "Extracted Facts",
-                        collapsedLabel = "Show",
-                        expandedLabel = "Hide",
+                        title = stringResource(R.string.extracted_facts_title),
+                        collapsedLabel = stringResource(R.string.show),
+                        expandedLabel = stringResource(R.string.hide),
                     ) {
                         FactsSectionContent(detail = loadedDetail)
                     }
                 }
                 item {
                     ExpandableDetailSection(
-                        title = "Source Files",
-                        collapsedLabel = "Show",
-                        expandedLabel = "Hide",
+                        title = stringResource(R.string.source_files_title),
+                        collapsedLabel = stringResource(R.string.show),
+                        expandedLabel = stringResource(R.string.hide),
                     ) {
                         SourceFilesSectionContent(detail = loadedDetail)
                     }
                 }
                 item {
                     ExpandableDetailSection(
-                        title = "Timeline Event",
-                        collapsedLabel = "Show",
-                        expandedLabel = "Hide",
+                        title = stringResource(R.string.timeline_event_title),
+                        collapsedLabel = stringResource(R.string.show),
+                        expandedLabel = stringResource(R.string.hide),
                     ) {
                         EventSectionContent(detail = loadedDetail)
                     }
@@ -248,7 +251,7 @@ internal fun DocumentDetailScreen(
                 }
             },
             title = {
-                Text("Delete Document")
+                Text(stringResource(R.string.delete_document_title))
             },
             text = {
                 Text(documentDeleteConfirmationMessage(detail.document.title))
@@ -266,14 +269,14 @@ internal fun DocumentDetailScreen(
                                 showDeleteConfirmation = false
                                 onBack()
                             }.onFailure { error ->
-                                deleteError = error.message ?: "Unable to delete document."
+                                deleteError = error.message ?: unableDeleteDocumentMessage
                             }
                             isDeleting = false
                         }
                     },
                     enabled = !isDeleting,
                 ) {
-                    Text(if (isDeleting) "Deleting..." else "Delete")
+                    Text(stringResource(if (isDeleting) R.string.deleting else R.string.delete))
                 }
             },
             dismissButton = {
@@ -281,7 +284,7 @@ internal fun DocumentDetailScreen(
                     onClick = { showDeleteConfirmation = false },
                     enabled = !isDeleting,
                 ) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             },
         )
@@ -306,12 +309,16 @@ internal fun DocumentDetailHeader(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Text(
-                text = detail.document.title ?: "Imported document",
+                text = detail.document.title ?: stringResource(R.string.imported_document_title),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                text = "Import ${detail.document.importStatus} | Extraction ${detail.document.extractionStatus}",
+                text = stringResource(
+                    R.string.document_detail_status,
+                    detail.document.importStatus,
+                    detail.document.extractionStatus,
+                ),
                 style = MaterialTheme.typography.bodyMedium,
             )
             Text(
@@ -319,23 +326,28 @@ internal fun DocumentDetailHeader(
                 style = MaterialTheme.typography.bodySmall,
             )
             Text(
-                text = "Updated ${detail.document.updatedAt}",
+                text = stringResource(R.string.document_updated, detail.document.updatedAt),
                 style = MaterialTheme.typography.bodySmall,
             )
             detail.latestRun?.let { run ->
                 Text(
-                    text = "Latest run ${run.status} via ${run.providerName}/${run.modelName}",
+                    text = stringResource(
+                        R.string.document_latest_run,
+                        run.status,
+                        run.providerName,
+                        run.modelName,
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
             Text(
-                text = "Imported source files stay on this device. When extraction runs, the original PDFs and images are sent to cloud AI to build structured maintenance facts.",
+                text = stringResource(R.string.document_cloud_disclosure),
                 style = MaterialTheme.typography.bodySmall,
             )
             if (previewSources.isNotEmpty()) {
                 androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Imported Images",
+                    text = stringResource(R.string.imported_images_title),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                 )
@@ -354,7 +366,11 @@ private fun DocumentExtractionStatusCard(
     detail: DocumentDetail,
 ) {
     val statusMessage = remember(detail) { extractionStatusMessage(detail) } ?: return
-    val title = if (detail.document.extractionStatus == "FAILED") "Extraction issue" else "Extraction status"
+    val title = if (detail.document.extractionStatus == "FAILED") {
+        stringResource(R.string.extraction_issue_title)
+    } else {
+        stringResource(R.string.extraction_status_title)
+    }
     val isFailure = detail.document.extractionStatus == "FAILED"
     if (isFailure) {
         ErrorCard(message = statusMessage)
@@ -386,12 +402,12 @@ private fun CorrectionCard(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Text(
-                text = "Corrections",
+                text = stringResource(R.string.corrections_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
-                text = "Correct service date, mileage, vendor, or total cost. Saving creates a verified replacement fact without deleting extraction history.",
+                text = stringResource(R.string.corrections_subtitle),
                 style = MaterialTheme.typography.bodySmall,
             )
             saveError?.let { message ->
@@ -426,7 +442,7 @@ private fun CorrectionCard(
                                     fontWeight = FontWeight.SemiBold,
                                 )
                                 Text(
-                                    text = field.currentValue ?: "Not set yet",
+                                    text = field.currentValue ?: stringResource(R.string.not_set_yet),
                                     style = MaterialTheme.typography.bodyMedium,
                                 )
                             }
@@ -438,7 +454,7 @@ private fun CorrectionCard(
                                     saveError = null
                                 },
                             ) {
-                                Text(if (editingFactType == field.factType) "Editing" else "Edit")
+                                Text(stringResource(if (editingFactType == field.factType) R.string.editing else R.string.edit))
                             }
                         }
                         if (editingFactType == field.factType) {
@@ -456,7 +472,7 @@ private fun CorrectionCard(
                                         )
                                     },
                                 ) {
-                                    Text(selectedDate?.toString() ?: "Pick Date")
+                                    Text(selectedDate?.toString() ?: stringResource(R.string.pick_date))
                                 }
                             } else {
                                 OutlinedTextField(
@@ -474,7 +490,7 @@ private fun CorrectionCard(
                                 value = draftNote,
                                 onValueChange = { draftNote = it },
                                 modifier = Modifier.fillMaxWidth(),
-                                label = { Text("Correction Note (optional)") },
+                                label = { Text(stringResource(R.string.correction_note_optional)) },
                             )
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -489,7 +505,7 @@ private fun CorrectionCard(
                                     },
                                     enabled = !isSaving,
                                 ) {
-                                    Text("Cancel")
+                                    Text(stringResource(R.string.cancel))
                                 }
                                 Button(
                                     onClick = {
@@ -514,7 +530,7 @@ private fun CorrectionCard(
                                     },
                                     enabled = !isSaving && draftValue.isNotBlank(),
                                 ) {
-                                    Text(if (isSaving) "Saving..." else "Save")
+                                    Text(stringResource(if (isSaving) R.string.saving else R.string.save))
                                 }
                             }
                         }

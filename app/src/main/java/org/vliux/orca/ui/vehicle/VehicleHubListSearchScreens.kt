@@ -50,6 +50,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -155,7 +156,7 @@ internal fun VehicleListScreen(
 private fun AppIcon() {
     Image(
         painter = painterResource(R.drawable.ic_launcher_foreground),
-        contentDescription = "Orca app icon",
+        contentDescription = stringResource(R.string.orca_app_icon_content_description),
         modifier = Modifier
             .size(28.dp)
             .clip(MaterialTheme.shapes.small),
@@ -174,7 +175,7 @@ internal fun SearchPlaceholderField(
         value = query,
         onValueChange = { query = it },
         modifier = modifier.testTag(SearchPlaceholderFieldTestTag),
-        placeholder = "Search records",
+        placeholder = stringResource(R.string.search_records_placeholder),
         onSearch = { onOpenSearch(query.trim()) },
     )
 }
@@ -222,7 +223,7 @@ internal fun SearchScreen(
                     .padding(bottom = 12.dp),
             ) {
                 VehicleTopBar(
-                    title = "Search & Ask",
+                    title = stringResource(R.string.search_and_ask_title),
                     onBack = onBack,
                     applyStatusBarPadding = false,
                 )
@@ -233,7 +234,7 @@ internal fun SearchScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp)
                         .focusRequester(focusRequester),
-                    placeholder = "Try: When was the last service?",
+                    placeholder = stringResource(R.string.search_hint_last_service),
                     onSearch = {},
                 )
             }
@@ -250,8 +251,8 @@ internal fun SearchScreen(
             if (screenState.query.isBlank()) {
                 item {
                     InfoCard(
-                        title = "Supported Questions",
-                        message = "Ask things like \"When was the last service?\" or \"What was last done to the brakes?\" Keyword search also matches indexed facts, events, and service items.",
+                        title = stringResource(R.string.supported_questions_title),
+                        message = stringResource(R.string.supported_questions_message),
                     )
                 }
             } else {
@@ -266,8 +267,8 @@ internal fun SearchScreen(
                 }
                 item {
                     SectionHeader(
-                        title = "Matching Records",
-                        subtitle = "Keyword matches come from the deterministic local search index.",
+                        title = stringResource(R.string.matching_records_title),
+                        subtitle = stringResource(R.string.matching_records_subtitle),
                     )
                 }
                 if (!screenState.resultsLoaded) {
@@ -277,8 +278,8 @@ internal fun SearchScreen(
                 } else if (screenState.results.isEmpty()) {
                     item {
                         InfoCard(
-                            title = "No Matches",
-                            message = "No indexed records matched this search yet.",
+                            title = stringResource(R.string.no_matches_title),
+                            message = stringResource(R.string.no_matches_message),
                         )
                     }
                 } else {
@@ -382,11 +383,11 @@ private fun OverflowMenuDropdown(
         onDismissRequest = { onExpandedChange(false) },
     ) {
         androidx.compose.material3.DropdownMenuItem(
-            text = { Text("Settings") },
+            text = { Text(stringResource(R.string.settings)) },
             onClick = { onExpandedChange(false) },
         )
         androidx.compose.material3.DropdownMenuItem(
-            text = { Text("Options") },
+            text = { Text(stringResource(R.string.options)) },
             onClick = { onExpandedChange(false) },
         )
     }
@@ -406,7 +407,7 @@ private fun SearchAnswerCard(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Text(
-                text = "Answer",
+                text = stringResource(R.string.answer_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
@@ -416,14 +417,17 @@ private fun SearchAnswerCard(
             )
             answer.relatedDate?.let { relatedDate ->
                 Text(
-                    text = "Date: ${relatedDate.format(vehicleSummaryDateFormatter)}",
+                    text = stringResource(
+                        R.string.answer_date,
+                        relatedDate.format(vehicleSummaryDateFormatter),
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             answer.relatedMileage?.let { mileage ->
                 Text(
-                    text = "Mileage: $mileage mi",
+                    text = stringResource(R.string.answer_mileage, mileage),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -438,7 +442,7 @@ private fun SearchAnswerCard(
             if (answer.citations.isNotEmpty()) {
                 androidx.compose.material3.HorizontalDivider()
                 Text(
-                    text = "Citations",
+                    text = stringResource(R.string.citations_title),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
                 )
@@ -482,7 +486,7 @@ private fun SearchResultCard(
                 text = buildString {
                     append(result.documentTitle)
                     result.occurredOn?.let { append(" | ${it.format(vehicleSummaryDateFormatter)}") }
-                    result.sourcePage?.let { append(" | page $it") }
+                    result.sourcePage?.let { append(" | ${stringResource(R.string.search_result_page, it)}") }
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -491,9 +495,10 @@ private fun SearchResultCard(
     }
 }
 
+@Composable
 private fun citationLabel(citation: SearchCitation): String = buildString {
     append(citation.documentTitle)
-    citation.sourcePage?.let { append(" (page $it)") }
+    citation.sourcePage?.let { append(" ${stringResource(R.string.citation_page, it)}") }
 }
 
 @Composable
@@ -509,16 +514,16 @@ private fun EmptyVehicleState(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Text(
-                text = "No vehicles yet",
+                text = stringResource(R.string.no_vehicles_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
-                text = "V1 starts by grouping imported maintenance records under a vehicle profile.",
+                text = stringResource(R.string.no_vehicles_message),
                 style = MaterialTheme.typography.bodyMedium,
             )
             androidx.compose.material3.Button(onClick = onCreateVehicle) {
-                Text("Create First Vehicle")
+                Text(stringResource(R.string.create_first_vehicle))
             }
         }
     }
@@ -553,9 +558,9 @@ private fun VehicleSummaryCard(
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 val metadata = listOfNotNull(
-                    vehicle.licensePlate?.takeIf { it.isNotBlank() }?.let { "Plate $it" },
-                    vehicle.currentMileage?.let { "$it mi" },
-                    vehicle.vin?.takeIf { it.isNotBlank() }?.let { "VIN ${it.takeLast(6)}" },
+                    vehicle.licensePlate?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.vehicle_plate, it) },
+                    vehicle.currentMileage?.let { stringResource(R.string.vehicle_mileage_mi, it) },
+                    vehicle.vin?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.vehicle_vin_suffix, it.takeLast(6)) },
                 )
                 if (metadata.isNotEmpty()) {
                     Text(
@@ -567,7 +572,7 @@ private fun VehicleSummaryCard(
             Box(modifier = Modifier.padding(top = 4.dp)) {
                 Icon(
                     painter = painterResource(R.drawable.ic_vehicle_car),
-                    contentDescription = "Vehicle",
+                    contentDescription = stringResource(R.string.vehicle_icon_content_description),
                     modifier = Modifier.size(36.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

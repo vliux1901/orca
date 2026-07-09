@@ -25,6 +25,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -52,7 +53,7 @@ internal fun VehicleTopBar(
             IconButton(onClick = onBack) {
                 Icon(
                     painter = painterResource(R.drawable.ic_back_arrow),
-                    contentDescription = "Back",
+                    contentDescription = stringResource(R.string.back),
                 )
             }
         },
@@ -76,11 +77,11 @@ internal fun RowScope.OverflowMenu(
         onDismissRequest = { onExpandedChange(false) },
     ) {
         DropdownMenuItem(
-            text = { Text("Settings") },
+            text = { Text(stringResource(R.string.settings)) },
             onClick = { onExpandedChange(false) },
         )
         DropdownMenuItem(
-            text = { Text("Options") },
+            text = { Text(stringResource(R.string.options)) },
             onClick = { onExpandedChange(false) },
         )
     }

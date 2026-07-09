@@ -33,11 +33,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.vliux.orca.R
 import org.vliux.orca.data.model.DocumentSourceEntity
 import org.vliux.orca.importing.AppFileStorage
 import java.io.File
@@ -118,13 +120,17 @@ internal fun SourcePreviewTile(
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Text(
-                        text = if (source.mimeType == "application/pdf") "PDF" else source.fileName.take(10),
+                        text = if (source.mimeType == "application/pdf") {
+                            stringResource(R.string.pdf_label)
+                        } else {
+                            source.fileName.take(10)
+                        },
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     previewPage?.let { page ->
                         Text(
-                            text = "Page $page",
+                            text = stringResource(R.string.page_label, page),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -213,7 +219,7 @@ private fun PreviewUnavailableState() {
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            text = "Preview unavailable",
+            text = stringResource(R.string.preview_unavailable),
             style = MaterialTheme.typography.titleMedium,
             color = androidx.compose.ui.graphics.Color.White,
         )
@@ -256,9 +262,9 @@ private fun PreviewContextOverlay(
                         fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
                     )
                     val contextLabels = buildList {
-                        request.focusPage?.let { add("Related page $it") }
+                        request.focusPage?.let { add(stringResource(R.string.related_page, it)) }
                         if (request.source.mimeType == "application/pdf") {
-                            add("Viewing page $currentPage/$pdfPageCount")
+                            add(stringResource(R.string.viewing_page, currentPage, pdfPageCount))
                         }
                     }
                     if (contextLabels.isNotEmpty()) {
@@ -270,12 +276,12 @@ private fun PreviewContextOverlay(
                     }
                 }
                 TextButton(onClick = onClose) {
-                    Text("Close", color = androidx.compose.ui.graphics.Color.White)
+                    Text(stringResource(R.string.close), color = androidx.compose.ui.graphics.Color.White)
                 }
             }
             request.focusText?.takeIf { it.isNotBlank() }?.let { focusText ->
                 Text(
-                    text = "Related text: $focusText",
+                    text = stringResource(R.string.related_text, focusText),
                     style = MaterialTheme.typography.bodySmall,
                     color = androidx.compose.ui.graphics.Color.White,
                 )
@@ -289,13 +295,13 @@ private fun PreviewContextOverlay(
                         onClick = onPreviousPage,
                         enabled = currentPage > 1,
                     ) {
-                        Text("Prev", color = androidx.compose.ui.graphics.Color.White)
+                        Text(stringResource(R.string.prev), color = androidx.compose.ui.graphics.Color.White)
                     }
                     TextButton(
                         onClick = onNextPage,
                         enabled = currentPage < pdfPageCount,
                     ) {
-                        Text("Next", color = androidx.compose.ui.graphics.Color.White)
+                        Text(stringResource(R.string.next), color = androidx.compose.ui.graphics.Color.White)
                     }
                 }
             }

@@ -17,7 +17,9 @@ class SearchRepository(
     ): Flow<List<SearchResultItem>> {
         val normalizedQuery = NormalizationRules.normalizeWhitespace(query).orEmpty()
         return dao.observeSearchEntries(normalizedQuery, limit).map { rows ->
-            rows.map { row ->
+            rows
+                .filterNot(::isHiddenSearchRow)
+                .map { row ->
                 SearchResultItem(
                     entryId = row.entryId,
                     vehicleId = row.vehicleId,
@@ -31,7 +33,7 @@ class SearchRepository(
                     occurredOn = row.occurredOn,
                     createdAt = row.createdAt,
                 )
-            }
+                }
         }
     }
 
@@ -46,3 +48,8 @@ class SearchRepository(
         const val DEFAULT_LIMIT = 40
     }
 }
+
+internal fun isHiddenSearchRow(row: SearchQueryResultRow): Boolean =
+    row.entryType == "FACT" && row.title in hiddenSearchTitles
+
+private val hiddenSearchTitles = setOf("Line Item", "Interpreted Line Item")

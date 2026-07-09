@@ -2,9 +2,12 @@ package org.vliux.orca.search
 
 import java.time.Instant
 import java.time.LocalDate
+import org.vliux.orca.data.SearchQueryResultRow
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.vliux.orca.data.isHiddenSearchRow
 import org.vliux.orca.data.model.DocumentEntity
 import org.vliux.orca.data.model.DocumentFactEntity
 import org.vliux.orca.data.model.MaintenanceEventEntity
@@ -43,6 +46,14 @@ class SearchIndexBuilderTest {
                 sourceId = "source-001",
                 sourcePage = 1,
                 evidenceText = "120K3 service",
+            ),
+            fact(
+                factId = "fact-3",
+                factType = "SHOP_NAME",
+                valueText = "BMW Seattle",
+                sourceId = "source-001",
+                sourcePage = 1,
+                evidenceText = "BMW Seattle",
             ),
         )
         val event = MaintenanceEventEntity(
@@ -91,11 +102,23 @@ class SearchIndexBuilderTest {
         )
 
         assertEquals(first, second)
-        assertEquals(listOf("EVENT", "SERVICE_ITEM", "FACT", "FACT"), first.map { it.entryType })
+        assertEquals(listOf("EVENT", "SERVICE_ITEM", "FACT"), first.map { it.entryType })
         assertEquals("BMW 120K service", first.first().title)
         assertTrue(first.first().body.contains("Services 120K package inspection"))
-        assertTrue(first.any { it.entryType == "FACT" && it.body.contains("120K3 service") })
-        assertTrue(first.any { it.entryType == "FACT" && it.body.contains("Likely 120,000-mile scheduled service package") })
+        assertTrue(first.any { it.entryType == "FACT" && it.body.contains("BMW Seattle") })
+        assertTrue(first.none { it.entryType == "FACT" && it.body.contains("120K3 service") })
+        assertTrue(first.none { it.entryType == "FACT" && it.body.contains("Likely 120,000-mile scheduled service package") })
+    }
+
+    @Test
+    fun hiddenSearchRowTreatsLegacyLineItemFactsAsHidden() {
+        val legacyLineItem = searchRow(title = "Line Item")
+        val legacyInterpreted = searchRow(title = "Interpreted Line Item")
+        val serviceItem = searchRow(entryType = "SERVICE_ITEM", title = "Brake pads")
+
+        assertTrue(isHiddenSearchRow(legacyLineItem))
+        assertTrue(isHiddenSearchRow(legacyInterpreted))
+        assertFalse(isHiddenSearchRow(serviceItem))
     }
 
     private fun fact(
@@ -124,5 +147,22 @@ class SearchIndexBuilderTest {
         replacesFactId = null,
         isActive = true,
         createdAt = Instant.parse("2026-07-01T00:00:00Z"),
+    )
+
+    private fun searchRow(
+        entryType: String = "FACT",
+        title: String,
+    ) = SearchQueryResultRow(
+        entryId = "entry-$title",
+        vehicleId = "vehicle-123",
+        documentId = "document-123",
+        documentTitle = "BMW 120K service",
+        entryType = entryType,
+        title = title,
+        body = "body",
+        sourceId = null,
+        sourcePage = null,
+        occurredOn = LocalDate.parse("2026-05-01"),
+        createdAt = Instant.parse("2026-07-02T00:00:00Z"),
     )
 }

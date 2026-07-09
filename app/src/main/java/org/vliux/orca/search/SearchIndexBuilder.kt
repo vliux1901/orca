@@ -40,6 +40,7 @@ class SearchIndexBuilder {
                 )
             }
         entries += facts
+            .filterNot(::isHiddenSearchFact)
             .sortedWith(compareBy(DocumentFactEntity::factType, DocumentFactEntity::valueText, { it.sourcePage ?: Int.MAX_VALUE }))
             .mapIndexed { index, fact ->
                 buildFactEntry(
@@ -141,6 +142,9 @@ class SearchIndexBuilder {
     private fun stableId(seed: String): String =
         UUID.nameUUIDFromBytes(seed.toByteArray(Charsets.UTF_8)).toString()
 
+    private fun isHiddenSearchFact(fact: DocumentFactEntity): Boolean =
+        fact.factType.trim().uppercase() in hiddenFactTypes
+
     private fun humanizeFactOrCategory(raw: String): String =
         raw.lowercase()
             .split('_')
@@ -150,5 +154,9 @@ class SearchIndexBuilder {
         val amount = costMinor ?: return null
         val code = currencyCode?.uppercase()?.takeIf { it.isNotBlank() } ?: "USD"
         return "$code ${(amount / 100)}.${(amount % 100).toString().padStart(2, '0')}"
+    }
+
+    private companion object {
+        val hiddenFactTypes = setOf("LINE_ITEM", "INTERPRETED_LINE_ITEM")
     }
 }

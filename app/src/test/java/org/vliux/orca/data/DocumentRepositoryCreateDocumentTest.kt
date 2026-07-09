@@ -240,8 +240,9 @@ class DocumentRepositoryCreateDocumentTest {
             assertTrue(entries.isNotEmpty())
             assertTrue(entries.none { it.title == "Brake service" || it.body.contains("Front brake pads") })
             assertTrue(entries.any { it.entryType == "EVENT" && it.title == "BMW 120K service" })
-            assertTrue(entries.any { it.entryType == "FACT" && it.body.contains("120K3 service") })
-            assertTrue(entries.any { it.entryType == "FACT" && it.body.contains("Likely 120,000-mile scheduled service package") })
+            assertTrue(entries.any { it.entryType == "SERVICE_ITEM" && it.title == "120K package inspection" })
+            assertTrue(entries.none { it.entryType == "FACT" && it.body.contains("120K3 service") })
+            assertTrue(entries.none { it.entryType == "FACT" && it.body.contains("Likely 120,000-mile scheduled service package") })
         } finally {
             rootDir.deleteRecursively()
         }

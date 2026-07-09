@@ -441,8 +441,10 @@ files/vehicles/{vehicleId}/documents/{documentId}/sources/source-003.{ext}</code
               <li class="block" data-block-id="ops-2g">Allow in-place editing of extracted service items from document detail. In V1 those edits rewrite the canonical service-item row, mark the parent event as user-verified, and keep the linked source evidence visible for review.</li>
               <li class="block" data-block-id="ops-2h">Service-date correction should present a date picker and show normalized ISO-style dates in review UI rather than exposing raw dealer strings such as <code>06JUL26</code> as the primary editable value.</li>
               <li class="block" data-block-id="ops-2i">Exclude discounts, disposal fees, shop supplies, taxes, and similar non-service charges from extracted service items. Users should also be able to remove an extracted service item manually from document detail if one still slips through.</li>
-              <li class="block" data-block-id="ops-3">Disclose when cloud AI was used to process a document.</li>
-              <li class="block" data-block-id="ops-4">Fail safely on provider errors, malformed responses, render failures, and unsupported file types.</li>
+              <li class="block" data-block-id="ops-3">Disclose in document detail that original PDFs and images stay in app-private storage but are sent to cloud AI when extraction runs.</li>
+              <li class="block" data-block-id="ops-4">Fail safely on provider errors, malformed responses, render failures, unsupported file types, offline cases, and provider timeouts.</li>
+              <li class="block" data-block-id="ops-4a">Queue extraction work with a connected-network requirement and exponential backoff so offline or transient-provider failures retry without hammering the backend.</li>
+              <li class="block" data-block-id="ops-4b">Show plain-language extraction status messaging for queued, running, retryable, and terminal-failure states, and note that large PDFs or multi-file logical documents may take longer.</li>
             </ul>
           </article>
 

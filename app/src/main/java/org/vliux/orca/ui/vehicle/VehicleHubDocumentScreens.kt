@@ -58,6 +58,8 @@ import org.vliux.orca.importing.AppFileStorage
 import org.vliux.orca.importing.SourceImportRequest
 import org.vliux.orca.normalization.NormalizationRules
 import java.time.LocalDate
+import kotlin.math.ln
+import kotlin.math.pow
 
 private const val DocumentDetailScreenTitle = "Document details"
 
@@ -151,6 +153,9 @@ internal fun DocumentDetailScreen(
             }
 
             detail?.let { loadedDetail ->
+                item {
+                    DocumentExtractionStatusCard(detail = loadedDetail)
+                }
                 item {
                     CorrectionCard(
                         detail = loadedDetail,
@@ -290,6 +295,7 @@ internal fun DocumentDetailHeader(
     onOpenSourcePreview: (SourcePreviewRequest) -> Unit,
 ) {
     val previewSources = remember(detail.sources) { previewableImageSources(detail.sources) }
+    val sourceSummary = remember(detail.sources) { documentSourceSummary(detail) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -309,6 +315,10 @@ internal fun DocumentDetailHeader(
                 style = MaterialTheme.typography.bodyMedium,
             )
             Text(
+                text = sourceSummary,
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Text(
                 text = "Updated ${detail.document.updatedAt}",
                 style = MaterialTheme.typography.bodySmall,
             )
@@ -318,6 +328,10 @@ internal fun DocumentDetailHeader(
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
+            Text(
+                text = "Imported source files stay on this device. When extraction runs, the original PDFs and images are sent to cloud AI to build structured maintenance facts.",
+                style = MaterialTheme.typography.bodySmall,
+            )
             if (previewSources.isNotEmpty()) {
                 androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(4.dp))
                 Text(
@@ -332,6 +346,20 @@ internal fun DocumentDetailHeader(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun DocumentExtractionStatusCard(
+    detail: DocumentDetail,
+) {
+    val statusMessage = remember(detail) { extractionStatusMessage(detail) } ?: return
+    val title = if (detail.document.extractionStatus == "FAILED") "Extraction issue" else "Extraction status"
+    val isFailure = detail.document.extractionStatus == "FAILED"
+    if (isFailure) {
+        ErrorCard(message = statusMessage)
+    } else {
+        InfoCard(title = title, message = statusMessage)
     }
 }
 
@@ -1022,6 +1050,57 @@ private fun lineItemCitationText(fact: DocumentFactEntity): String? {
     val pageLabel = fact.sourcePage?.let { "Page $it" }
     return listOfNotNull(sourceLabel, pageLabel).takeIf { it.isNotEmpty() }?.joinToString(" | ")
 }
+
+internal fun extractionStatusMessage(detail: DocumentDetail): String? {
+    val run = detail.latestRun
+    return when (detail.document.extractionStatus) {
+        "NOT_STARTED" -> "Extraction has not started yet. Import a document while cloud extraction is configured to process it."
+        "QUEUED" -> when {
+            run?.errorCode == "PROVIDER_OFFLINE" -> "Extraction is queued because the device could not reach the cloud provider. Reconnect to the network and the background retry will resume."
+            run?.errorCode == "PROVIDER_TIMEOUT" || run?.errorCode == "PROVIDER_HTTP_408" || run?.errorCode == "PROVIDER_HTTP_429" -> "Extraction is queued for retry because the cloud provider timed out or asked Orca to slow down."
+            else -> "Extraction is queued. Large PDFs and multi-file documents can take longer because the original source files must upload before processing starts."
+        }
+
+        "RUNNING" -> "Extraction is running in the background. Large PDFs and multi-file documents may take a few minutes while the original files upload and the structured result is validated locally."
+        "FAILED" -> extractionFailureMessage(run?.errorCode)
+        "SUCCEEDED" -> "Extraction completed. Review the facts and service items, especially any fields that still need correction."
+        else -> null
+    }
+}
+
+internal fun extractionFailureMessage(errorCode: String?): String {
+    return when (errorCode) {
+        "PROVIDER_OFFLINE" -> "The device could not reach the cloud provider. Check connectivity, then retry extraction."
+        "PROVIDER_TIMEOUT",
+        "PROVIDER_HTTP_408",
+        "PROVIDER_HTTP_429",
+        -> "The cloud provider timed out or was busy. Retry the document when the network and provider are available."
+
+        "PROVIDER_TLS" -> "A secure connection to the cloud provider could not be established. Retry on a stable network."
+        "MALFORMED_PROVIDER_RESPONSE" -> "The cloud provider returned data Orca could not validate. Retry the document or inspect the original files for unusual formatting."
+        null -> "Extraction failed before structured maintenance facts were saved. Retry the document after checking the original files and network."
+        else -> "Extraction failed with error $errorCode. Retry the document after checking connectivity and the imported files."
+    }
+}
+
+internal fun documentSourceSummary(detail: DocumentDetail): String {
+    val sourceCount = detail.sources.size
+    val totalBytes = detail.sources.sumOf { it.byteSize }
+    val fileLabel = if (sourceCount == 1) "file" else "files"
+    return "$sourceCount $fileLabel | ${formatByteCount(totalBytes)} total"
+}
+
+internal fun formatByteCount(bytes: Long): String {
+    if (bytes < 1024) {
+        return "$bytes B"
+    }
+    val unitIndex = (ln(bytes.toDouble()) / ln(1024.0)).toInt().coerceAtMost(BYTE_UNITS.lastIndex)
+    val unitBytes = 1024.0.pow(unitIndex.toDouble())
+    val value = bytes / unitBytes
+    return String.format("%.1f %s", value, BYTE_UNITS[unitIndex])
+}
+
+private val BYTE_UNITS = arrayOf("B", "KB", "MB", "GB", "TB")
 
 internal data class ServiceItemDisplayModel(
     val serviceItem: ServiceItemEntity,

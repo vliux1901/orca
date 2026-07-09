@@ -3,6 +3,9 @@ package org.vliux.orca.extraction
 import kotlin.io.path.createTempFile
 import java.time.Instant
 import java.time.LocalDate
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
+import javax.net.ssl.SSLException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -97,6 +100,22 @@ class OpenAiCloudExtractionAdapterTest {
         assertEquals(
             """{"title":"Receipt","facts":[],"maintenance_event":null,"service_items":[],"warnings":[]}""",
             output,
+        )
+    }
+
+    @Test
+    fun classifyIoFailureMapsOfflineTimeoutAndTlsErrors() {
+        assertEquals(
+            "PROVIDER_OFFLINE",
+            adapter.classifyIoFailure(UnknownHostException("offline")).errorCode,
+        )
+        assertEquals(
+            "PROVIDER_TIMEOUT",
+            adapter.classifyIoFailure(SocketTimeoutException("slow")).errorCode,
+        )
+        assertEquals(
+            "PROVIDER_TLS",
+            adapter.classifyIoFailure(SSLException("tls")).errorCode,
         )
     }
 

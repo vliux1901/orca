@@ -1,7 +1,10 @@
 package org.vliux.orca.extraction
 
 import java.io.File
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 import java.io.IOException
+import javax.net.ssl.SSLException
 import java.util.Base64
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
@@ -80,11 +83,7 @@ class OpenAiCloudExtractionAdapter(
             } catch (error: ExtractionPipelineException) {
                 throw error
             } catch (error: IOException) {
-                throw RetryableExtractionException(
-                    errorCode = "PROVIDER_IO",
-                    message = "OpenAI extraction request failed before a valid response was received.",
-                    cause = error,
-                )
+                throw classifyIoFailure(error)
             }
         }
 
@@ -242,6 +241,22 @@ class OpenAiCloudExtractionAdapter(
                 message = "$message Response body length=${responseBody.length}.",
             )
         }
+    }
+
+    internal fun classifyIoFailure(
+        error: IOException,
+    ): RetryableExtractionException {
+        val errorCode = when (error) {
+            is SocketTimeoutException -> "PROVIDER_TIMEOUT"
+            is UnknownHostException -> "PROVIDER_OFFLINE"
+            is SSLException -> "PROVIDER_TLS"
+            else -> "PROVIDER_IO"
+        }
+        return RetryableExtractionException(
+            errorCode = errorCode,
+            message = "OpenAI extraction request failed before a valid response was received.",
+            cause = error,
+        )
     }
 
     private fun factSchema(): JsonObject = buildJsonObject {

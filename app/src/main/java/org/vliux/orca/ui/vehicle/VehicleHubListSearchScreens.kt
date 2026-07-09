@@ -1,0 +1,468 @@
+package org.vliux.orca.ui.vehicle
+
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import org.vliux.orca.R
+import org.vliux.orca.data.SearchRepository
+import org.vliux.orca.data.VehicleRepository
+import org.vliux.orca.data.model.VehicleEntity
+import org.vliux.orca.search.SearchAnswer
+import org.vliux.orca.search.SearchCitation
+import org.vliux.orca.search.SearchResultItem
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun VehicleListScreen(
+    vehicleRepository: VehicleRepository,
+    onOpenSearch: (String) -> Unit,
+    onCreateVehicle: () -> Unit,
+    onOpenVehicle: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val vehiclesFlow = remember(vehicleRepository) { vehicleRepository.observeVehicles() }
+    val vehicles by vehiclesFlow.collectAsStateWithLifecycle(initialValue = emptyList())
+    var menuExpanded by remember { mutableStateOf(false) }
+
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "Orca",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                },
+                navigationIcon = {
+                    AppIcon()
+                },
+                actions = {
+                    OverflowMenu(
+                        expanded = menuExpanded,
+                        onExpandedChange = { menuExpanded = it },
+                    )
+                },
+            )
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = onCreateVehicle,
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+            ) {
+                Text(
+                    text = "+",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
+        },
+    ) { innerPadding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(bottom = 96.dp),
+        ) {
+            item {
+                SearchPlaceholderField(onOpenSearch = onOpenSearch)
+            }
+            if (vehicles.isEmpty()) {
+                item {
+                    EmptyVehicleState(onCreateVehicle = onCreateVehicle)
+                }
+            } else {
+                items(vehicles, key = { it.vehicleId }) { vehicle ->
+                    VehicleSummaryCard(
+                        vehicle = vehicle,
+                        onOpenVehicle = { onOpenVehicle(vehicle.vehicleId) },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AppIcon() {
+    Image(
+        painter = painterResource(R.drawable.ic_launcher_foreground),
+        contentDescription = "Orca app icon",
+        modifier = Modifier
+            .padding(start = 12.dp)
+            .size(28.dp)
+            .clip(MaterialTheme.shapes.small),
+        contentScale = ContentScale.Crop,
+    )
+}
+
+@Composable
+internal fun SearchPlaceholderField(
+    onOpenSearch: (String) -> Unit,
+) {
+    var query by rememberSaveable { mutableStateOf("") }
+
+    OutlinedTextField(
+        value = query,
+        onValueChange = { query = it },
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(SearchPlaceholderFieldTestTag),
+        singleLine = true,
+        placeholder = {
+            Text("Search maintenance records or ask a question")
+        },
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Search),
+        keyboardActions = KeyboardActions(
+            onSearch = {
+                onOpenSearch(query.trim())
+            },
+        ),
+    )
+}
+
+internal const val SearchPlaceholderFieldTestTag = "searchPlaceholderField"
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun SearchScreen(
+    searchRepository: SearchRepository,
+    initialQuery: String,
+    onBack: () -> Unit,
+    onOpenDocument: (String, String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val searchViewModel: SearchScreenViewModel = viewModel(
+        key = "search:$initialQuery",
+        factory = remember(initialQuery, searchRepository) {
+            viewModelFactory {
+                initializer {
+                    SearchScreenViewModel(
+                        initialQuery = initialQuery,
+                        searchRepository = searchRepository,
+                    )
+                }
+            }
+        },
+    )
+    val screenState by searchViewModel.uiState.collectAsStateWithLifecycle()
+    val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+        keyboardController?.show()
+    }
+
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            VehicleTopBar(
+                title = "Search & Ask",
+                onBack = onBack,
+            )
+        },
+    ) { innerPadding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(bottom = 32.dp),
+        ) {
+            item {
+                OutlinedTextField(
+                    value = screenState.query,
+                    onValueChange = searchViewModel::updateQuery,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(focusRequester),
+                    singleLine = true,
+                    placeholder = {
+                        Text("Try: When was the last service?")
+                    },
+                )
+            }
+            if (screenState.query.isBlank()) {
+                item {
+                    InfoCard(
+                        title = "Supported Questions",
+                        message = "Ask things like \"When was the last service?\" or \"What was last done to the brakes?\" Keyword search also matches indexed facts, events, and service items.",
+                    )
+                }
+            } else {
+                item {
+                    when {
+                        screenState.answerLoading -> CircularProgressIndicator()
+                        screenState.answer != null -> SearchAnswerCard(
+                            answer = requireNotNull(screenState.answer),
+                            onOpenDocument = onOpenDocument,
+                        )
+                    }
+                }
+                item {
+                    SectionHeader(
+                        title = "Matching Records",
+                        subtitle = "Keyword matches come from the deterministic local search index.",
+                    )
+                }
+                if (!screenState.resultsLoaded) {
+                    item {
+                        CircularProgressIndicator()
+                    }
+                } else if (screenState.results.isEmpty()) {
+                    item {
+                        InfoCard(
+                            title = "No Matches",
+                            message = "No indexed records matched this search yet.",
+                        )
+                    }
+                } else {
+                    items(screenState.results, key = { it.entryId }) { result ->
+                        SearchResultCard(
+                            result = result,
+                            onOpenDocument = {
+                                onOpenDocument(result.vehicleId, result.documentId)
+                            },
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchAnswerCard(
+    answer: SearchAnswer,
+    onOpenDocument: (String, String) -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = vehicleCardColors(),
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                text = "Answer",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = answer.answer,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            answer.relatedDate?.let { relatedDate ->
+                Text(
+                    text = "Date: ${relatedDate.format(vehicleSummaryDateFormatter)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            answer.relatedMileage?.let { mileage ->
+                Text(
+                    text = "Mileage: $mileage mi",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            answer.uncertaintyNote?.let { note ->
+                Text(
+                    text = note,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+            if (answer.citations.isNotEmpty()) {
+                androidx.compose.material3.HorizontalDivider()
+                Text(
+                    text = "Citations",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                answer.citations.forEach { citation ->
+                    TextButton(
+                        onClick = { onOpenDocument(citation.vehicleId, citation.documentId) },
+                    ) {
+                        Text(citationLabel(citation))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchResultCard(
+    result: SearchResultItem,
+    onOpenDocument: () -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onOpenDocument),
+        colors = vehicleCardColors(),
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = result.title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = result.body,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Text(
+                text = buildString {
+                    append(result.documentTitle)
+                    result.occurredOn?.let { append(" | ${it.format(vehicleSummaryDateFormatter)}") }
+                    result.sourcePage?.let { append(" | page $it") }
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+private fun citationLabel(citation: SearchCitation): String = buildString {
+    append(citation.documentTitle)
+    citation.sourcePage?.let { append(" (page $it)") }
+}
+
+@Composable
+private fun EmptyVehicleState(
+    onCreateVehicle: () -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = vehicleCardColors(),
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                text = "No vehicles yet",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = "V1 starts by grouping imported maintenance records under a vehicle profile.",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            androidx.compose.material3.Button(onClick = onCreateVehicle) {
+                Text("Create First Vehicle")
+            }
+        }
+    }
+}
+
+@Composable
+private fun VehicleSummaryCard(
+    vehicle: VehicleEntity,
+    onOpenVehicle: () -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onOpenVehicle),
+        colors = vehicleCardColors(),
+    ) {
+        androidx.compose.foundation.layout.Row(
+            modifier = Modifier.padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = vehicle.displayName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text = "${vehicle.year} ${vehicle.make} ${vehicle.model}",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                val metadata = listOfNotNull(
+                    vehicle.licensePlate?.takeIf { it.isNotBlank() }?.let { "Plate $it" },
+                    vehicle.currentMileage?.let { "$it mi" },
+                    vehicle.vin?.takeIf { it.isNotBlank() }?.let { "VIN ${it.takeLast(6)}" },
+                )
+                if (metadata.isNotEmpty()) {
+                    Text(
+                        text = metadata.joinToString(" | "),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
+            Box(modifier = Modifier.padding(top = 4.dp)) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_vehicle_car),
+                    contentDescription = "Vehicle",
+                    modifier = Modifier.size(36.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}

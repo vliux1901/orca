@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -38,10 +39,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -55,6 +58,9 @@ import org.vliux.orca.data.VehicleRepository
 import org.vliux.orca.data.model.DocumentListItem
 import org.vliux.orca.data.model.VehicleEntity
 import org.vliux.orca.worker.DocumentExtractionScheduler
+
+internal const val VehicleDetailHeaderImageTestTag = "vehicleDetailHeaderImage"
+private const val VehicleDetailScreenTitle = "Vehicle details"
 
 @Composable
 internal fun VehicleDetailScreen(
@@ -122,7 +128,7 @@ internal fun VehicleDetailScreen(
         modifier = modifier.fillMaxSize(),
         topBar = {
             VehicleTopBar(
-                title = loadedVehicle?.displayName ?: "View Vehicle",
+                title = VehicleDetailScreenTitle,
                 onBack = onBack,
                 actionContent = {
                     VehicleDetailActionsMenu(
@@ -373,7 +379,7 @@ private fun RowScope.VehicleDetailActionsMenu(
 }
 
 @Composable
-private fun VehicleDetailHeaderCard(
+internal fun VehicleDetailHeaderCard(
     vehicle: VehicleEntity,
 ) {
     Card(
@@ -382,40 +388,50 @@ private fun VehicleDetailHeaderCard(
             containerColor = MaterialTheme.colorScheme.secondary,
         ),
     ) {
-        Column(
-            modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = vehicle.displayName,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-            )
-            Text(
-                text = "Vehicle Profile",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSecondary,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                text = "${vehicle.year} ${vehicle.make} ${vehicle.model}",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSecondary,
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                VehicleProfileChip(
-                    label = vehicle.currentMileage?.let { "$it mi" } ?: "Mileage unknown",
+                Text(
+                    text = vehicle.displayName,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
                 )
-                vehicle.licensePlate?.takeIf { it.isNotBlank() }?.let { plate ->
-                    VehicleProfileChip(label = "Plate $plate")
-                }
-                vehicle.vin?.takeIf { it.isNotBlank() }?.let { vin ->
-                    VehicleProfileChip(label = "VIN ${vin.takeLast(6)}")
+                Text(
+                    text = "${vehicle.year} ${vehicle.make} ${vehicle.model}",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSecondary,
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    VehicleProfileChip(
+                        label = vehicle.currentMileage?.let { "$it mi" } ?: "Mileage unknown",
+                    )
+                    vehicle.licensePlate?.takeIf { it.isNotBlank() }?.let { plate ->
+                        VehicleProfileChip(label = "Plate $plate")
+                    }
+                    vehicle.vin?.takeIf { it.isNotBlank() }?.let { vin ->
+                        VehicleProfileChip(label = "VIN ${vin.takeLast(6)}")
+                    }
                 }
             }
+            Icon(
+                painter = painterResource(R.drawable.ic_vehicle_car),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(72.dp)
+                    .testTag(VehicleDetailHeaderImageTestTag),
+                tint = MaterialTheme.colorScheme.onSecondary,
+            )
         }
     }
 }

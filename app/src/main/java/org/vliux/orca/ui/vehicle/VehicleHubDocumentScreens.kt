@@ -59,6 +59,8 @@ import org.vliux.orca.importing.SourceImportRequest
 import org.vliux.orca.normalization.NormalizationRules
 import java.time.LocalDate
 
+private const val DocumentDetailScreenTitle = "Document details"
+
 @Composable
 internal fun DocumentDetailScreen(
     documentRepository: DocumentRepository,
@@ -96,7 +98,7 @@ internal fun DocumentDetailScreen(
         modifier = modifier.fillMaxSize(),
         topBar = {
             VehicleTopBar(
-                title = detail?.document?.title ?: if (screenState.loaded) "Document Detail" else "Loading Document",
+                title = DocumentDetailScreenTitle,
                 onBack = onBack,
                 actionContent = {
                     if (detail != null) {
@@ -282,7 +284,7 @@ internal fun DocumentDetailScreen(
 }
 
 @Composable
-private fun DocumentDetailHeader(
+internal fun DocumentDetailHeader(
     detail: DocumentDetail,
     appFileStorage: AppFileStorage,
     onOpenSourcePreview: (SourcePreviewRequest) -> Unit,
@@ -307,7 +309,7 @@ private fun DocumentDetailHeader(
                 style = MaterialTheme.typography.bodyMedium,
             )
             Text(
-                text = "Sources ${detail.sources.size} | Updated ${detail.document.updatedAt}",
+                text = "Updated ${detail.document.updatedAt}",
                 style = MaterialTheme.typography.bodySmall,
             )
             detail.latestRun?.let { run ->
@@ -322,10 +324,6 @@ private fun DocumentDetailHeader(
                     text = "Imported Images",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    text = "Tap a thumbnail to inspect the original picture full screen.",
-                    style = MaterialTheme.typography.bodySmall,
                 )
                 SourcePreviewGrid(
                     sources = previewSources,

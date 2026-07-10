@@ -41,6 +41,7 @@ data class ServiceItemEntity(
     val currencyCode: String?,
     val sourceId: String?,
     val sourcePage: Int?,
+    val isUserEdited: Boolean,
     @Serializable(with = InstantIso8601Serializer::class)
     val createdAt: Instant,
 )

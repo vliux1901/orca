@@ -80,6 +80,7 @@ class SearchIndexBuilderTest {
                 currencyCode = "USD",
                 sourceId = "source-001",
                 sourcePage = 1,
+                isUserEdited = false,
                 createdAt = Instant.parse("2026-07-01T00:00:00Z"),
             ),
         )

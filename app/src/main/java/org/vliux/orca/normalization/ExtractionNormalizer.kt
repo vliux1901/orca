@@ -332,6 +332,7 @@ class ExtractionNormalizer(
             currencyCode = item.currencyCode?.trim()?.uppercase()?.takeIf { it.isNotEmpty() },
             sourceId = sanitizedSourceId,
             sourcePage = sanitizedSourcePage,
+            isUserEdited = false,
             createdAt = nowProvider(),
             ),
             savedTo = "service_items",

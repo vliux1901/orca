@@ -44,6 +44,7 @@ class ServiceItemRepository(
             } else {
                 existing.currencyCode
             },
+            isUserEdited = true,
             createdAt = existing.createdAt,
         )
 

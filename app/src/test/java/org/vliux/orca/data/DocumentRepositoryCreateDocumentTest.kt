@@ -331,6 +331,7 @@ class DocumentRepositoryCreateDocumentTest {
             assertEquals("BRAKES", item.category)
             assertEquals("Rear brake pads", item.label)
             assertEquals(18950L, item.costMinor)
+            assertTrue(item.isUserEdited)
             assertTrue(entries.any { it.entryType == "SERVICE_ITEM" && it.title == "Rear brake pads" })
             assertTrue(entries.none { it.entryType == "SERVICE_ITEM" && it.title == "Front brake pads" })
         } finally {
@@ -492,6 +493,7 @@ class DocumentRepositoryCreateDocumentTest {
                 currencyCode = "USD",
                 sourceId = "source-001",
                 sourcePage = 1,
+                isUserEdited = false,
                 createdAt = now,
             ),
         )
@@ -586,6 +588,7 @@ class DocumentRepositoryCreateDocumentTest {
             currencyCode = "USD",
             sourceId = "source-001",
             sourcePage = 1,
+            isUserEdited = false,
             createdAt = now,
         )
         val secondItem = ServiceItemEntity(
@@ -598,6 +601,7 @@ class DocumentRepositoryCreateDocumentTest {
             currencyCode = "USD",
             sourceId = "source-001",
             sourcePage = 1,
+            isUserEdited = false,
             createdAt = now,
         )
         val serviceItems = buildList {

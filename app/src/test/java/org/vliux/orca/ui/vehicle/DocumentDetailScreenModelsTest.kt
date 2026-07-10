@@ -194,6 +194,39 @@ class DocumentDetailScreenModelsTest {
         assertEquals(LocalDate.parse("2026-07-06"), field.normalizedDate)
     }
 
+    @Test
+    fun verificationLabelsUseUserFacingCopy() {
+        assertEquals("Verified", eventVerificationLabel("USER_VERIFIED"))
+        assertEquals("Unverified", eventVerificationLabel("EXTRACTED_UNVERIFIED"))
+    }
+
+    @Test
+    fun resolveServiceItemDisplayModelsMarksOnlyEditedItemVerified() {
+        val detail = documentDetail(
+            facts = emptyList(),
+            serviceItems = listOf(
+                serviceItem(
+                    serviceItemId = "service-1",
+                    label = "Edited item",
+                    sourceId = "source-1",
+                    sourcePage = 1,
+                    isUserEdited = true,
+                ),
+                serviceItem(
+                    serviceItemId = "service-2",
+                    label = "Original item",
+                    sourceId = "source-1",
+                    sourcePage = 1,
+                    isUserEdited = false,
+                ),
+            ),
+        )
+
+        val models = resolveServiceItemDisplayModels(detail)
+
+        assertEquals(listOf("service-1"), models.filter { it.isVerified }.map { it.serviceItem.serviceItemId })
+    }
+
     private fun documentDetail(
         sources: List<DocumentSourceEntity> = emptyList(),
         facts: List<DocumentFactEntity>,
@@ -264,6 +297,7 @@ class DocumentDetailScreenModelsTest {
         label: String,
         sourceId: String?,
         sourcePage: Int?,
+        isUserEdited: Boolean = false,
     ) = ServiceItemEntity(
         serviceItemId = serviceItemId,
         eventId = "event-1",
@@ -274,6 +308,7 @@ class DocumentDetailScreenModelsTest {
         currencyCode = null,
         sourceId = sourceId,
         sourcePage = sourcePage,
+        isUserEdited = isUserEdited,
         createdAt = Instant.parse("2026-07-06T12:00:00Z"),
     )
 

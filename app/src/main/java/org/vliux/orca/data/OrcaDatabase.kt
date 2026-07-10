@@ -25,7 +25,7 @@ import org.vliux.orca.data.model.VehicleEntity
         ServiceItemEntity::class,
         SearchEntryEntity::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = true,
 )
 @TypeConverters(InstantTypeConverters::class)
@@ -177,6 +177,12 @@ abstract class OrcaDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE `vehicles` ADD COLUMN `color` TEXT")
                 db.execSQL("ALTER TABLE `vehicles` ADD COLUMN `photoUri` TEXT")
+            }
+        }
+
+        val MIGRATION_7_8: Migration = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `service_items` ADD COLUMN `isUserEdited` INTEGER NOT NULL DEFAULT 0")
             }
         }
     }

@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -35,6 +37,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -598,7 +603,7 @@ private fun EventSectionContent(
         )
     } else {
         Text(
-            text = "${event.eventDate} | ${event.shopName ?: "Unknown shop"} | ${event.status}",
+            text = "${event.eventDate} | ${event.shopName ?: "Unknown shop"} | ${eventVerificationLabel(event.status)}",
             style = MaterialTheme.typography.bodyMedium,
         )
         event.mileage?.let { mileage ->
@@ -723,6 +728,9 @@ private fun ServiceItemRow(
                     }
                 }
                 Row {
+                    if (model.isVerified) {
+                        VerifiedServiceItemBadge()
+                    }
                     if (isExpanded) {
                         IconButton(onClick = { isEditing = !isEditing }) {
                             Icon(
@@ -962,6 +970,28 @@ private fun ServiceItemRow(
 }
 
 @Composable
+private fun VerifiedServiceItemBadge() {
+    Box(
+        modifier = Modifier
+            .padding(top = 8.dp, end = 4.dp)
+            .size(24.dp)
+            .clip(CircleShape)
+            .background(
+                color = VERIFIED_BADGE_GREEN.copy(alpha = 0.16f),
+                shape = CircleShape,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.ic_status_check),
+            contentDescription = "Verified service item",
+            tint = VERIFIED_BADGE_GREEN,
+            modifier = Modifier.size(16.dp),
+        )
+    }
+}
+
+@Composable
 private fun FactReviewWarning(
     warning: String,
 ) {
@@ -1067,6 +1097,16 @@ private fun lineItemCitationText(fact: DocumentFactEntity): String? {
     return listOfNotNull(sourceLabel, pageLabel).takeIf { it.isNotEmpty() }?.joinToString(" | ")
 }
 
+internal fun eventVerificationLabel(status: String?): String = when (status?.trim()?.uppercase()) {
+    "USER_VERIFIED" -> "Verified"
+    "EXTRACTED_UNVERIFIED",
+    "UNVERIFIED",
+    -> "Unverified"
+
+    null -> "Unverified"
+    else -> status
+}
+
 internal fun extractionStatusMessage(detail: DocumentDetail): String? {
     val run = detail.latestRun
     return when (detail.document.extractionStatus) {
@@ -1120,6 +1160,7 @@ private val BYTE_UNITS = arrayOf("B", "KB", "MB", "GB", "TB")
 
 internal data class ServiceItemDisplayModel(
     val serviceItem: ServiceItemEntity,
+    val isVerified: Boolean,
     val linkedLineItem: DocumentFactEntity?,
     val linkedSource: DocumentSourceEntity?,
 )
@@ -1184,11 +1225,14 @@ internal fun resolveServiceItemDisplayModels(detail: DocumentDetail): List<Servi
         val linkedLineItem = resolveLinkedLineItem(serviceItem, rawLineItems)
         ServiceItemDisplayModel(
             serviceItem = serviceItem,
+            isVerified = serviceItem.isUserEdited,
             linkedLineItem = linkedLineItem,
             linkedSource = resolveLinkedSource(serviceItem, linkedLineItem, sourcesById),
         )
     }
 }
+
+private val VERIFIED_BADGE_GREEN = Color(0xFF2E7D32)
 
 private fun resolveLinkedSource(
     serviceItem: ServiceItemEntity,

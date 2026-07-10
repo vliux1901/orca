@@ -1,6 +1,8 @@
 package org.vliux.orca.ui.vehicle
 
+import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts.OpenDocument
 import androidx.activity.result.contract.ActivityResultContracts.OpenMultipleDocuments
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.verticalScroll
@@ -12,14 +14,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -28,7 +29,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -45,7 +45,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -228,6 +227,7 @@ internal fun VehicleEditorScreen(
     onSaved: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
     val saveVehicleFailedMessage = stringResource(R.string.save_vehicle_failed)
     val scope = rememberCoroutineScope()
     val vehicleEditorViewModel: VehicleEditorViewModel = viewModel(
@@ -250,6 +250,19 @@ internal fun VehicleEditorScreen(
     var initialized by rememberSaveable(vehicleId) { mutableStateOf(vehicleId == null) }
     var isSaving by remember(vehicleId) { mutableStateOf(false) }
     var saveError by remember(vehicleId) { mutableStateOf<String?>(null) }
+    val photoPickerLauncher = rememberLauncherForActivityResult(OpenDocument()) { uri ->
+        if (uri == null) {
+            return@rememberLauncherForActivityResult
+        }
+        runCatching {
+            context.contentResolver.takePersistableUriPermission(
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION,
+            )
+        }
+        formDraft = formDraft.copy(photoUri = uri.toString())
+        saveError = null
+    }
 
     LaunchedEffect(vehicleId, loadState) {
         if (!initialized && vehicleId != null && loadState.loaded) {
@@ -301,6 +314,8 @@ internal fun VehicleEditorScreen(
                         formDraft = it
                         saveError = null
                     },
+                    onPickPhoto = { photoPickerLauncher.launch(arrayOf("image/*")) },
+                    onRemovePhoto = { formDraft = formDraft.copy(photoUri = null) },
                 )
                 validation.errorMessage?.let { message ->
                     Text(
@@ -400,78 +415,11 @@ private fun RowScope.VehicleDetailActionsMenu(
 internal fun VehicleDetailHeaderCard(
     vehicle: VehicleEntity,
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondary,
-        ),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                Text(
-                    text = vehicle.displayName,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                )
-                Text(
-                    text = "${vehicle.year} ${vehicle.make} ${vehicle.model}",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSecondary,
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    VehicleProfileChip(
-                        label = vehicle.currentMileage?.let {
-                            stringResource(R.string.vehicle_mileage_mi, it)
-                        } ?: stringResource(R.string.vehicle_mileage_unknown),
-                    )
-                    vehicle.licensePlate?.takeIf { it.isNotBlank() }?.let { plate ->
-                        VehicleProfileChip(label = stringResource(R.string.vehicle_plate, plate))
-                    }
-                    vehicle.vin?.takeIf { it.isNotBlank() }?.let { vin ->
-                        VehicleProfileChip(label = stringResource(R.string.vehicle_vin_suffix, vin.takeLast(6)))
-                    }
-                }
-            }
-            Icon(
-                painter = painterResource(R.drawable.ic_vehicle_car),
-                contentDescription = null,
-                modifier = Modifier
-                    .size(72.dp)
-                    .testTag(VehicleDetailHeaderImageTestTag),
-                tint = MaterialTheme.colorScheme.onSecondary,
-            )
-        }
-    }
-}
-
-@Composable
-private fun VehicleProfileChip(
-    label: String,
-) {
-    Surface(
-        color = MaterialTheme.colorScheme.onSecondary.copy(alpha = 0.12f),
-        contentColor = MaterialTheme.colorScheme.onSecondary,
-        shape = MaterialTheme.shapes.small,
-    ) {
-        Text(
-            text = label,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-            style = MaterialTheme.typography.bodySmall,
-            fontWeight = FontWeight.Medium,
-        )
-    }
+    VehicleProfileCard(
+        vehicle = vehicle,
+        imageSize = 88.dp,
+        imageTestTag = VehicleDetailHeaderImageTestTag,
+    )
 }
 
 @Composable
@@ -625,6 +573,8 @@ private fun DocumentSummaryCard(
 private fun VehicleForm(
     draft: VehicleFormDraft,
     onDraftChange: (VehicleFormDraft) -> Unit,
+    onPickPhoto: () -> Unit,
+    onRemovePhoto: () -> Unit,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -666,11 +616,43 @@ private fun VehicleForm(
                 onValueChange = { onDraftChange(draft.copy(vin = it)) },
             )
             VehicleTextField(
-                label = stringResource(R.string.vehicle_current_mileage_optional_label),
-                value = draft.currentMileage,
-                onValueChange = { onDraftChange(draft.copy(currentMileage = it)) },
-                keyboardType = KeyboardType.Number,
+                label = stringResource(R.string.vehicle_color_optional_label),
+                value = draft.color,
+                onValueChange = { onDraftChange(draft.copy(color = it)) },
             )
+            Text(
+                text = stringResource(R.string.vehicle_photo_optional_label),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = stringResource(R.string.vehicle_photo_picker_description),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            VehicleArtwork(
+                photoUri = draft.photoUri,
+                contentDescription = stringResource(R.string.vehicle_photo_preview),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(180.dp),
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Button(onClick = onPickPhoto) {
+                    Text(
+                        stringResource(
+                            if (draft.photoUri == null) R.string.vehicle_choose_photo else R.string.vehicle_change_photo,
+                        ),
+                    )
+                }
+                if (draft.photoUri != null) {
+                    Button(onClick = onRemovePhoto) {
+                        Text(stringResource(R.string.vehicle_remove_photo))
+                    }
+                }
+            }
         }
     }
 }

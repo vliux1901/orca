@@ -108,6 +108,8 @@ internal val vehicleFormDraftSaver: Saver<VehicleFormDraft, Any> = Saver(
             draft.year,
             draft.licensePlate,
             draft.vin,
+            draft.color,
+            draft.photoUri.orEmpty(),
             draft.currentMileage,
         )
     },
@@ -120,7 +122,9 @@ internal val vehicleFormDraftSaver: Saver<VehicleFormDraft, Any> = Saver(
             year = values.getOrNull(3) as? String ?: "",
             licensePlate = values.getOrNull(4) as? String ?: "",
             vin = values.getOrNull(5) as? String ?: "",
-            currentMileage = values.getOrNull(6) as? String ?: "",
+            color = values.getOrNull(6) as? String ?: "",
+            photoUri = (values.getOrNull(7) as? String)?.takeIf { it.isNotBlank() },
+            currentMileage = values.getOrNull(8) as? Int,
         )
     },
 )

@@ -10,7 +10,9 @@ data class VehicleFormDraft(
     val year: String = "",
     val licensePlate: String = "",
     val vin: String = "",
-    val currentMileage: String = "",
+    val color: String = "",
+    val photoUri: String? = null,
+    val currentMileage: Int? = null,
 ) {
     fun validate(): VehicleFormValidation {
         if (displayName.isBlank() || make.isBlank() || model.isBlank() || year.isBlank()) {
@@ -23,16 +25,6 @@ data class VehicleFormDraft(
             return VehicleFormValidation(errorMessage = "Year must be greater than 0.")
         }
 
-        val parsedMileage = currentMileage.trim().takeIf { it.isNotEmpty() }?.toIntOrNull()
-            ?: if (currentMileage.isBlank()) {
-                null
-            } else {
-                return VehicleFormValidation(errorMessage = "Current mileage must be a number.")
-            }
-        if (parsedMileage != null && parsedMileage < 0) {
-            return VehicleFormValidation(errorMessage = "Current mileage cannot be negative.")
-        }
-
         return VehicleFormValidation(
             request = SaveVehicleRequest(
                 displayName = displayName.trim(),
@@ -41,7 +33,9 @@ data class VehicleFormDraft(
                 year = parsedYear,
                 licensePlate = licensePlate.trim().takeIf { it.isNotEmpty() },
                 vin = vin.trim().takeIf { it.isNotEmpty() },
-                currentMileage = parsedMileage,
+                color = color.trim().takeIf { it.isNotEmpty() },
+                photoUri = photoUri?.trim()?.takeIf { it.isNotEmpty() },
+                currentMileage = currentMileage,
             ),
         )
     }
@@ -54,7 +48,9 @@ data class VehicleFormDraft(
             year = vehicle.year.toString(),
             licensePlate = vehicle.licensePlate.orEmpty(),
             vin = vehicle.vin.orEmpty(),
-            currentMileage = vehicle.currentMileage?.toString().orEmpty(),
+            color = vehicle.color.orEmpty(),
+            photoUri = vehicle.photoUri,
+            currentMileage = vehicle.currentMileage,
         )
     }
 }

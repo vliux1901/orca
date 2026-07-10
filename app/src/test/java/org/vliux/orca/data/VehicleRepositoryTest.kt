@@ -40,6 +40,8 @@ class VehicleRepositoryTest {
                 year = 2020,
                 licensePlate = null,
                 vin = null,
+                color = "Blue",
+                photoUri = "content://vehicle/photo/1",
                 currentMileage = 45123,
             ),
         )
@@ -54,6 +56,8 @@ class VehicleRepositoryTest {
                 year = 2020,
                 licensePlate = null,
                 vin = null,
+                color = "Blue",
+                photoUri = "content://vehicle/photo/1",
                 currentMileage = 45123,
                 createdAt = now,
                 updatedAt = now,
@@ -73,6 +77,8 @@ class VehicleRepositoryTest {
                 year = 2018,
                 licensePlate = null,
                 vin = "VIN1",
+                color = "Black",
+                photoUri = "content://vehicle/photo/old",
                 currentMileage = 22222,
                 createdAt = Instant.parse("2026-01-01T00:00:00Z"),
                 updatedAt = Instant.parse("2026-01-02T00:00:00Z"),
@@ -93,6 +99,8 @@ class VehicleRepositoryTest {
                 year = 2019,
                 licensePlate = null,
                 vin = "VIN2",
+                color = "White",
+                photoUri = "content://vehicle/photo/new",
                 currentMileage = 33333,
             ),
         )
@@ -104,6 +112,8 @@ class VehicleRepositoryTest {
         assertEquals(2019, stored?.year)
         assertNull(stored?.licensePlate)
         assertEquals("VIN2", stored?.vin)
+        assertEquals("White", stored?.color)
+        assertEquals("content://vehicle/photo/new", stored?.photoUri)
         assertEquals(33333, stored?.currentMileage)
     }
 
@@ -125,6 +135,8 @@ class VehicleRepositoryTest {
                 year = 2020,
                 licensePlate = null,
                 vin = null,
+                color = null,
+                photoUri = null,
                 currentMileage = 45123,
             ),
         )
@@ -154,6 +166,8 @@ class VehicleRepositoryTest {
                 year = 2020,
                 licensePlate = null,
                 vin = null,
+                color = null,
+                photoUri = null,
                 currentMileage = 45123,
             ),
         )

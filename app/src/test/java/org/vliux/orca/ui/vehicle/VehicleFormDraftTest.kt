@@ -28,7 +28,8 @@ class VehicleFormDraftTest {
             year = "2020",
             licensePlate = " ABC1234 ",
             vin = " 1ABCDEFG ",
-            currentMileage = "45123",
+            color = "  Blue  ",
+            photoUri = " content://vehicle/photo/1 ",
         ).validate()
 
         assertEquals("Family SUV", validation.request?.displayName)
@@ -37,28 +38,22 @@ class VehicleFormDraftTest {
         assertEquals(2020, validation.request?.year)
         assertEquals("ABC1234", validation.request?.licensePlate)
         assertEquals("1ABCDEFG", validation.request?.vin)
-        assertEquals(45123, validation.request?.currentMileage)
+        assertEquals("Blue", validation.request?.color)
+        assertEquals("content://vehicle/photo/1", validation.request?.photoUri)
+        assertEquals(null, validation.request?.currentMileage)
         assertNull(validation.errorMessage)
     }
 
     @Test
-    fun validateRejectsInvalidNumbers() {
+    fun validateRejectsInvalidYear() {
         val invalidYear = VehicleFormDraft(
             displayName = "Family SUV",
             make = "Toyota",
             model = "Highlander",
             year = "twenty",
         ).validate()
-        val invalidMileage = VehicleFormDraft(
-            displayName = "Family SUV",
-            make = "Toyota",
-            model = "Highlander",
-            year = "2020",
-            currentMileage = "-1",
-        ).validate()
 
         assertEquals("Year must be a number.", invalidYear.errorMessage)
-        assertEquals("Current mileage cannot be negative.", invalidMileage.errorMessage)
     }
 
     @Test
@@ -86,6 +81,8 @@ class VehicleFormDraftTest {
                 year = 2020,
                 licensePlate = null,
                 vin = "VIN1",
+                color = "Silver",
+                photoUri = "content://vehicle/photo/2",
                 currentMileage = 45123,
                 createdAt = Instant.parse("2026-07-03T00:00:00Z"),
                 updatedAt = Instant.parse("2026-07-03T00:00:00Z"),
@@ -98,7 +95,10 @@ class VehicleFormDraftTest {
         assertEquals("2020", draft.year)
         assertEquals("", draft.licensePlate)
         assertEquals("VIN1", draft.vin)
-        assertEquals("45123", draft.currentMileage)
+        assertEquals("Silver", draft.color)
+        assertEquals("content://vehicle/photo/2", draft.photoUri)
+        assertEquals(45123, draft.currentMileage)
+        assertEquals(45123, draft.validate().request?.currentMileage)
         assertTrue(draft.validate().request != null)
     }
 }

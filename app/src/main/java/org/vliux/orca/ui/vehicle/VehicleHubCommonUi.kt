@@ -1,11 +1,21 @@
 package org.vliux.orca.ui.vehicle
 
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
@@ -15,22 +25,33 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.vliux.orca.R
+import org.vliux.orca.data.model.VehicleEntity
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -197,6 +218,184 @@ internal fun VehicleTextField(
             imeAction = ImeAction.Default,
         ),
     )
+}
+
+@Composable
+internal fun VehicleProfileCard(
+    vehicle: VehicleEntity,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    imageSize: Dp = 80.dp,
+    imageTestTag: String? = null,
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondary,
+        ),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(
+                    text = vehicle.displayName,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSecondary,
+                )
+                Text(
+                    text = "${vehicle.year} ${vehicle.make} ${vehicle.model}",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSecondary,
+                )
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    VehicleProfileChip(
+                        label = vehicle.currentMileage?.let {
+                            stringResource(R.string.vehicle_mileage_mi, it)
+                        } ?: stringResource(R.string.vehicle_mileage_unknown),
+                    )
+                    vehicle.licensePlate?.takeIf { it.isNotBlank() }?.let { plate ->
+                        VehicleProfileChip(label = stringResource(R.string.vehicle_plate, plate))
+                    }
+                    vehicle.color?.takeIf { it.isNotBlank() }?.let { color ->
+                        VehicleProfileChip(label = stringResource(R.string.vehicle_color_chip, color))
+                    }
+                    vehicle.vin?.takeIf { it.isNotBlank() }?.let { vin ->
+                        VehicleProfileChip(label = stringResource(R.string.vehicle_vin_suffix, vin.takeLast(6)))
+                    }
+                }
+            }
+            VehicleArtwork(
+                photoUri = vehicle.photoUri,
+                contentDescription = stringResource(R.string.vehicle_icon_content_description),
+                modifier = Modifier.size(imageSize),
+                testTag = imageTestTag,
+            )
+        }
+    }
+}
+
+@Composable
+internal fun VehicleArtwork(
+    photoUri: String?,
+    contentDescription: String?,
+    modifier: Modifier = Modifier,
+    testTag: String? = null,
+) {
+    val context = LocalContext.current
+    val imageModifier = if (testTag != null) modifier.testTag(testTag) else modifier
+    val imageBitmap = rememberVehiclePhotoBitmap(
+        context = context,
+        photoUri = photoUri,
+        maxDimension = 512,
+    )
+
+    if (imageBitmap != null) {
+        Image(
+            bitmap = imageBitmap,
+            contentDescription = contentDescription,
+            modifier = imageModifier.clip(RoundedCornerShape(20.dp)),
+            contentScale = ContentScale.Crop,
+        )
+    } else {
+        Image(
+            painter = painterResource(R.drawable.ic_vehicle_car),
+            contentDescription = contentDescription,
+            modifier = imageModifier,
+            contentScale = ContentScale.Fit,
+        )
+    }
+}
+
+@Composable
+private fun VehicleProfileChip(
+    label: String,
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.onSecondary.copy(alpha = 0.12f),
+        contentColor = MaterialTheme.colorScheme.onSecondary,
+        shape = MaterialTheme.shapes.small,
+    ) {
+        Text(
+            text = label,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
+        )
+    }
+}
+
+@Composable
+private fun rememberVehiclePhotoBitmap(
+    context: Context,
+    photoUri: String?,
+    maxDimension: Int,
+) = produceState<androidx.compose.ui.graphics.ImageBitmap?>(
+    initialValue = null,
+    key1 = photoUri,
+    key2 = maxDimension,
+) {
+    value = withContext(Dispatchers.IO) {
+        photoUri
+            ?.takeIf { it.isNotBlank() }
+            ?.let(Uri::parse)
+            ?.let { decodeScaledBitmap(context, it, maxDimension) }
+            ?.asImageBitmap()
+    }
+}.value
+
+private fun decodeScaledBitmap(
+    context: Context,
+    uri: Uri,
+    maxDimension: Int,
+): Bitmap? {
+    val bounds = BitmapFactory.Options().apply {
+        inJustDecodeBounds = true
+    }
+    context.contentResolver.openInputStream(uri)?.use { input ->
+        BitmapFactory.decodeStream(input, null, bounds)
+    } ?: return null
+    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) {
+        return null
+    }
+
+    val options = BitmapFactory.Options().apply {
+        inSampleSize = calculateInSampleSize(bounds.outWidth, bounds.outHeight, maxDimension)
+        inPreferredConfig = Bitmap.Config.ARGB_8888
+    }
+    return runCatching {
+        context.contentResolver.openInputStream(uri)?.use { input ->
+            BitmapFactory.decodeStream(input, null, options)
+        }
+    }.getOrNull()
+}
+
+private fun calculateInSampleSize(
+    width: Int,
+    height: Int,
+    maxDimension: Int,
+): Int {
+    var sampleSize = 1
+    var currentWidth = width
+    var currentHeight = height
+    while (currentWidth > maxDimension || currentHeight > maxDimension) {
+        currentWidth /= 2
+        currentHeight /= 2
+        sampleSize *= 2
+    }
+    return sampleSize.coerceAtLeast(1)
 }
 
 @Composable

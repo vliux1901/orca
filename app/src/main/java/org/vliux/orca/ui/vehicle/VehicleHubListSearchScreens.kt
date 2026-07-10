@@ -534,49 +534,9 @@ private fun VehicleSummaryCard(
     vehicle: VehicleEntity,
     onOpenVehicle: () -> Unit,
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onOpenVehicle),
-        colors = vehicleCardColors(),
-    ) {
-        androidx.compose.foundation.layout.Row(
-            modifier = Modifier.padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(
-                    text = vehicle.displayName,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    text = "${vehicle.year} ${vehicle.make} ${vehicle.model}",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                val metadata = listOfNotNull(
-                    vehicle.licensePlate?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.vehicle_plate, it) },
-                    vehicle.currentMileage?.let { stringResource(R.string.vehicle_mileage_mi, it) },
-                    vehicle.vin?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.vehicle_vin_suffix, it.takeLast(6)) },
-                )
-                if (metadata.isNotEmpty()) {
-                    Text(
-                        text = metadata.joinToString(" | "),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
-            }
-            Box(modifier = Modifier.padding(top = 4.dp)) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_vehicle_car),
-                    contentDescription = stringResource(R.string.vehicle_icon_content_description),
-                    modifier = Modifier.size(36.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-    }
+    VehicleProfileCard(
+        vehicle = vehicle,
+        onClick = onOpenVehicle,
+        imageSize = 88.dp,
+    )
 }

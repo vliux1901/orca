@@ -29,6 +29,8 @@ class VehicleDetailHeaderCardTest {
                         year = 2019,
                         licensePlate = "853jec",
                         vin = "1HGCV1F30KA123456",
+                        color = "Blue",
+                        photoUri = null,
                         currentMileage = 42000,
                         createdAt = Instant.parse("2026-07-08T00:00:00Z"),
                         updatedAt = Instant.parse("2026-07-08T00:00:00Z"),

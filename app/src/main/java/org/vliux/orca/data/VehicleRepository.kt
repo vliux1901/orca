@@ -22,6 +22,8 @@ data class SaveVehicleRequest(
     val year: Int,
     val licensePlate: String?,
     val vin: String?,
+    val color: String?,
+    val photoUri: String?,
     val currentMileage: Int?,
 )
 
@@ -78,6 +80,8 @@ class VehicleRepository(
                 year = request.year,
                 licensePlate = request.licensePlate,
                 vin = request.vin,
+                color = request.color,
+                photoUri = request.photoUri,
                 currentMileage = request.currentMileage,
                 createdAt = now,
                 updatedAt = now,
@@ -99,6 +103,8 @@ class VehicleRepository(
                 year = request.year,
                 licensePlate = request.licensePlate,
                 vin = request.vin,
+                color = request.color,
+                photoUri = request.photoUri,
                 currentMileage = request.currentMileage,
                 updatedAt = nowProvider(),
             ),

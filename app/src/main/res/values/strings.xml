@@ -44,7 +44,14 @@
     <string name="vehicle_year_label">Year</string>
     <string name="vehicle_license_plate_optional_label">License Plate (Optional)</string>
     <string name="vehicle_vin_optional_label">VIN (Optional)</string>
-    <string name="vehicle_current_mileage_optional_label">Current Mileage (Optional)</string>
+    <string name="vehicle_color_optional_label">Color (Optional)</string>
+    <string name="vehicle_photo_optional_label">Vehicle Photo (Optional)</string>
+    <string name="vehicle_photo_picker_description">Choose a vehicle photo from the gallery to personalize list and detail cards.</string>
+    <string name="vehicle_choose_photo">Choose Photo</string>
+    <string name="vehicle_change_photo">Change Photo</string>
+    <string name="vehicle_remove_photo">Remove Photo</string>
+    <string name="vehicle_photo_preview">Vehicle photo preview</string>
+    <string name="vehicle_color_chip">Color %1$s</string>
 
     <string name="orca_app_icon_content_description">Orca app icon</string>
     <string name="search_records_placeholder">Search records</string>

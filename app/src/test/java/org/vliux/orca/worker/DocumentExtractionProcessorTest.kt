@@ -1,5 +1,6 @@
 package org.vliux.orca.worker
 
+import androidx.fragment.app.FragmentActivity
 import java.io.File
 import java.time.Instant
 import java.time.LocalDate
@@ -38,7 +39,9 @@ import org.vliux.orca.importing.AppFileStorage
 import org.vliux.orca.normalization.ExtractionNormalizer
 import org.vliux.orca.provider.ProviderRuntimeConfigStore
 import org.vliux.orca.provider.ProviderRuntimeMetadata
+import org.vliux.orca.settings.OpenAiApiKeyAccessState
 import org.vliux.orca.settings.OpenAiApiKeyStore
+import org.vliux.orca.settings.OpenAiApiKeyMutationResult
 
 class DocumentExtractionProcessorTest {
     @Test
@@ -273,14 +276,34 @@ private class ProcessorFakeOpenAiApiKeyStore(
     initialValue: String,
 ) : OpenAiApiKeyStore {
     private val state = MutableStateFlow(initialValue)
+    private val accessState = MutableStateFlow(
+        if (initialValue.isBlank()) OpenAiApiKeyAccessState.NOT_STORED else OpenAiApiKeyAccessState.UNLOCKED,
+    )
 
     override fun observeApiKey() = state
 
+    override fun observeAccessState() = accessState
+
     override fun currentApiKey(): String = state.value
 
-    override suspend fun saveApiKey(apiKey: String) {
+    override suspend fun saveApiKey(activity: FragmentActivity, apiKey: String): OpenAiApiKeyMutationResult {
         state.value = apiKey
+        accessState.value = if (apiKey.isBlank()) OpenAiApiKeyAccessState.NOT_STORED else OpenAiApiKeyAccessState.UNLOCKED
+        return OpenAiApiKeyMutationResult.SAVED
     }
+
+    override suspend fun unlockApiKey(activity: FragmentActivity): OpenAiApiKeyMutationResult {
+        accessState.value = if (state.value.isBlank()) OpenAiApiKeyAccessState.NOT_STORED else OpenAiApiKeyAccessState.UNLOCKED
+        return OpenAiApiKeyMutationResult.UNLOCKED
+    }
+
+    override suspend fun clearApiKey(): OpenAiApiKeyMutationResult {
+        state.value = ""
+        accessState.value = OpenAiApiKeyAccessState.NOT_STORED
+        return OpenAiApiKeyMutationResult.CLEARED
+    }
+
+    override fun hasStoredApiKey(): Boolean = state.value.isNotBlank()
 }
 
 private class RecordingExtractionEngine(

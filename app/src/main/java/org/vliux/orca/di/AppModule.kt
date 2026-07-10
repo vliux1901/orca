@@ -32,7 +32,7 @@ import org.vliux.orca.provider.ProviderRuntimeConfigResolver
 import org.vliux.orca.provider.ProviderRuntimeConfigStore
 import org.vliux.orca.search.SearchIndexBuilder
 import org.vliux.orca.settings.OpenAiApiKeyStore
-import org.vliux.orca.settings.SharedPreferencesOpenAiApiKeyStore
+import org.vliux.orca.settings.KeystoreOpenAiApiKeyStore
 import org.vliux.orca.worker.DocumentExtractionWorkEnqueuer
 import org.vliux.orca.worker.WorkManagerDocumentExtractionWorkEnqueuer
 
@@ -43,7 +43,7 @@ object AppModule {
     @Singleton
     fun provideOpenAiApiKeyStore(
         @ApplicationContext appContext: Context,
-    ): OpenAiApiKeyStore = SharedPreferencesOpenAiApiKeyStore(appContext)
+    ): OpenAiApiKeyStore = KeystoreOpenAiApiKeyStore(appContext)
 
     @Provides
     @Singleton

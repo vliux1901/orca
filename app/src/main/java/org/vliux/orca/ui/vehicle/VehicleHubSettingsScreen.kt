@@ -1,5 +1,6 @@
 package org.vliux.orca.ui.vehicle
 
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -29,10 +30,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
+import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import org.vliux.orca.R
+import org.vliux.orca.settings.OpenAiApiKeyAccessState
 import org.vliux.orca.settings.OpenAiApiKeyStore
+import org.vliux.orca.settings.OpenAiApiKeyMutationResult
 
 internal const val SettingsApiKeyFieldTestTag = "settingsApiKeyField"
 
@@ -42,12 +46,18 @@ internal fun SettingsScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val activity = LocalActivity.current as? FragmentActivity
     val savedApiKey by openAiApiKeyStore.observeApiKey().collectAsStateWithLifecycle()
+    val accessState by openAiApiKeyStore.observeAccessState().collectAsStateWithLifecycle()
     var draftApiKey by rememberSaveable(savedApiKey) { mutableStateOf(savedApiKey) }
     var saveMessage by rememberSaveable { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val savedMessage = stringResource(R.string.openai_api_key_saved)
     val clearedMessage = stringResource(R.string.openai_api_key_cleared)
+    val unlockedMessage = stringResource(R.string.openai_api_key_unlocked)
+    val authCancelledMessage = stringResource(R.string.openai_api_key_auth_cancelled)
+    val authUnavailableMessage = stringResource(R.string.openai_api_key_auth_unavailable)
+    val errorMessage = stringResource(R.string.openai_api_key_error)
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -86,14 +96,48 @@ internal fun SettingsScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            if (accessState == OpenAiApiKeyAccessState.LOCKED) {
+                InfoCard(
+                    title = stringResource(R.string.openai_api_key_locked_title),
+                    message = stringResource(R.string.openai_api_key_locked_message),
+                )
+                Button(
+                    onClick = {
+                        val hostActivity = activity ?: return@Button
+                        scope.launch {
+                            saveMessage = when (openAiApiKeyStore.unlockApiKey(hostActivity)) {
+                                OpenAiApiKeyMutationResult.UNLOCKED -> unlockedMessage
+                                OpenAiApiKeyMutationResult.AUTH_CANCELLED -> authCancelledMessage
+                                OpenAiApiKeyMutationResult.AUTH_UNAVAILABLE -> authUnavailableMessage
+                                else -> errorMessage
+                            }
+                        }
+                    },
+                    enabled = activity != null,
+                ) {
+                    Text(stringResource(R.string.openai_api_key_unlock))
+                }
+            }
             Button(
                 onClick = {
                     scope.launch {
-                        openAiApiKeyStore.saveApiKey(draftApiKey)
                         saveMessage = if (draftApiKey.trim().isBlank()) {
-                            clearedMessage
+                            when (openAiApiKeyStore.clearApiKey()) {
+                                OpenAiApiKeyMutationResult.CLEARED -> clearedMessage
+                                else -> errorMessage
+                            }
                         } else {
-                            savedMessage
+                            val hostActivity = activity
+                            if (hostActivity == null) {
+                                authUnavailableMessage
+                            } else {
+                                when (openAiApiKeyStore.saveApiKey(hostActivity, draftApiKey)) {
+                                    OpenAiApiKeyMutationResult.SAVED -> savedMessage
+                                    OpenAiApiKeyMutationResult.AUTH_CANCELLED -> authCancelledMessage
+                                    OpenAiApiKeyMutationResult.AUTH_UNAVAILABLE -> authUnavailableMessage
+                                    else -> errorMessage
+                                }
+                            }
                         }
                     }
                 },

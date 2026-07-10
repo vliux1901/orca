@@ -1,9 +1,9 @@
 package org.vliux.orca
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.fragment.app.FragmentActivity
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import org.vliux.orca.data.DocumentRepository
@@ -18,7 +18,7 @@ import org.vliux.orca.ui.vehicle.VehicleHubScreen
 import org.vliux.orca.worker.DocumentExtractionScheduler
 
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
     @Inject
     lateinit var vehicleRepository: VehicleRepository
 

@@ -386,7 +386,7 @@
               <li class="block" data-block-id="goal-1">Let users create vehicle profiles.</li>
               <li class="block" data-block-id="goal-2">Let users import maintenance PDFs and photos.</li>
               <li class="block" data-block-id="goal-3">Extract useful facts with source links.</li>
-              <li class="block" data-block-id="goal-3a">Require users to provide their own OpenAI API key from an in-app Settings screen rather than bundling any API secret into the APK.</li>
+              <li class="block" data-block-id="goal-3a">Require users to provide their own OpenAI API key from an in-app Settings screen rather than bundling any API secret into the APK, and gate key decryption behind device credentials or biometrics.</li>
               <li class="block" data-block-id="goal-4">Preserve document structure well enough to recover tables, totals, grouped service items, and similar layout-dependent content.</li>
               <li class="block" data-block-id="goal-5">Show a chronological maintenance timeline.</li>
               <li class="block" data-block-id="goal-6">Answer factual questions with citations and uncertainty.</li>
@@ -461,7 +461,7 @@
             <p class="block" data-block-id="vehicle-1">Required: display name, make, model, and year.</p>
             <p class="block" data-block-id="vehicle-2">Optional: license plate, VIN, vehicle color, and a gallery-selected vehicle photo. Current mileage is not part of the create-vehicle flow.</p>
             <p class="block" data-block-id="vehicle-2a">Vehicle detail should use a stable top app bar title of <code>Vehicle details</code>. The profile card should emphasize the vehicle fields and show a large vehicle illustration without a redundant <code>Vehicle Profile</code> label.</p>
-            <p class="block" data-block-id="vehicle-2b">The vehicle-list overflow menu should include a Settings destination where the user can read setup instructions and paste their own OpenAI API key.</p>
+            <p class="block" data-block-id="vehicle-2b">The vehicle-list overflow menu should include a Settings destination where the user can read setup instructions, paste their own OpenAI API key, and unlock the stored key with biometrics or device credentials when they want Orca to display or use it.</p>
             <p class="block" data-block-id="vehicle-3">Vehicle detail should show a maintenance summary table below the vehicle profile and above the document list. Each row should summarize one recent maintenance or repair item for that vehicle, with the first column showing the related vehicle component or system and the second column showing the maintenance or repair performed.</p>
             <p class="block" data-block-id="vehicle-4">Example rows may include brake system | brake fluid replaced, engine | engine air filter replaced, or wheel | tire rotation performed. The table should favor the most recent known work for each component so the user can quickly understand what was maintained and when.</p>
 

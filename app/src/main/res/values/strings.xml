@@ -13,6 +13,13 @@
     <string name="openai_api_key_helper">The key is stored on this device and used only when Orca sends imported PDFs or images to OpenAI for extraction.</string>
     <string name="openai_api_key_saved">Saved API key.</string>
     <string name="openai_api_key_cleared">Cleared API key.</string>
+    <string name="openai_api_key_unlocked">Unlocked stored API key.</string>
+    <string name="openai_api_key_auth_cancelled">Authentication was cancelled.</string>
+    <string name="openai_api_key_auth_unavailable">Set up biometric or device credentials to unlock the stored API key.</string>
+    <string name="openai_api_key_error">Could not access the stored API key.</string>
+    <string name="openai_api_key_locked_title">Stored key is locked</string>
+    <string name="openai_api_key_locked_message">Unlock the saved API key with biometrics or device credentials before Orca can display or use it for extraction.</string>
+    <string name="openai_api_key_unlock">Unlock Stored Key</string>
 
     <string name="vehicle_details_title">Vehicle details</string>
     <string name="vehicle_not_found_title">Vehicle not found.</string>
@@ -26,7 +33,7 @@
     <string name="edit_vehicle_title">Edit Vehicle</string>
     <string name="vehicle_editor_intro">Vehicle profiles own imported maintenance documents and later extraction results.</string>
     <string name="vehicle_import_queued">Imported document and queued extraction.</string>
-    <string name="vehicle_import_not_configured">Imported document. Extraction is not configured on this build.</string>
+    <string name="vehicle_import_not_configured">Imported document. Extraction is unavailable until an API key is saved and unlocked in Settings.</string>
     <string name="vehicle_import_failed">Failed to import files.</string>
     <string name="save_vehicle_failed">Failed to save vehicle.</string>
     <string name="saving">Saving...</string>

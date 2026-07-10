@@ -28,6 +28,9 @@ import org.vliux.orca.data.model.ServiceItemEntity
 import org.vliux.orca.importing.AppFileStorage
 import org.vliux.orca.provider.ProviderAuthSource
 import org.vliux.orca.provider.ProviderRuntimeConfig
+import org.vliux.orca.provider.ProviderRuntimeConfigStore
+import org.vliux.orca.provider.ProviderRuntimeMetadata
+import org.vliux.orca.settings.OpenAiApiKeyStore
 
 class DocumentExtractionSchedulerTest {
     @Test
@@ -48,7 +51,7 @@ class DocumentExtractionSchedulerTest {
             val enqueuer = RecordingDocumentExtractionWorkEnqueuer()
             val scheduler = DocumentExtractionScheduler(
                 repository = repository,
-                providerRuntimeConfig = configuredProviderRuntimeConfig(),
+                providerRuntimeConfigStore = configuredProviderRuntimeConfigStore(),
                 workEnqueuer = enqueuer,
             )
 
@@ -83,7 +86,7 @@ class DocumentExtractionSchedulerTest {
             val enqueuer = RecordingDocumentExtractionWorkEnqueuer()
             val scheduler = DocumentExtractionScheduler(
                 repository = repository,
-                providerRuntimeConfig = unconfiguredProviderRuntimeConfig(),
+                providerRuntimeConfigStore = unconfiguredProviderRuntimeConfigStore(),
                 workEnqueuer = enqueuer,
             )
 
@@ -116,21 +119,37 @@ class DocumentExtractionSchedulerTest {
         },
     )
 
-    private fun configuredProviderRuntimeConfig(): ProviderRuntimeConfig = ProviderRuntimeConfig(
-        providerName = "openai",
-        requestUrl = "https://example.invalid/v1/responses",
-        modelName = "gpt-test",
-        authToken = "token",
-        authSource = ProviderAuthSource.ENVIRONMENT,
+    private fun configuredProviderRuntimeConfigStore(): ProviderRuntimeConfigStore = ProviderRuntimeConfigStore(
+        metadata = ProviderRuntimeMetadata(
+            providerName = "openai",
+            requestUrl = "https://example.invalid/v1/responses",
+            modelName = "gpt-test",
+        ),
+        openAiApiKeyStore = SchedulerFakeOpenAiApiKeyStore("token"),
     )
 
-    private fun unconfiguredProviderRuntimeConfig(): ProviderRuntimeConfig = ProviderRuntimeConfig(
-        providerName = "openai",
-        requestUrl = "https://example.invalid/v1/responses",
-        modelName = "gpt-test",
-        authToken = "",
-        authSource = ProviderAuthSource.NONE,
+    private fun unconfiguredProviderRuntimeConfigStore(): ProviderRuntimeConfigStore = ProviderRuntimeConfigStore(
+        metadata = ProviderRuntimeMetadata(
+            providerName = "openai",
+            requestUrl = "https://example.invalid/v1/responses",
+            modelName = "gpt-test",
+        ),
+        openAiApiKeyStore = SchedulerFakeOpenAiApiKeyStore(""),
     )
+}
+
+private class SchedulerFakeOpenAiApiKeyStore(
+    initialValue: String,
+) : OpenAiApiKeyStore {
+    private val state = MutableStateFlow(initialValue)
+
+    override fun observeApiKey() = state
+
+    override fun currentApiKey(): String = state.value
+
+    override suspend fun saveApiKey(apiKey: String) {
+        state.value = apiKey
+    }
 }
 
 private class RecordingDocumentExtractionWorkEnqueuer : DocumentExtractionWorkEnqueuer {

@@ -3,6 +3,7 @@ package org.vliux.orca.extraction
 import java.io.File
 import java.time.Instant
 import java.time.LocalDate
+import java.util.Properties
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.io.path.createTempDirectory
 import kotlinx.coroutines.flow.Flow
@@ -27,7 +28,12 @@ import org.vliux.orca.data.model.SearchEntryEntity
 import org.vliux.orca.data.model.ServiceItemEntity
 import org.vliux.orca.importing.AppFileStorage
 import org.vliux.orca.normalization.ExtractionNormalizer
+import org.vliux.orca.provider.ProviderAuthSource
+import org.vliux.orca.provider.ProviderRuntimeConfig
+import org.vliux.orca.provider.ProviderRuntimeConfigStore
 import org.vliux.orca.provider.ProviderRuntimeConfigResolver
+import org.vliux.orca.provider.ProviderRuntimeMetadata
+import org.vliux.orca.settings.OpenAiApiKeyStore
 import org.vliux.orca.worker.DocumentExtractionProcessor
 
 class OpenAiLiveExtractionIntegrationTest {
@@ -37,7 +43,14 @@ class OpenAiLiveExtractionIntegrationTest {
             "Set ORCA_RUN_LIVE_EXTRACTION_TESTS=true to enable live provider tests.",
             System.getenv("ORCA_RUN_LIVE_EXTRACTION_TESTS").equals("true", ignoreCase = true),
         )
-        val providerConfig = ProviderRuntimeConfigResolver.fromBuildConfig()
+        val providerMetadata = ProviderRuntimeConfigResolver.metadataFromBuildConfig()
+        val providerConfig = ProviderRuntimeConfig(
+            providerName = providerMetadata.providerName,
+            requestUrl = providerMetadata.requestUrl,
+            modelName = providerMetadata.modelName,
+            authToken = liveTestApiKey(),
+            authSource = ProviderAuthSource.USER_SETTINGS,
+        )
         assumeTrue(
             "Configure ORCA_CLOUD_EXTRACTION_API_KEY or local.properties to run live extraction tests.",
             providerConfig.isConfigured(),
@@ -65,7 +78,24 @@ class OpenAiLiveExtractionIntegrationTest {
             )
             val processor = DocumentExtractionProcessor(
                 repository = repository,
-                providerRuntimeConfig = providerConfig,
+                providerRuntimeConfigStore = ProviderRuntimeConfigStore(
+                    metadata = ProviderRuntimeMetadata(
+                        providerName = providerConfig.providerName,
+                        requestUrl = providerConfig.requestUrl,
+                        modelName = providerConfig.modelName,
+                    ),
+                    openAiApiKeyStore = object : OpenAiApiKeyStore {
+                        private val state = MutableStateFlow(providerConfig.authToken)
+
+                        override fun observeApiKey() = state
+
+                        override fun currentApiKey(): String = state.value
+
+                        override suspend fun saveApiKey(apiKey: String) {
+                            state.value = apiKey
+                        }
+                    },
+                ),
                 extractionEngine = DefaultMaintenanceExtractionEngine(
                     adapter = OpenAiCloudExtractionAdapter(providerConfig.toCloudExtractionConfig()),
                     parser = StrictJsonExtractionParser(),
@@ -95,6 +125,19 @@ class OpenAiLiveExtractionIntegrationTest {
         } finally {
             rootDir.deleteRecursively()
         }
+    }
+
+    private fun liveTestApiKey(): String {
+        val environmentKey = System.getenv("ORCA_CLOUD_EXTRACTION_API_KEY")
+        if (!environmentKey.isNullOrBlank()) {
+            return environmentKey
+        }
+        val localProperties = Properties()
+        val file = File("local.properties")
+        if (file.exists()) {
+            file.inputStream().use(localProperties::load)
+        }
+        return localProperties.getProperty("orca.cloudExtractionApiKey").orEmpty()
     }
 
     private fun preparedImport(

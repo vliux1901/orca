@@ -28,9 +28,11 @@ import org.vliux.orca.extraction.StrictJsonExtractionParser
 import org.vliux.orca.importing.AppFileStorage
 import org.vliux.orca.importing.DocumentImportPlanner
 import org.vliux.orca.normalization.ExtractionNormalizer
-import org.vliux.orca.provider.ProviderRuntimeConfig
 import org.vliux.orca.provider.ProviderRuntimeConfigResolver
+import org.vliux.orca.provider.ProviderRuntimeConfigStore
 import org.vliux.orca.search.SearchIndexBuilder
+import org.vliux.orca.settings.OpenAiApiKeyStore
+import org.vliux.orca.settings.SharedPreferencesOpenAiApiKeyStore
 import org.vliux.orca.worker.DocumentExtractionWorkEnqueuer
 import org.vliux.orca.worker.WorkManagerDocumentExtractionWorkEnqueuer
 
@@ -39,7 +41,18 @@ import org.vliux.orca.worker.WorkManagerDocumentExtractionWorkEnqueuer
 object AppModule {
     @Provides
     @Singleton
-    fun provideProviderRuntimeConfig(): ProviderRuntimeConfig = ProviderRuntimeConfigResolver.fromBuildConfig()
+    fun provideOpenAiApiKeyStore(
+        @ApplicationContext appContext: Context,
+    ): OpenAiApiKeyStore = SharedPreferencesOpenAiApiKeyStore(appContext)
+
+    @Provides
+    @Singleton
+    fun provideProviderRuntimeConfigStore(
+        openAiApiKeyStore: OpenAiApiKeyStore,
+    ): ProviderRuntimeConfigStore = ProviderRuntimeConfigStore(
+        metadata = ProviderRuntimeConfigResolver.metadataFromBuildConfig(),
+        openAiApiKeyStore = openAiApiKeyStore,
+    )
 
     @Provides
     @Singleton
@@ -103,8 +116,8 @@ object AppModule {
     @Provides
     @Singleton
     fun provideCloudExtractionAdapter(
-        providerRuntimeConfig: ProviderRuntimeConfig,
-    ): CloudExtractionAdapter = OpenAiCloudExtractionAdapter(providerRuntimeConfig.toCloudExtractionConfig())
+        providerRuntimeConfigStore: ProviderRuntimeConfigStore,
+    ): CloudExtractionAdapter = OpenAiCloudExtractionAdapter(providerRuntimeConfigStore::currentConfig)
 
     @Provides
     @Singleton

@@ -50,7 +50,16 @@ class OpenAiCloudExtractionAdapterTest {
             promptVersion = "phase3-v1",
         )
         val prompt = adapter.buildPrompt(request)
-        val body = adapter.buildRequestBody(request, prompt)
+        val body = adapter.buildRequestBody(
+            request = request,
+            config = CloudExtractionConfig(
+                responsesUrl = "https://api.openai.com/v1/responses",
+                apiKey = "secret",
+                providerName = "openai",
+                modelName = "gpt-5.4",
+            ),
+            promptText = prompt,
+        )
 
         val bodyLower = body.lowercase()
         assertTrue(prompt.contains("document_id=doc-1"))

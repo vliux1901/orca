@@ -24,9 +24,10 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.vliux.orca.logging.OrcaLog
+import org.vliux.orca.provider.ProviderRuntimeConfig
 
 class OpenAiCloudExtractionAdapter(
-    private val config: CloudExtractionConfig,
+    private val configProvider: () -> ProviderRuntimeConfig,
     private val client: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
         .writeTimeout(120, TimeUnit.SECONDS)
@@ -40,12 +41,13 @@ class OpenAiCloudExtractionAdapter(
 ) : CloudExtractionAdapter {
     override suspend fun extract(request: ExtractionRequest): ProviderExtractionPayload =
         withContext(Dispatchers.IO) {
+            val config = configProvider().toCloudExtractionConfig()
             check(config.isConfigured()) {
-                "OpenAI extraction is not configured. Set ORCA_CLOUD_EXTRACTION_API_KEY."
+                "OpenAI extraction is not configured. Add an API key in Settings."
             }
 
             val promptText = buildPrompt(request)
-            val body = buildRequestBody(request, promptText)
+            val body = buildRequestBody(request, config, promptText)
             OrcaLog.info(
                 "OpenAI request prepared for document=${request.document.documentId.takeLast(8)} model=${config.modelName} sources=${request.sources.size} bytes=${request.sources.sumOf { it.file.length() }}.",
             )
@@ -87,8 +89,35 @@ class OpenAiCloudExtractionAdapter(
             }
         }
 
+    constructor(
+        config: CloudExtractionConfig,
+        client: OkHttpClient = OkHttpClient.Builder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(120, TimeUnit.SECONDS)
+            .readTimeout(120, TimeUnit.SECONDS)
+            .callTimeout(180, TimeUnit.SECONDS)
+            .build(),
+        json: Json = Json {
+            explicitNulls = false
+            ignoreUnknownKeys = true
+        },
+    ) : this(
+        configProvider = {
+            ProviderRuntimeConfig(
+                providerName = config.providerName,
+                requestUrl = config.responsesUrl,
+                modelName = config.modelName,
+                authToken = config.apiKey,
+                authSource = org.vliux.orca.provider.ProviderAuthSource.UNKNOWN,
+            )
+        },
+        client = client,
+        json = json,
+    )
+
     internal fun buildRequestBody(
         request: ExtractionRequest,
+        config: CloudExtractionConfig,
         promptText: String = buildPrompt(request),
     ): String =
         json.encodeToString(

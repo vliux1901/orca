@@ -73,6 +73,7 @@ import org.vliux.orca.search.SearchResultItem
 @Composable
 internal fun VehicleListScreen(
     vehicleRepository: VehicleRepository,
+    onOpenSettings: () -> Unit,
     onOpenSearch: (String) -> Unit,
     onCreateVehicle: () -> Unit,
     onOpenVehicle: (String) -> Unit,
@@ -111,6 +112,7 @@ internal fun VehicleListScreen(
                 OverflowMenuDropdown(
                     expanded = menuExpanded,
                     onExpandedChange = { menuExpanded = it },
+                    onOpenSettings = onOpenSettings,
                 )
             }
         },
@@ -377,6 +379,7 @@ private fun OverflowMenuButton(
 private fun OverflowMenuDropdown(
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
+    onOpenSettings: () -> Unit,
 ) {
     androidx.compose.material3.DropdownMenu(
         expanded = expanded,
@@ -384,11 +387,10 @@ private fun OverflowMenuDropdown(
     ) {
         androidx.compose.material3.DropdownMenuItem(
             text = { Text(stringResource(R.string.settings)) },
-            onClick = { onExpandedChange(false) },
-        )
-        androidx.compose.material3.DropdownMenuItem(
-            text = { Text(stringResource(R.string.options)) },
-            onClick = { onExpandedChange(false) },
+            onClick = {
+                onExpandedChange(false)
+                onOpenSettings()
+            },
         )
     }
 }

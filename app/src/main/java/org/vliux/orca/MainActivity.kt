@@ -12,6 +12,7 @@ import org.vliux.orca.data.SearchRepository
 import org.vliux.orca.data.ServiceItemRepository
 import org.vliux.orca.data.VehicleRepository
 import org.vliux.orca.importing.AppFileStorage
+import org.vliux.orca.settings.OpenAiApiKeyStore
 import org.vliux.orca.ui.theme.OrcaTheme
 import org.vliux.orca.ui.vehicle.VehicleHubScreen
 import org.vliux.orca.worker.DocumentExtractionScheduler
@@ -39,6 +40,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var searchRepository: SearchRepository
 
+    @Inject
+    lateinit var openAiApiKeyStore: OpenAiApiKeyStore
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -52,6 +56,7 @@ class MainActivity : ComponentActivity() {
                     factRepository = factRepository,
                     serviceItemRepository = serviceItemRepository,
                     searchRepository = searchRepository,
+                    openAiApiKeyStore = openAiApiKeyStore,
                 )
             }
         }

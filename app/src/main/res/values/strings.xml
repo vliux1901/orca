@@ -3,6 +3,16 @@
     <string name="back">Back</string>
     <string name="settings">Settings</string>
     <string name="options">Options</string>
+    <string name="openai_api_key_guide_title">Bring your own OpenAI API key</string>
+    <string name="openai_api_key_guide_step_1_prefix">1. Sign in to</string>
+    <string name="openai_api_key_guide_link_label">platform.openai.com</string>
+    <string name="openai_api_key_guide_step_2">2. Open API keys and create a new secret key.</string>
+    <string name="openai_api_key_guide_step_3">3. Copy the key, then paste it below to enable document extraction on this device.</string>
+    <string name="openai_api_key_label">OpenAI API key</string>
+    <string name="openai_api_key_placeholder">sk-...</string>
+    <string name="openai_api_key_helper">The key is stored on this device and used only when Orca sends imported PDFs or images to OpenAI for extraction.</string>
+    <string name="openai_api_key_saved">Saved API key.</string>
+    <string name="openai_api_key_cleared">Cleared API key.</string>
 
     <string name="vehicle_details_title">Vehicle details</string>
     <string name="vehicle_not_found_title">Vehicle not found.</string>

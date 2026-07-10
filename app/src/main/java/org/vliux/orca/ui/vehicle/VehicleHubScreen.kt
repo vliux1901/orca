@@ -10,6 +10,7 @@ import org.vliux.orca.data.SearchRepository
 import org.vliux.orca.data.ServiceItemRepository
 import org.vliux.orca.data.VehicleRepository
 import org.vliux.orca.importing.AppFileStorage
+import org.vliux.orca.settings.OpenAiApiKeyStore
 import org.vliux.orca.worker.DocumentExtractionScheduler
 
 @Composable
@@ -21,6 +22,7 @@ fun VehicleHubScreen(
     factRepository: FactRepository,
     serviceItemRepository: ServiceItemRepository,
     searchRepository: SearchRepository,
+    openAiApiKeyStore: OpenAiApiKeyStore,
     modifier: Modifier = Modifier,
 ) {
     val routeViewModel: VehicleHubViewModel = viewModel()
@@ -33,6 +35,11 @@ fun VehicleHubScreen(
         VehicleRoute.List -> VehicleListScreen(
             vehicleRepository = vehicleRepository,
             modifier = modifier,
+            onOpenSettings = {
+                routeViewModel.updateRoute {
+                    VehicleRoute.Settings
+                }
+            },
             onOpenSearch = { query ->
                 routeViewModel.updateRoute {
                     VehicleRoute.Search(query = query)
@@ -112,6 +119,13 @@ fun VehicleHubScreen(
             modifier = modifier,
             vehicleId = currentRoute.vehicleId,
             documentId = currentRoute.documentId,
+            onBack = {
+                routeViewModel.updateRoute { navigateBack() }
+            },
+        )
+        VehicleRoute.Settings -> SettingsScreen(
+            openAiApiKeyStore = openAiApiKeyStore,
+            modifier = modifier,
             onBack = {
                 routeViewModel.updateRoute { navigateBack() }
             },

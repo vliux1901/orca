@@ -36,8 +36,9 @@ import org.vliux.orca.extraction.ProviderExtractionPayload
 import org.vliux.orca.extraction.RetryableExtractionException
 import org.vliux.orca.importing.AppFileStorage
 import org.vliux.orca.normalization.ExtractionNormalizer
-import org.vliux.orca.provider.ProviderAuthSource
-import org.vliux.orca.provider.ProviderRuntimeConfig
+import org.vliux.orca.provider.ProviderRuntimeConfigStore
+import org.vliux.orca.provider.ProviderRuntimeMetadata
+import org.vliux.orca.settings.OpenAiApiKeyStore
 
 class DocumentExtractionProcessorTest {
     @Test
@@ -127,7 +128,7 @@ class DocumentExtractionProcessorTest {
             )
             val processor = DocumentExtractionProcessor(
                 repository = repository,
-                providerRuntimeConfig = configuredProviderRuntimeConfig(),
+                providerRuntimeConfigStore = configuredProviderRuntimeConfigStore(),
                 extractionEngine = engine,
                 extractionNormalizer = ExtractionNormalizer(
                     nowProvider = { Instant.parse("2026-07-01T12:00:00Z") },
@@ -176,7 +177,7 @@ class DocumentExtractionProcessorTest {
             )
             val processor = DocumentExtractionProcessor(
                 repository = repository,
-                providerRuntimeConfig = configuredProviderRuntimeConfig(),
+                providerRuntimeConfigStore = configuredProviderRuntimeConfigStore(),
                 extractionEngine = ThrowingExtractionEngine(
                     MalformedProviderPayloadException("missing required keys"),
                 ),
@@ -212,7 +213,7 @@ class DocumentExtractionProcessorTest {
             )
             val processor = DocumentExtractionProcessor(
                 repository = repository,
-                providerRuntimeConfig = configuredProviderRuntimeConfig(),
+                providerRuntimeConfigStore = configuredProviderRuntimeConfigStore(),
                 extractionEngine = ThrowingExtractionEngine(
                     RetryableExtractionException("PROVIDER_HTTP_429", "rate limited"),
                 ),
@@ -258,13 +259,28 @@ class DocumentExtractionProcessorTest {
         },
     )
 
-    private fun configuredProviderRuntimeConfig(): ProviderRuntimeConfig = ProviderRuntimeConfig(
-        providerName = "openai",
-        requestUrl = "https://example.invalid/v1/responses",
-        modelName = "gpt-test",
-        authToken = "token",
-        authSource = ProviderAuthSource.ENVIRONMENT,
+    private fun configuredProviderRuntimeConfigStore(): ProviderRuntimeConfigStore = ProviderRuntimeConfigStore(
+        metadata = ProviderRuntimeMetadata(
+            providerName = "openai",
+            requestUrl = "https://example.invalid/v1/responses",
+            modelName = "gpt-test",
+        ),
+        openAiApiKeyStore = ProcessorFakeOpenAiApiKeyStore("token"),
     )
+}
+
+private class ProcessorFakeOpenAiApiKeyStore(
+    initialValue: String,
+) : OpenAiApiKeyStore {
+    private val state = MutableStateFlow(initialValue)
+
+    override fun observeApiKey() = state
+
+    override fun currentApiKey(): String = state.value
+
+    override suspend fun saveApiKey(apiKey: String) {
+        state.value = apiKey
+    }
 }
 
 private class RecordingExtractionEngine(

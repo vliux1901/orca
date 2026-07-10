@@ -11,12 +11,12 @@ import org.vliux.orca.extraction.SourcePayload
 import org.vliux.orca.importing.AppFileStorage
 import org.vliux.orca.logging.OrcaLog
 import org.vliux.orca.normalization.ExtractionNormalizer
-import org.vliux.orca.provider.ProviderRuntimeConfig
+import org.vliux.orca.provider.ProviderRuntimeConfigStore
 
 @Singleton
 class DocumentExtractionProcessor @Inject constructor(
     private val repository: DocumentRepository,
-    private val providerRuntimeConfig: ProviderRuntimeConfig,
+    private val providerRuntimeConfigStore: ProviderRuntimeConfigStore,
     private val extractionEngine: MaintenanceExtractionEngine,
     private val extractionNormalizer: ExtractionNormalizer,
     private val fileStorage: AppFileStorage,
@@ -24,6 +24,7 @@ class DocumentExtractionProcessor @Inject constructor(
     suspend fun process(
         documentId: String,
     ): ProcessingOutcome {
+        val providerRuntimeConfig = providerRuntimeConfigStore.currentConfig()
         val bundle = repository.getDocumentBundle(documentId) ?: return ProcessingOutcome.TerminalFailure("DOCUMENT_NOT_FOUND")
         val run = repository.createQueuedRun(
             documentId = documentId,

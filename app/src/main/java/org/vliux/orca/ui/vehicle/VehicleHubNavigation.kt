@@ -5,6 +5,7 @@ import java.time.format.DateTimeFormatter
 
 internal sealed interface VehicleRoute {
     data object List : VehicleRoute
+    data object Settings : VehicleRoute
     data class Search(val query: String) : VehicleRoute
     data class Editor(
         val vehicleId: String?,
@@ -19,6 +20,7 @@ internal sealed interface VehicleRoute {
 
 internal fun VehicleRoute.serializeForSave(): String = when (this) {
     VehicleRoute.List -> "list"
+    VehicleRoute.Settings -> "settings"
     is VehicleRoute.Search -> "search:$query"
     is VehicleRoute.Detail -> "detail:$vehicleId"
     is VehicleRoute.DocumentDetail -> "document:$vehicleId:$documentId"
@@ -34,6 +36,7 @@ internal fun List<String>.toVehicleRouteOrNull(): VehicleRoute? {
     val kind = firstOrNull() ?: return null
     return when (kind) {
         "list" -> VehicleRoute.List
+        "settings" -> VehicleRoute.Settings
         "search" -> VehicleRoute.Search(query = getOrNull(1).orEmpty())
         "detail" -> getOrNull(1)?.takeIf { it.isNotEmpty() }?.let(VehicleRoute::Detail)
         "document" -> {
@@ -56,6 +59,7 @@ internal fun String.deserializeVehicleRouteOrNull(): VehicleRoute? {
     val parts = split(':')
     return when (parts.firstOrNull()) {
         "list" -> VehicleRoute.List
+        "settings" -> VehicleRoute.Settings
         "search" -> VehicleRoute.Search(query = parts.drop(1).joinToString(":"))
         "detail" -> parts.getOrNull(1)?.takeIf { it.isNotEmpty() }?.let(VehicleRoute::Detail)
         "document" -> {
@@ -76,6 +80,7 @@ internal fun String.deserializeVehicleRouteOrNull(): VehicleRoute? {
 
 internal fun VehicleRoute.logLabel(): String = when (this) {
     VehicleRoute.List -> "list"
+    VehicleRoute.Settings -> "settings"
     is VehicleRoute.Search -> "search(queryLength=${query.length})"
     is VehicleRoute.Detail -> "detail(vehicleId=$vehicleId)"
     is VehicleRoute.DocumentDetail -> "document(vehicleId=$vehicleId, documentId=$documentId)"
@@ -84,6 +89,7 @@ internal fun VehicleRoute.logLabel(): String = when (this) {
 
 internal fun VehicleRoute.navigateBack(): VehicleRoute = when (this) {
     VehicleRoute.List -> VehicleRoute.List
+    VehicleRoute.Settings -> VehicleRoute.List
     is VehicleRoute.Search -> VehicleRoute.List
     is VehicleRoute.Detail -> VehicleRoute.List
     is VehicleRoute.DocumentDetail -> VehicleRoute.Detail(vehicleId)
@@ -92,6 +98,7 @@ internal fun VehicleRoute.navigateBack(): VehicleRoute = when (this) {
         is VehicleRoute.Detail -> parent
         is VehicleRoute.DocumentDetail -> parent
         is VehicleRoute.Search -> parent
+        VehicleRoute.Settings -> VehicleRoute.List
         VehicleRoute.List -> VehicleRoute.List
         is VehicleRoute.Editor -> VehicleRoute.List
     }

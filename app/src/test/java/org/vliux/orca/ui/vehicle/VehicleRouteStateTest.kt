@@ -32,6 +32,16 @@ class VehicleRouteStateTest {
     }
 
     @Test
+    fun settingsRouteRoundTripsThroughSavedStateEncoding() {
+        val route: VehicleRoute = VehicleRoute.Settings
+
+        val restored = listOf("settings").toVehicleRouteOrNull()
+
+        assertEquals(route, restored)
+        assertEquals("settings", route.serializeForSave())
+    }
+
+    @Test
     fun invalidSavedStateReturnsNull() {
         assertNull(listOf("detail").toVehicleRouteOrNull())
         assertNull("document:vehicle-only".deserializeVehicleRouteOrNull())

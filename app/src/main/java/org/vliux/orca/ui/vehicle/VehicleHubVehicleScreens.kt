@@ -544,7 +544,7 @@ private fun DocumentSummaryCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onOpenDocument),
-        colors = vehicleCardColors(),
+        colors = extractionCardColors(document.extractionStatus),
     ) {
         Column(
             modifier = Modifier.padding(16.dp),

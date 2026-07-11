@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -52,6 +53,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.vliux.orca.R
 import org.vliux.orca.data.model.VehicleEntity
+import org.vliux.orca.ui.theme.StatusErrorDark
+import org.vliux.orca.ui.theme.StatusErrorLight
+import org.vliux.orca.ui.theme.StatusWarningDark
+import org.vliux.orca.ui.theme.StatusWarningLight
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -155,10 +160,11 @@ internal fun MissingEntityCard(
 @Composable
 internal fun ErrorCard(
     message: String,
+    colors: androidx.compose.material3.CardColors = vehicleCardColors(),
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = vehicleCardColors(),
+        colors = colors,
     ) {
         Text(
             text = message,
@@ -173,10 +179,11 @@ internal fun ErrorCard(
 internal fun InfoCard(
     title: String,
     message: String,
+    colors: androidx.compose.material3.CardColors = vehicleCardColors(),
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = vehicleCardColors(),
+        colors = colors,
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -199,6 +206,30 @@ internal fun InfoCard(
 internal fun vehicleCardColors() = CardDefaults.cardColors(
     containerColor = MaterialTheme.colorScheme.surfaceVariant,
 )
+
+internal enum class ExtractionStatusTone {
+    Default,
+    Warning,
+    Error,
+}
+
+internal fun extractionStatusTone(status: String?): ExtractionStatusTone = when (status?.trim()?.uppercase()) {
+    "NOT_STARTED" -> ExtractionStatusTone.Warning
+    "FAILED" -> ExtractionStatusTone.Error
+    else -> ExtractionStatusTone.Default
+}
+
+@Composable
+internal fun extractionCardColors(status: String?): androidx.compose.material3.CardColors {
+    val useDarkTone = isSystemInDarkTheme()
+    return CardDefaults.cardColors(
+        containerColor = when (extractionStatusTone(status)) {
+            ExtractionStatusTone.Warning -> if (useDarkTone) StatusWarningDark else StatusWarningLight
+            ExtractionStatusTone.Error -> if (useDarkTone) StatusErrorDark else StatusErrorLight
+            ExtractionStatusTone.Default -> MaterialTheme.colorScheme.surfaceVariant
+        },
+    )
+}
 
 @Composable
 internal fun VehicleTextField(

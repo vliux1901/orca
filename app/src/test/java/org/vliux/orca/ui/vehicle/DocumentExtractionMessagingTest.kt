@@ -11,6 +11,13 @@ import org.vliux.orca.data.model.ExtractionRunEntity
 
 class DocumentExtractionMessagingTest {
     @Test
+    fun extractionStatusToneMapsWarningAndErrorStates() {
+        assertEquals(ExtractionStatusTone.Warning, extractionStatusTone("NOT_STARTED"))
+        assertEquals(ExtractionStatusTone.Error, extractionStatusTone("FAILED"))
+        assertEquals(ExtractionStatusTone.Default, extractionStatusTone("SUCCEEDED"))
+    }
+
+    @Test
     fun queuedOfflineStatusExplainsBackgroundRetry() {
         val message = extractionStatusMessage(
             detail(

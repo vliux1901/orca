@@ -307,7 +307,7 @@ internal fun DocumentDetailHeader(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = vehicleCardColors(),
+        colors = extractionCardColors(detail.document.extractionStatus),
     ) {
         Column(
             modifier = Modifier.padding(20.dp),
@@ -378,9 +378,16 @@ private fun DocumentExtractionStatusCard(
     }
     val isFailure = detail.document.extractionStatus == "FAILED"
     if (isFailure) {
-        ErrorCard(message = statusMessage)
+        ErrorCard(
+            message = statusMessage,
+            colors = extractionCardColors(detail.document.extractionStatus),
+        )
     } else {
-        InfoCard(title = title, message = statusMessage)
+        InfoCard(
+            title = title,
+            message = statusMessage,
+            colors = extractionCardColors(detail.document.extractionStatus),
+        )
     }
 }
 

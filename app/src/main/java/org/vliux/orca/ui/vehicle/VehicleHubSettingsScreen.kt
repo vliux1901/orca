@@ -24,6 +24,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -33,10 +34,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import org.vliux.orca.R
+import org.vliux.orca.settings.OpenAiApiKeyAccessState
 import org.vliux.orca.settings.OpenAiApiKeyStore
 import org.vliux.orca.settings.OpenAiApiKeyMutationResult
 
 internal const val SettingsApiKeyFieldTestTag = "settingsApiKeyField"
+private const val MaskedApiKeyDisplay = "................................"
 
 @Composable
 internal fun SettingsScreen(
@@ -46,7 +49,13 @@ internal fun SettingsScreen(
 ) {
     val activity = LocalActivity.current as? androidx.fragment.app.FragmentActivity
     val savedApiKey by openAiApiKeyStore.observeApiKey().collectAsStateWithLifecycle()
-    var draftApiKey by rememberSaveable(savedApiKey) { mutableStateOf(savedApiKey) }
+    val accessState by openAiApiKeyStore.observeAccessState().collectAsStateWithLifecycle()
+    val hasStoredApiKey = accessState != OpenAiApiKeyAccessState.NOT_STORED
+    var draftApiKey by rememberSaveable(savedApiKey, hasStoredApiKey) {
+        mutableStateOf(if (hasStoredApiKey) MaskedApiKeyDisplay else "")
+    }
+    var showingMaskedStoredKey by rememberSaveable(savedApiKey, hasStoredApiKey) { mutableStateOf(hasStoredApiKey) }
+    var hasEditedDraft by rememberSaveable(savedApiKey, hasStoredApiKey) { mutableStateOf(false) }
     var saveMessage by rememberSaveable { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val savedMessage = stringResource(R.string.openai_api_key_saved)
@@ -76,11 +85,23 @@ internal fun SettingsScreen(
             OutlinedTextField(
                 value = draftApiKey,
                 onValueChange = {
+                    if (showingMaskedStoredKey) {
+                        showingMaskedStoredKey = false
+                    }
                     draftApiKey = it
+                    hasEditedDraft = true
                     saveMessage = null
                 },
                 modifier = Modifier
                     .fillMaxWidth()
+                    .onFocusChanged { focusState ->
+                        if (focusState.isFocused && showingMaskedStoredKey) {
+                            draftApiKey = ""
+                            showingMaskedStoredKey = false
+                            hasEditedDraft = false
+                            saveMessage = null
+                        }
+                    }
                     .testTag(SettingsApiKeyFieldTestTag),
                 label = { Text(stringResource(R.string.openai_api_key_label)) },
                 placeholder = { Text(stringResource(R.string.openai_api_key_placeholder)) },
@@ -95,7 +116,8 @@ internal fun SettingsScreen(
             Button(
                 onClick = {
                     scope.launch {
-                        saveMessage = if (draftApiKey.trim().isBlank()) {
+                        val normalizedDraftApiKey = draftApiKey.trim()
+                        saveMessage = if (normalizedDraftApiKey.isBlank()) {
                             when (openAiApiKeyStore.clearApiKey()) {
                                 OpenAiApiKeyMutationResult.CLEARED -> clearedMessage
                                 else -> errorMessage
@@ -105,7 +127,7 @@ internal fun SettingsScreen(
                             if (hostActivity == null) {
                                 authUnavailableMessage
                             } else {
-                                when (openAiApiKeyStore.saveApiKey(hostActivity, draftApiKey)) {
+                                when (openAiApiKeyStore.saveApiKey(hostActivity, normalizedDraftApiKey)) {
                                     OpenAiApiKeyMutationResult.SAVED -> savedMessage
                                     OpenAiApiKeyMutationResult.AUTH_CANCELLED -> authCancelledMessage
                                     OpenAiApiKeyMutationResult.AUTH_UNAVAILABLE -> authUnavailableMessage
@@ -115,7 +137,13 @@ internal fun SettingsScreen(
                         }
                     }
                 },
-                enabled = draftApiKey.trim() != savedApiKey,
+                enabled = if (showingMaskedStoredKey) {
+                    false
+                } else if (savedApiKey.isBlank()) {
+                    draftApiKey.trim() != savedApiKey
+                } else {
+                    hasEditedDraft
+                },
             ) {
                 Text(stringResource(R.string.save))
             }

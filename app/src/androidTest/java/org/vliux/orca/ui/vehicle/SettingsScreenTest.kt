@@ -1,6 +1,7 @@
 package org.vliux.orca.ui.vehicle
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -37,11 +38,55 @@ class SettingsScreenTest {
         composeRule.onNodeWithText("Save").performClick()
         composeRule.onNodeWithText("Set up biometric or device credentials to unlock the stored API key.").assertIsDisplayed()
     }
+
+    @Test
+    fun settingsScreenMasksStoredApiKeyAndClearsDotsOnFieldFocus() {
+        val store = FakeOpenAiApiKeyStore(initialApiKey = "sk-existing")
+
+        composeRule.setContent {
+            MaterialTheme {
+                SettingsScreen(
+                    openAiApiKeyStore = store,
+                    onBack = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag(SettingsApiKeyFieldTestTag).assertTextEquals("................................")
+        composeRule.onNodeWithTag(SettingsApiKeyFieldTestTag).performClick()
+        composeRule.onNodeWithTag(SettingsApiKeyFieldTestTag).assertTextEquals("")
+    }
+
+    @Test
+    fun settingsScreenMasksStoredApiKeyAfterColdStartWhenKeyIsLocked() {
+        val store = FakeOpenAiApiKeyStore(
+            initialApiKey = "",
+            initialAccessState = OpenAiApiKeyAccessState.LOCKED,
+        )
+
+        composeRule.setContent {
+            MaterialTheme {
+                SettingsScreen(
+                    openAiApiKeyStore = store,
+                    onBack = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag(SettingsApiKeyFieldTestTag).assertTextEquals("................................")
+    }
 }
 
-private class FakeOpenAiApiKeyStore : OpenAiApiKeyStore {
-    private val state = MutableStateFlow("")
-    private val accessState = MutableStateFlow(OpenAiApiKeyAccessState.NOT_STORED)
+private class FakeOpenAiApiKeyStore(
+    initialApiKey: String = "",
+    initialAccessState: OpenAiApiKeyAccessState = if (initialApiKey.isBlank()) {
+        OpenAiApiKeyAccessState.NOT_STORED
+    } else {
+        OpenAiApiKeyAccessState.UNLOCKED
+    },
+) : OpenAiApiKeyStore {
+    private val state = MutableStateFlow(initialApiKey)
+    private val accessState = MutableStateFlow(initialAccessState)
 
     override fun observeApiKey() = state
 

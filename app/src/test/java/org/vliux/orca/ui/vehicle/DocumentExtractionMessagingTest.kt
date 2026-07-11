@@ -18,6 +18,15 @@ class DocumentExtractionMessagingTest {
     }
 
     @Test
+    fun manualRetryIsShownOnlyForNotStartedAndFailedDocuments() {
+        assertTrue(supportsManualExtractionRetry("NOT_STARTED"))
+        assertTrue(supportsManualExtractionRetry("FAILED"))
+        assertEquals(false, supportsManualExtractionRetry("QUEUED"))
+        assertEquals(false, supportsManualExtractionRetry("RUNNING"))
+        assertEquals(false, supportsManualExtractionRetry("SUCCEEDED"))
+    }
+
+    @Test
     fun queuedOfflineStatusExplainsBackgroundRetry() {
         val message = extractionStatusMessage(
             detail(

@@ -1117,7 +1117,7 @@ internal fun eventVerificationLabel(status: String?): String = when (status?.tri
 internal fun extractionStatusMessage(detail: DocumentDetail): String? {
     val run = detail.latestRun
     return when (detail.document.extractionStatus) {
-        "NOT_STARTED" -> "Extraction has not started yet. Import a document while cloud extraction is configured to process it."
+        "NOT_STARTED" -> "Extraction has not started yet. Retry extraction from vehicle details after cloud extraction is configured."
         "QUEUED" -> when {
             run?.errorCode == "PROVIDER_OFFLINE" -> "Extraction is queued because the device could not reach the cloud provider. Reconnect to the network and the background retry will resume."
             run?.errorCode == "PROVIDER_TIMEOUT" || run?.errorCode == "PROVIDER_HTTP_408" || run?.errorCode == "PROVIDER_HTTP_429" -> "Extraction is queued for retry because the cloud provider timed out or asked Orca to slow down."
@@ -1144,6 +1144,14 @@ internal fun extractionFailureMessage(errorCode: String?): String {
         null -> "Extraction failed before structured maintenance facts were saved. Retry the document after checking the original files and network."
         else -> "Extraction failed with error $errorCode. Retry the document after checking connectivity and the imported files."
     }
+}
+
+internal fun supportsManualExtractionRetry(status: String?): Boolean = when (status?.trim()?.uppercase()) {
+    "NOT_STARTED",
+    "FAILED",
+    -> true
+
+    else -> false
 }
 
 internal fun documentSourceSummary(detail: DocumentDetail): String {

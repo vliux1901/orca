@@ -83,6 +83,12 @@ internal fun VehicleDetailScreen(
     val importAuthUnavailableMessage = stringResource(R.string.vehicle_import_auth_unavailable)
     val importKeyErrorMessage = stringResource(R.string.vehicle_import_key_error)
     val importFailedMessage = stringResource(R.string.vehicle_import_failed)
+    val retryQueuedMessage = stringResource(R.string.vehicle_retry_queued)
+    val retryNotConfiguredMessage = stringResource(R.string.vehicle_retry_not_configured)
+    val retryAuthCancelledMessage = stringResource(R.string.vehicle_retry_auth_cancelled)
+    val retryAuthUnavailableMessage = stringResource(R.string.vehicle_retry_auth_unavailable)
+    val retryKeyErrorMessage = stringResource(R.string.vehicle_retry_key_error)
+    val retryFailedMessage = stringResource(R.string.vehicle_retry_failed)
     val scope = rememberCoroutineScope()
     val vehicleDetailViewModel: VehicleDetailViewModel = viewModel(
         key = "vehicleDetail:$vehicleId",
@@ -103,6 +109,7 @@ internal fun VehicleDetailScreen(
     var importError by remember(vehicleId) { mutableStateOf<String?>(null) }
     var importMessage by remember(vehicleId) { mutableStateOf<String?>(null) }
     var isImporting by remember(vehicleId) { mutableStateOf(false) }
+    var retryingDocumentId by remember(vehicleId) { mutableStateOf<String?>(null) }
     var actionMenuExpanded by remember(vehicleId) { mutableStateOf(false) }
     val loadedVehicle = screenState.vehicle
 
@@ -176,7 +183,7 @@ internal fun VehicleDetailScreen(
 
             importMessage?.let { message ->
                 item {
-                    InfoCard(title = stringResource(R.string.import_result_title), message = message)
+                    InfoCard(title = stringResource(R.string.extraction_update_title), message = message)
                 }
             }
 
@@ -220,6 +227,32 @@ internal fun VehicleDetailScreen(
                         DocumentSummaryCard(
                             document = document,
                             onOpenDocument = { onOpenDocument(document.documentId) },
+                            onRetryExtraction = if (supportsManualExtractionRetry(document.extractionStatus)) {
+                                {
+                                    scope.launch {
+                                        retryingDocumentId = document.documentId
+                                        importError = null
+                                        importMessage = null
+                                        runCatching {
+                                            documentExtractionScheduler.queueDocumentExtraction(document.documentId, activity)
+                                        }.onSuccess { queueResult ->
+                                            importMessage = when (queueResult) {
+                                                DocumentExtractionQueueResult.QUEUED -> retryQueuedMessage
+                                                DocumentExtractionQueueResult.NOT_CONFIGURED -> retryNotConfiguredMessage
+                                                DocumentExtractionQueueResult.AUTH_CANCELLED -> retryAuthCancelledMessage
+                                                DocumentExtractionQueueResult.AUTH_UNAVAILABLE -> retryAuthUnavailableMessage
+                                                DocumentExtractionQueueResult.ERROR -> retryKeyErrorMessage
+                                            }
+                                        }.onFailure { error ->
+                                            importError = error.message ?: retryFailedMessage
+                                        }
+                                        retryingDocumentId = null
+                                    }
+                                }
+                            } else {
+                                null
+                            },
+                            isRetrying = retryingDocumentId == document.documentId,
                         )
                     }
                 }
@@ -539,6 +572,8 @@ private fun EmptyDocumentState(
 private fun DocumentSummaryCard(
     document: DocumentListItem,
     onOpenDocument: () -> Unit,
+    onRetryExtraction: (() -> Unit)? = null,
+    isRetrying: Boolean = false,
 ) {
     Card(
         modifier = Modifier
@@ -550,11 +585,29 @@ private fun DocumentSummaryCard(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text(
-                text = document.title ?: stringResource(R.string.imported_document_title),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top,
+            ) {
+                Text(
+                    text = document.title ?: stringResource(R.string.imported_document_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f),
+                )
+                onRetryExtraction?.let { retryAction ->
+                    IconButton(
+                        onClick = retryAction,
+                        enabled = !isRetrying,
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_action_retry),
+                            contentDescription = stringResource(R.string.retry_extraction),
+                        )
+                    }
+                }
+            }
             Text(
                 text = stringResource(
                     R.string.document_summary_status,

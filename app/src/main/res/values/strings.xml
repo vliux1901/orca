@@ -24,7 +24,7 @@
     <string name="vehicle_details_title">Vehicle details</string>
     <string name="vehicle_not_found_title">Vehicle not found.</string>
     <string name="vehicle_not_found_message">The selected vehicle could not be loaded from the local database.</string>
-    <string name="import_result_title">Import Result</string>
+    <string name="extraction_update_title">Extraction Update</string>
     <string name="maintenance_summary_title">Maintenance Summary</string>
     <string name="maintenance_summary_subtitle">Latest known maintenance or repair per vehicle component.</string>
     <string name="documents_title">Documents</string>
@@ -38,6 +38,12 @@
     <string name="vehicle_import_auth_unavailable">Imported document. Set up biometric or device credentials so Orca can unlock the stored API key during import.</string>
     <string name="vehicle_import_key_error">Imported document. Orca could not unlock the stored API key for extraction.</string>
     <string name="vehicle_import_failed">Failed to import files.</string>
+    <string name="vehicle_retry_queued">Queued extraction for the document.</string>
+    <string name="vehicle_retry_not_configured">Extraction is unavailable until an API key is saved in Settings.</string>
+    <string name="vehicle_retry_auth_cancelled">Extraction did not start because device authentication was cancelled.</string>
+    <string name="vehicle_retry_auth_unavailable">Set up biometric or device credentials so Orca can unlock the stored API key during retry.</string>
+    <string name="vehicle_retry_key_error">Orca could not unlock the stored API key for extraction.</string>
+    <string name="vehicle_retry_failed">Failed to retry extraction.</string>
     <string name="save_vehicle_failed">Failed to save vehicle.</string>
     <string name="saving">Saving...</string>
     <string name="save_vehicle">Save Vehicle</string>
@@ -58,6 +64,8 @@
     <string name="document_summary_status">Sources %1$d | Import %2$s | Extraction %3$s</string>
     <string name="document_occurred_on">Occurred on %1$s</string>
     <string name="document_updated">Updated %1$s</string>
+    <string name="retry_extraction">Retry Extraction</string>
+    <string name="retrying_extraction">Retrying...</string>
     <string name="vehicle_display_name_label">Display Name</string>
     <string name="vehicle_make_label">Make</string>
     <string name="vehicle_model_label">Model</string>

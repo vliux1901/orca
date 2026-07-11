@@ -17,8 +17,10 @@
     <string name="openai_api_key_auth_cancelled">Authentication was cancelled.</string>
     <string name="openai_api_key_auth_unavailable">Set up biometric or device credentials to unlock the stored API key.</string>
     <string name="openai_api_key_error">Could not access the stored API key.</string>
-    <string name="openai_api_key_prompt_title">Authenticate to unlock your API key</string>
-    <string name="openai_api_key_prompt_subtitle">Your OpenAI API key is stored securely on this device. Use biometrics or device unlock so Orca can use it for extraction.</string>
+    <string name="openai_api_key_save_prompt_title">Authenticate to save your API key</string>
+    <string name="openai_api_key_save_prompt_subtitle">Your OpenAI API key is stored securely on this device. Authenticate to confirm saving this key.</string>
+    <string name="openai_api_key_unlock_prompt_title">Authenticate to unlock your API key</string>
+    <string name="openai_api_key_unlock_prompt_subtitle">Your OpenAI API key is stored securely on this device. Use biometrics or device unlock so Orca can use it for extraction.</string>
     <string name="openai_api_key_locked_title">Stored key is locked</string>
     <string name="openai_api_key_locked_message">Unlock the saved API key with biometrics or device credentials when Orca needs to display it or send imported files for extraction.</string>
     <string name="openai_api_key_unlock">Unlock Stored Key</string>

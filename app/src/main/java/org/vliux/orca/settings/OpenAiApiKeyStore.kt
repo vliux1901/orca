@@ -83,7 +83,13 @@ class KeystoreOpenAiApiKeyStore @Inject constructor(
         if (normalizedKey.isBlank()) {
             return clearApiKey()
         }
-        when (authenticate(activity)) {
+        when (
+            authenticate(
+                activity = activity,
+                title = context.getString(R.string.openai_api_key_save_prompt_title),
+                subtitle = context.getString(R.string.openai_api_key_save_prompt_subtitle),
+            )
+        ) {
             AuthenticationResult.CANCELLED -> return OpenAiApiKeyMutationResult.AUTH_CANCELLED
             AuthenticationResult.UNAVAILABLE -> return OpenAiApiKeyMutationResult.AUTH_UNAVAILABLE
             AuthenticationResult.AUTHENTICATED -> Unit
@@ -111,7 +117,13 @@ class KeystoreOpenAiApiKeyStore @Inject constructor(
             accessStateFlow.value = OpenAiApiKeyAccessState.NOT_STORED
             return OpenAiApiKeyMutationResult.ERROR
         }
-        when (authenticate(activity)) {
+        when (
+            authenticate(
+                activity = activity,
+                title = context.getString(R.string.openai_api_key_unlock_prompt_title),
+                subtitle = context.getString(R.string.openai_api_key_unlock_prompt_subtitle),
+            )
+        ) {
             AuthenticationResult.CANCELLED -> return OpenAiApiKeyMutationResult.AUTH_CANCELLED
             AuthenticationResult.UNAVAILABLE -> return OpenAiApiKeyMutationResult.AUTH_UNAVAILABLE
             AuthenticationResult.AUTHENTICATED -> Unit
@@ -147,7 +159,11 @@ class KeystoreOpenAiApiKeyStore @Inject constructor(
 
     override fun hasStoredApiKey(): Boolean = hasStoredCiphertext()
 
-    private suspend fun authenticate(activity: FragmentActivity): AuthenticationResult {
+    private suspend fun authenticate(
+        activity: FragmentActivity,
+        title: String,
+        subtitle: String,
+    ): AuthenticationResult {
         val authenticators = BiometricManager.Authenticators.BIOMETRIC_STRONG or
             BiometricManager.Authenticators.DEVICE_CREDENTIAL
         if (BiometricManager.from(activity).canAuthenticate(authenticators) != BiometricManager.BIOMETRIC_SUCCESS) {
@@ -177,8 +193,8 @@ class KeystoreOpenAiApiKeyStore @Inject constructor(
                 },
             )
             val promptInfo = BiometricPrompt.PromptInfo.Builder()
-                .setTitle(context.getString(R.string.openai_api_key_prompt_title))
-                .setSubtitle(context.getString(R.string.openai_api_key_prompt_subtitle))
+                .setTitle(title)
+                .setSubtitle(subtitle)
                 .setAllowedAuthenticators(authenticators)
                 .build()
             prompt.authenticate(promptInfo)

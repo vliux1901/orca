@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -104,16 +105,20 @@ internal fun VehicleListScreen(
                             .weight(1f, fill = false)
                             .widthIn(max = 520.dp),
                     )
-                    OverflowMenuButton(
-                        expanded = menuExpanded,
-                        onExpandedChange = { menuExpanded = it },
-                    )
+                    Box(
+                        modifier = Modifier.wrapContentSize(Alignment.TopEnd),
+                    ) {
+                        OverflowMenuButton(
+                            expanded = menuExpanded,
+                            onExpandedChange = { menuExpanded = it },
+                        )
+                        OverflowMenuDropdown(
+                            expanded = menuExpanded,
+                            onExpandedChange = { menuExpanded = it },
+                            onOpenSettings = onOpenSettings,
+                        )
+                    }
                 }
-                OverflowMenuDropdown(
-                    expanded = menuExpanded,
-                    onExpandedChange = { menuExpanded = it },
-                    onOpenSettings = onOpenSettings,
-                )
             }
         },
         floatingActionButton = {

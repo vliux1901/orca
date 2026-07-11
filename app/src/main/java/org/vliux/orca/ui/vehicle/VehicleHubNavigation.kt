@@ -7,6 +7,10 @@ import org.vliux.orca.worker.DocumentExtractionQueueResult
 internal sealed interface VehicleRoute {
     data object List : VehicleRoute
     data object Settings : VehicleRoute
+    data object OnboardingWelcome : VehicleRoute
+    data object OnboardingVehicles : VehicleRoute
+    data object OnboardingApiKey : VehicleRoute
+    data object OnboardingImport : VehicleRoute
     data class Search(val query: String) : VehicleRoute
     data class Editor(
         val vehicleId: String?,
@@ -22,6 +26,10 @@ internal sealed interface VehicleRoute {
 internal fun VehicleRoute.serializeForSave(): String = when (this) {
     VehicleRoute.List -> "list"
     VehicleRoute.Settings -> "settings"
+    VehicleRoute.OnboardingWelcome -> "onboarding:welcome"
+    VehicleRoute.OnboardingVehicles -> "onboarding:vehicles"
+    VehicleRoute.OnboardingApiKey -> "onboarding:api-key"
+    VehicleRoute.OnboardingImport -> "onboarding:import"
     is VehicleRoute.Search -> "search:$query"
     is VehicleRoute.Detail -> "detail:$vehicleId"
     is VehicleRoute.DocumentDetail -> "document:$vehicleId:$documentId"
@@ -38,6 +46,13 @@ internal fun List<String>.toVehicleRouteOrNull(): VehicleRoute? {
     return when (kind) {
         "list" -> VehicleRoute.List
         "settings" -> VehicleRoute.Settings
+        "onboarding" -> when (getOrNull(1)) {
+            "welcome" -> VehicleRoute.OnboardingWelcome
+            "vehicles" -> VehicleRoute.OnboardingVehicles
+            "api-key" -> VehicleRoute.OnboardingApiKey
+            "import" -> VehicleRoute.OnboardingImport
+            else -> null
+        }
         "search" -> VehicleRoute.Search(query = getOrNull(1).orEmpty())
         "detail" -> getOrNull(1)?.takeIf { it.isNotEmpty() }?.let(VehicleRoute::Detail)
         "document" -> {
@@ -61,6 +76,13 @@ internal fun String.deserializeVehicleRouteOrNull(): VehicleRoute? {
     return when (parts.firstOrNull()) {
         "list" -> VehicleRoute.List
         "settings" -> VehicleRoute.Settings
+        "onboarding" -> when (parts.getOrNull(1)) {
+            "welcome" -> VehicleRoute.OnboardingWelcome
+            "vehicles" -> VehicleRoute.OnboardingVehicles
+            "api-key" -> VehicleRoute.OnboardingApiKey
+            "import" -> VehicleRoute.OnboardingImport
+            else -> null
+        }
         "search" -> VehicleRoute.Search(query = parts.drop(1).joinToString(":"))
         "detail" -> parts.getOrNull(1)?.takeIf { it.isNotEmpty() }?.let(VehicleRoute::Detail)
         "document" -> {
@@ -82,6 +104,10 @@ internal fun String.deserializeVehicleRouteOrNull(): VehicleRoute? {
 internal fun VehicleRoute.logLabel(): String = when (this) {
     VehicleRoute.List -> "list"
     VehicleRoute.Settings -> "settings"
+    VehicleRoute.OnboardingWelcome -> "onboarding(welcome)"
+    VehicleRoute.OnboardingVehicles -> "onboarding(vehicles)"
+    VehicleRoute.OnboardingApiKey -> "onboarding(apiKey)"
+    VehicleRoute.OnboardingImport -> "onboarding(import)"
     is VehicleRoute.Search -> "search(queryLength=${query.length})"
     is VehicleRoute.Detail -> "detail(vehicleId=$vehicleId)"
     is VehicleRoute.DocumentDetail -> "document(vehicleId=$vehicleId, documentId=$documentId)"
@@ -91,6 +117,10 @@ internal fun VehicleRoute.logLabel(): String = when (this) {
 internal fun VehicleRoute.navigateBack(): VehicleRoute = when (this) {
     VehicleRoute.List -> VehicleRoute.List
     VehicleRoute.Settings -> VehicleRoute.List
+    VehicleRoute.OnboardingWelcome -> VehicleRoute.List
+    VehicleRoute.OnboardingVehicles -> VehicleRoute.OnboardingWelcome
+    VehicleRoute.OnboardingApiKey -> VehicleRoute.OnboardingVehicles
+    VehicleRoute.OnboardingImport -> VehicleRoute.OnboardingApiKey
     is VehicleRoute.Search -> VehicleRoute.List
     is VehicleRoute.Detail -> VehicleRoute.List
     is VehicleRoute.DocumentDetail -> VehicleRoute.Detail(vehicleId)
@@ -100,9 +130,19 @@ internal fun VehicleRoute.navigateBack(): VehicleRoute = when (this) {
         is VehicleRoute.DocumentDetail -> parent
         is VehicleRoute.Search -> parent
         VehicleRoute.Settings -> VehicleRoute.List
+        VehicleRoute.OnboardingWelcome -> VehicleRoute.OnboardingWelcome
+        VehicleRoute.OnboardingVehicles -> VehicleRoute.OnboardingVehicles
+        VehicleRoute.OnboardingApiKey -> VehicleRoute.OnboardingApiKey
+        VehicleRoute.OnboardingImport -> VehicleRoute.OnboardingImport
         VehicleRoute.List -> VehicleRoute.List
         is VehicleRoute.Editor -> VehicleRoute.List
     }
+}
+
+internal fun VehicleRoute.canNavigateBack(): Boolean = when (this) {
+    VehicleRoute.List -> false
+    VehicleRoute.OnboardingWelcome -> false
+    else -> true
 }
 
 internal val vehicleSummaryDateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy")

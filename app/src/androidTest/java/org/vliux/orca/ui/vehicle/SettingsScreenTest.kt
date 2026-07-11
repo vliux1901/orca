@@ -33,7 +33,7 @@ class SettingsScreenTest {
             }
         }
 
-        composeRule.onNodeWithText("Bring your own OpenAI API key").assertIsDisplayed()
+        composeRule.onNodeWithText("Add your OpenAI API key").assertIsDisplayed()
         composeRule.onNodeWithTag(SettingsApiKeyFieldTestTag).performTextReplacement("sk-test")
         composeRule.onNodeWithText("Save").performClick()
         composeRule.onNodeWithText("Set up biometric or device credentials to unlock the stored API key.").assertIsDisplayed()

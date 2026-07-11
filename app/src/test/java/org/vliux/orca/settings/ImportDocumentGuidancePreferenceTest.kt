@@ -25,7 +25,7 @@ class ImportDocumentGuidancePreferenceTest {
     }
 }
 
-private class FakeBooleanPreferenceStore : BooleanPreferenceStore {
+internal class FakeBooleanPreferenceStore : BooleanPreferenceStore {
     val values = mutableMapOf<String, Boolean>()
 
     override fun getBoolean(key: String, defaultValue: Boolean): Boolean = values[key] ?: defaultValue

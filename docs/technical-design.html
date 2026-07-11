@@ -305,7 +305,8 @@
             <h2>Architecture Summary</h2>
             <ul>
               <li class="block" data-block-id="arch-1">UI: Compose screens for vehicles, import, documents, timeline, edit, and ask/search.</li>
-              <li class="block" data-block-id="arch-1a">UI should also expose a Settings screen from the vehicle-list overflow menu so the user can provide an OpenAI API key on device. When Orca needs to decrypt the stored key for extraction or display, it should prompt for biometrics or device credentials inline with that action instead of requiring a separate manual unlock step ahead of time.</li>
+              <li class="block" data-block-id="arch-1a">UI should expose a first-run onboarding wizard when the app opens with no vehicles yet. That wizard should cover welcome/context, vehicle creation, optional OpenAI API key setup, and optional first document import.</li>
+              <li class="block" data-block-id="arch-1b">UI should also expose a Settings screen from the vehicle-list overflow menu so the user can provide or update an OpenAI API key on device after onboarding. When Orca needs to decrypt the stored key for extraction or display, it should prompt for biometrics or device credentials inline with that action instead of requiring a separate manual unlock step ahead of time.</li>
               <li class="block" data-block-id="arch-2">ViewModel: screen state and command handling.</li>
               <li class="block" data-block-id="arch-3">Repository: local DB plus app-private file storage.</li>
               <li class="block" data-block-id="arch-4">Processing: source-file preparation, cloud vision extraction, validation, normalization, event building, and indexing.</li>
@@ -347,7 +348,7 @@
           <article class="content-card">
             <h2>Storage Model</h2>
             <p class="block" data-block-id="data-1">Use local app-private storage for source documents. Source documents stay local even when original image and PDF files are sent to a cloud AI provider for extraction.</p>
-            <p class="block" data-block-id="data-1a">Store the user-provided OpenAI API key as ciphertext in app-private preferences, keep the AES key in Android Keystore, and require biometric or device-credential authentication before Orca decrypts the stored API key into runtime memory.</p>
+            <p class="block" data-block-id="data-1a">Store the user-provided OpenAI API key as ciphertext in app-private preferences, keep the AES key in Android Keystore, and require biometric or device-credential authentication before Orca decrypts the stored API key into runtime memory. Onboarding and Settings should both use the same storage and authentication path.</p>
             <pre class="block" data-block-id="data-2"><code>files/vehicles/{vehicleId}/documents/{documentId}/sources/source-001.{ext}
 files/vehicles/{vehicleId}/documents/{documentId}/sources/source-002.{ext}
 files/vehicles/{vehicleId}/documents/{documentId}/sources/source-003.{ext}</code></pre>

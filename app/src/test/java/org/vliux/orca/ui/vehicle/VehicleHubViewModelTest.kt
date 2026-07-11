@@ -44,4 +44,18 @@ class VehicleHubViewModelTest {
 
         assertEquals(VehicleRoute.Settings, secondViewModel.route)
     }
+
+    @Test
+    fun onboardingRoutePersistsAcrossViewModelRecreation() {
+        val savedStateHandle = SavedStateHandle()
+        val firstViewModel = VehicleHubViewModel(savedStateHandle)
+
+        firstViewModel.updateRoute {
+            VehicleRoute.OnboardingImport
+        }
+
+        val secondViewModel = VehicleHubViewModel(savedStateHandle)
+
+        assertEquals(VehicleRoute.OnboardingImport, secondViewModel.route)
+    }
 }

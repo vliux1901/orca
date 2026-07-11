@@ -45,7 +45,7 @@ internal interface BooleanPreferenceStore {
     fun putBoolean(key: String, value: Boolean)
 }
 
-private class SharedPreferencesBooleanPreferenceStore(
+internal class SharedPreferencesBooleanPreferenceStore(
     private val preferences: SharedPreferences,
 ) : BooleanPreferenceStore {
     override fun getBoolean(key: String, defaultValue: Boolean): Boolean = preferences.getBoolean(key, defaultValue)

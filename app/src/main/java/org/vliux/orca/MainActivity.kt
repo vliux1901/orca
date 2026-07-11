@@ -13,6 +13,7 @@ import org.vliux.orca.data.ServiceItemRepository
 import org.vliux.orca.data.VehicleRepository
 import org.vliux.orca.importing.AppFileStorage
 import org.vliux.orca.settings.ImportDocumentGuidancePreference
+import org.vliux.orca.settings.NewUserWizardPreference
 import org.vliux.orca.settings.OpenAiApiKeyStore
 import org.vliux.orca.ui.theme.OrcaTheme
 import org.vliux.orca.ui.vehicle.VehicleHubScreen
@@ -47,6 +48,9 @@ class MainActivity : FragmentActivity() {
     @Inject
     lateinit var importDocumentGuidancePreference: ImportDocumentGuidancePreference
 
+    @Inject
+    lateinit var newUserWizardPreference: NewUserWizardPreference
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -62,6 +66,7 @@ class MainActivity : FragmentActivity() {
                     searchRepository = searchRepository,
                     openAiApiKeyStore = openAiApiKeyStore,
                     importDocumentGuidancePreference = importDocumentGuidancePreference,
+                    newUserWizardPreference = newUserWizardPreference,
                 )
             }
         }

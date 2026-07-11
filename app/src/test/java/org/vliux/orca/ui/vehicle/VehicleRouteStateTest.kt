@@ -42,6 +42,16 @@ class VehicleRouteStateTest {
     }
 
     @Test
+    fun onboardingApiKeyRouteRoundTripsThroughSavedStateEncoding() {
+        val route: VehicleRoute = VehicleRoute.OnboardingApiKey
+
+        val restored = listOf("onboarding", "api-key").toVehicleRouteOrNull()
+
+        assertEquals(route, restored)
+        assertEquals("onboarding:api-key", route.serializeForSave())
+    }
+
+    @Test
     fun invalidSavedStateReturnsNull() {
         assertNull(listOf("detail").toVehicleRouteOrNull())
         assertNull("document:vehicle-only".deserializeVehicleRouteOrNull())

@@ -1,0 +1,1257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New User Wizard UX Review</title>
+  <style>
+    :root {
+      --bg: #f4efe6;
+      --panel: #fffaf3;
+      --panel-strong: #f6eedf;
+      --ink: #1d201c;
+      --muted: #5f645b;
+      --line: #d7ccb9;
+      --accent: #0f5d66;
+      --accent-soft: #d9edf0;
+      --accent-warm: #d87a2c;
+      --success: #2d6b43;
+      --warning: #8e4d1d;
+      --shadow: 0 20px 45px rgba(70, 57, 30, 0.12);
+      --phone-shadow: 0 28px 60px rgba(17, 39, 43, 0.18);
+      --highlight: #fff2a8;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(15, 93, 102, 0.12), transparent 28%),
+        radial-gradient(circle at right 10%, rgba(216, 122, 44, 0.12), transparent 24%),
+        linear-gradient(180deg, #faf5ec 0%, var(--bg) 100%);
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin: 0;
+      font-family: "IBM Plex Serif", Georgia, serif;
+    }
+
+    p,
+    li {
+      line-height: 1.65;
+    }
+
+    code {
+      font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
+    }
+
+    .shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      gap: 24px;
+      padding: 24px;
+    }
+
+    .workspace,
+    .comment-panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+    }
+
+    .workspace {
+      padding: 18px;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .toolbar-left,
+    .toolbar-right {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .status {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    button,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      border-radius: 12px;
+      padding: 10px 14px;
+      cursor: pointer;
+      transition: 120ms ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      border-color: var(--accent);
+    }
+
+    button.primary {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    button.ghost {
+      background: transparent;
+    }
+
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .tab-button[aria-selected="true"] {
+      background: var(--accent-soft);
+      color: var(--accent);
+      border-color: rgba(15, 93, 102, 0.2);
+      font-weight: 700;
+    }
+
+    .tab-panel {
+      display: none;
+      padding: 12px;
+      border-radius: 18px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(246, 238, 223, 0.68));
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
+
+    .content-card {
+      padding: 20px;
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid rgba(215, 204, 185, 0.9);
+      border-radius: 20px;
+    }
+
+    .content-card + .content-card {
+      margin-top: 14px;
+    }
+
+    .content-card h2 {
+      font-size: 1.55rem;
+      margin-bottom: 10px;
+    }
+
+    .content-card h3 {
+      font-size: 1.05rem;
+      margin: 18px 0 8px;
+    }
+
+    ul {
+      margin: 10px 0;
+      padding-left: 20px;
+    }
+
+    .block {
+      border-radius: 8px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(300px, 0.8fr);
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .hero h1 {
+      font-size: clamp(2rem, 4vw, 3.4rem);
+      margin-top: 12px;
+      line-height: 1.05;
+    }
+
+    .hero p {
+      max-width: 58ch;
+    }
+
+    .summary-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .summary-pill {
+      padding: 14px;
+      border-radius: 18px;
+      background: var(--panel-strong);
+      border: 1px solid rgba(215, 204, 185, 0.95);
+    }
+
+    .summary-pill strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 0.95rem;
+    }
+
+    .flow-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .flow-chip {
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: #fff;
+      border: 1px solid var(--line);
+      font-size: 14px;
+    }
+
+    .overview-panel {
+      border-radius: 24px;
+      padding: 18px;
+      background:
+        linear-gradient(150deg, rgba(15, 93, 102, 0.08), rgba(216, 122, 44, 0.12)),
+        #fff;
+      border: 1px solid rgba(15, 93, 102, 0.12);
+      min-height: 100%;
+    }
+
+    .mini-map {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .mini-step {
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.85);
+      border: 1px solid rgba(15, 93, 102, 0.12);
+    }
+
+    .mini-step strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .phone-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+      margin-top: 18px;
+    }
+
+    .screen-card {
+      display: grid;
+      gap: 12px;
+    }
+
+    .screen-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .step-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: var(--panel-strong);
+      color: var(--warning);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .step-optional {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .phone {
+      position: relative;
+      min-height: 640px;
+      padding: 14px;
+      border-radius: 38px;
+      background: linear-gradient(180deg, #1a2126 0%, #12171b 100%);
+      box-shadow: var(--phone-shadow);
+    }
+
+    .phone::before {
+      content: "";
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      width: 126px;
+      height: 24px;
+      transform: translateX(-50%);
+      border-radius: 0 0 18px 18px;
+      background: #0f1316;
+    }
+
+    .phone-screen {
+      min-height: 612px;
+      padding: 16px 18px 18px;
+      border-radius: 28px;
+      background:
+        radial-gradient(circle at top right, rgba(15, 93, 102, 0.12), transparent 34%),
+        linear-gradient(180deg, #fcfbf7 0%, #f5efe4 100%);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .screen-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding-top: 22px;
+    }
+
+    .headline {
+      font-size: 1.7rem;
+      line-height: 1.1;
+    }
+
+    .subcopy {
+      color: var(--muted);
+      font-size: 0.98rem;
+    }
+
+    .surface-card {
+      padding: 14px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.88);
+      border: 1px solid rgba(215, 204, 185, 0.96);
+      box-shadow: 0 10px 24px rgba(102, 89, 61, 0.08);
+    }
+
+    .vehicle-preview {
+      display: grid;
+      gap: 10px;
+    }
+
+    .vehicle-row {
+      display: grid;
+      grid-template-columns: 56px minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      padding: 10px;
+      border-radius: 16px;
+      background: #faf6ee;
+      border: 1px solid rgba(215, 204, 185, 0.78);
+    }
+
+    .vehicle-thumb,
+    .doc-thumb {
+      width: 56px;
+      height: 56px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, rgba(15, 93, 102, 0.18), rgba(216, 122, 44, 0.18));
+      display: grid;
+      place-items: center;
+      color: var(--accent);
+    }
+
+    .vehicle-meta strong,
+    .doc-meta strong {
+      display: block;
+      font-size: 0.95rem;
+    }
+
+    .vehicle-meta span,
+    .doc-meta span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      background: rgba(15, 93, 102, 0.1);
+      color: var(--accent);
+    }
+
+    .tag.skip {
+      background: rgba(216, 122, 44, 0.14);
+      color: var(--warning);
+    }
+
+    .bullet-list {
+      display: grid;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .bullet-item {
+      display: grid;
+      grid-template-columns: 18px minmax(0, 1fr);
+      gap: 10px;
+      align-items: start;
+    }
+
+    .bullet-dot {
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      margin-top: 2px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      display: grid;
+      place-items: center;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .fake-field {
+      height: 50px;
+      border-radius: 14px;
+      border: 1px solid rgba(215, 204, 185, 0.96);
+      background: #fff;
+      padding: 12px 14px;
+      color: #8a8e87;
+      font-size: 0.92rem;
+    }
+
+    .secure-banner {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px;
+      border-radius: 16px;
+      background: rgba(45, 107, 67, 0.08);
+      border: 1px solid rgba(45, 107, 67, 0.18);
+      color: #245338;
+      font-size: 0.9rem;
+    }
+
+    .auth-panel {
+      padding: 12px;
+      border-radius: 16px;
+      background: rgba(15, 93, 102, 0.08);
+      border: 1px solid rgba(15, 93, 102, 0.15);
+      color: #24464b;
+      font-size: 0.9rem;
+    }
+
+    .document-preview {
+      display: grid;
+      gap: 10px;
+    }
+
+    .doc-row {
+      display: grid;
+      grid-template-columns: 56px minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      padding: 10px;
+      border-radius: 16px;
+      background: #faf6ee;
+      border: 1px solid rgba(215, 204, 185, 0.78);
+    }
+
+    .progress-rail {
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(15, 93, 102, 0.14);
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 65%;
+      background: linear-gradient(90deg, var(--accent), #66a8b1);
+      border-radius: inherit;
+    }
+
+    .button-stack {
+      display: grid;
+      gap: 10px;
+      margin-top: auto;
+    }
+
+    .cta {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 52px;
+      border-radius: 16px;
+      font-weight: 700;
+      border: 1px solid transparent;
+    }
+
+    .cta.primary {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .cta.secondary {
+      background: rgba(15, 93, 102, 0.08);
+      color: var(--accent);
+      border-color: rgba(15, 93, 102, 0.15);
+    }
+
+    .cta.ghost {
+      background: transparent;
+      color: var(--muted);
+      border-color: rgba(95, 100, 91, 0.18);
+    }
+
+    .footer-note {
+      margin-top: 16px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .callout {
+      border-left: 4px solid var(--accent-warm);
+      background: rgba(216, 122, 44, 0.08);
+      padding: 14px 16px;
+      border-radius: 0 16px 16px 0;
+    }
+
+    mark.comment-highlight {
+      background: var(--highlight);
+      color: inherit;
+      border-radius: 4px;
+      padding: 0 1px;
+    }
+
+    .comment-panel {
+      position: sticky;
+      top: 24px;
+      align-self: start;
+      padding: 18px;
+    }
+
+    .comment-panel h2 {
+      font-size: 1.35rem;
+      margin-bottom: 8px;
+    }
+
+    .comment-panel p,
+    .comment-panel label {
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .selection-box,
+    .comment-list,
+    .export-box {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+    }
+
+    .selection-preview,
+    .comment-quote,
+    .empty-state,
+    .export-help {
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: var(--panel-strong);
+      border: 1px solid rgba(215, 204, 185, 0.9);
+    }
+
+    .selection-preview,
+    .comment-quote {
+      color: var(--ink);
+      font-size: 14px;
+      white-space: pre-wrap;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 110px;
+      margin-top: 10px;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      resize: vertical;
+      background: #fff;
+    }
+
+    .selection-actions,
+    .export-actions,
+    .comment-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .comment-item {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #fff;
+    }
+
+    .comment-item + .comment-item {
+      margin-top: 12px;
+    }
+
+    .comment-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: baseline;
+      font-size: 13px;
+      margin-bottom: 10px;
+    }
+
+    .comment-meta strong {
+      color: var(--accent);
+    }
+
+    .comment-body {
+      margin-top: 10px;
+      white-space: pre-wrap;
+    }
+
+    .comment-jump {
+      color: var(--warning);
+      font-size: 13px;
+      margin-top: 8px;
+    }
+
+    .small-note {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 10px;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    @media (max-width: 1180px) {
+      .shell {
+        grid-template-columns: 1fr;
+      }
+
+      .comment-panel {
+        position: static;
+      }
+    }
+
+    @media (max-width: 840px) {
+      .hero {
+        grid-template-columns: 1fr;
+      }
+
+      .summary-list {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <main class="main-column">
+      <section class="workspace">
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <strong>New User Wizard UX Review</strong>
+            <span class="status" id="commentStatus">0 comments saved locally</span>
+          </div>
+          <div class="toolbar-right">
+            <button type="button" class="ghost" id="clearCommentsButton">Clear comments</button>
+          </div>
+        </div>
+
+        <div class="tabs" role="tablist" aria-label="New user wizard review sections">
+          <button type="button" class="tab-button" role="tab" aria-selected="true" aria-controls="tab-overview" id="tab-button-overview" data-tab="overview">Overview</button>
+          <button type="button" class="tab-button" role="tab" aria-selected="false" aria-controls="tab-screens" id="tab-button-screens" data-tab="screens">Screens</button>
+          <button type="button" class="tab-button" role="tab" aria-selected="false" aria-controls="tab-notes" id="tab-button-notes" data-tab="notes">Notes</button>
+        </div>
+
+        <section class="tab-panel active" id="tab-overview" role="tabpanel" aria-labelledby="tab-button-overview" data-tab-panel="overview">
+          <div class="content-card">
+            <div class="hero">
+              <div>
+                <span class="eyebrow">First-run UX concept</span>
+                <h1 class="block" data-block-id="hero-title">Replace the empty vehicle list with a guided four-step new-user wizard.</h1>
+                <p class="block" data-block-id="hero-copy">This flow gets a first-time user from zero context to a useful setup state: understand the app, add at least one vehicle, optionally connect their OpenAI key with clear local-storage and authentication messaging, and optionally import the first maintenance documents.</p>
+                <div class="summary-list">
+                  <div class="summary-pill block" data-block-id="summary-goal">
+                    <strong>Primary goal</strong>
+                    Reduce blank-screen friction and guide the user toward their first successful import.
+                  </div>
+                  <div class="summary-pill block" data-block-id="summary-shape">
+                    <strong>Flow shape</strong>
+                    4 screens, linear progression, with step 3 and step 4 explicitly skippable.
+                  </div>
+                  <div class="summary-pill block" data-block-id="summary-visual">
+                    <strong>Visual direction</strong>
+                    Plain language, one clear main action per screen, and phone-sized cards that read like product screenshots.
+                  </div>
+                  <div class="summary-pill block" data-block-id="summary-state">
+                    <strong>Exit state</strong>
+                    End on the real vehicle hub with the user either partially configured or fully ready to import and extract records.
+                  </div>
+                </div>
+                <div class="flow-strip block" data-block-id="flow-strip">
+                  <div class="flow-chip">1. Welcome</div>
+                  <div class="flow-chip">2. Create vehicle profiles</div>
+                  <div class="flow-chip">3. Add OpenAI API key</div>
+                  <div class="flow-chip">4. Import vehicle documents</div>
+                </div>
+              </div>
+
+              <aside class="overview-panel">
+                <h2 class="block" data-block-id="overview-title">Flow Snapshot</h2>
+                <div class="mini-map">
+                  <div class="mini-step block" data-block-id="mini-step-1">
+                    <strong>Step 1</strong>
+                    Set context and reassure the user that Orca is a personal maintenance-record organizer.
+                  </div>
+                  <div class="mini-step block" data-block-id="mini-step-2">
+                    <strong>Step 2</strong>
+                    Push the user directly into the create-vehicle action because that unlocks almost every later workflow.
+                  </div>
+                  <div class="mini-step block" data-block-id="mini-step-3">
+                    <strong>Step 3</strong>
+                    Explain third-party AI use, why the API key is user-supplied, and why device auth appears only when needed.
+                  </div>
+                  <div class="mini-step block" data-block-id="mini-step-4">
+                    <strong>Step 4</strong>
+                    Show import as the natural follow-up once a vehicle and optional API key exist.
+                  </div>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </section>
+
+        <section class="tab-panel" id="tab-screens" role="tabpanel" aria-labelledby="tab-button-screens" data-tab-panel="screens">
+          <div class="content-card">
+            <h2 class="block" data-block-id="screens-title">Screen Mockups</h2>
+            <p class="block" data-block-id="screens-intro">These mockups show the intended flow, tone, and screen structure for first-run setup. The copy aims to be short, clear, and non-technical.</p>
+
+            <div class="phone-grid">
+              <article class="screen-card">
+                <div class="screen-head">
+                  <div class="step-badge">Step 1</div>
+                  <div class="step-optional">Required</div>
+                </div>
+                <div class="phone">
+                  <div class="phone-screen">
+                    <div class="status-bar">
+                      <span>9:41</span>
+                      <span>5G 100%</span>
+                    </div>
+                    <div class="screen-body">
+                      <div>
+                        <h3 class="headline block" data-block-id="screen-1-headline">Welcome to Orca</h3>
+                        <p class="subcopy block" data-block-id="screen-1-copy">Keep your car service records in one place. Orca helps you organize documents by vehicle and uses third-party AI models to read and summarize them when you choose.</p>
+                      </div>
+                      <div class="surface-card block" data-block-id="screen-1-card">
+                        <div class="bullet-list">
+                          <div class="bullet-item">
+                            <div class="bullet-dot">1</div>
+                            <div>Add your vehicle.</div>
+                          </div>
+                          <div class="bullet-item">
+                            <div class="bullet-dot">2</div>
+                            <div>Keep your files on this device.</div>
+                          </div>
+                          <div class="bullet-item">
+                            <div class="bullet-dot">3</div>
+                            <div>Use third-party AI only when you want document analysis.</div>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="button-stack">
+                        <div class="cta primary block" data-block-id="screen-1-primary">Next</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </article>
+
+              <article class="screen-card">
+                <div class="screen-head">
+                  <div class="step-badge">Step 2</div>
+                  <div class="step-optional">Required</div>
+                </div>
+                <div class="phone">
+                  <div class="phone-screen">
+                    <div class="status-bar">
+                      <span>9:41</span>
+                      <span>5G 100%</span>
+                    </div>
+                    <div class="screen-body">
+                      <div>
+                        <h3 class="headline block" data-block-id="screen-2-headline">Create your first vehicle</h3>
+                        <p class="subcopy block" data-block-id="screen-2-copy">Each vehicle keeps its own documents and history. Start with one now. You can add more later.</p>
+                      </div>
+                      <div class="surface-card vehicle-preview block" data-block-id="screen-2-card">
+                        <div class="vehicle-row">
+                          <div class="vehicle-thumb" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                              <path d="M4 14l2-5a2 2 0 0 1 1.9-1.3h8.2A2 2 0 0 1 18 9l2 5"></path>
+                              <path d="M5 14h14"></path>
+                              <circle cx="7.5" cy="16.5" r="1.5"></circle>
+                              <circle cx="16.5" cy="16.5" r="1.5"></circle>
+                            </svg>
+                          </div>
+                          <div class="vehicle-meta">
+                            <strong>2021 Toyota RAV4</strong>
+                            <span>Example vehicle profile</span>
+                          </div>
+                          <span class="tag">Ready</span>
+                        </div>
+                        <div class="vehicle-row">
+                          <div class="vehicle-thumb" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                              <path d="M4 14l2-5a2 2 0 0 1 1.9-1.3h8.2A2 2 0 0 1 18 9l2 5"></path>
+                              <path d="M5 14h14"></path>
+                              <circle cx="7.5" cy="16.5" r="1.5"></circle>
+                              <circle cx="16.5" cy="16.5" r="1.5"></circle>
+                            </svg>
+                          </div>
+                          <div class="vehicle-meta">
+                            <strong>Add more vehicles later</strong>
+                            <span>Useful for households with more than one car</span>
+                          </div>
+                          <span class="tag">Optional</span>
+                        </div>
+                      </div>
+                      <div class="button-stack">
+                        <div class="cta primary block" data-block-id="screen-2-primary">Create Vehicle</div>
+                        <div class="cta secondary block" data-block-id="screen-2-secondary">I’ve Added a Vehicle</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </article>
+
+              <article class="screen-card">
+                <div class="screen-head">
+                  <div class="step-badge">Step 3</div>
+                  <div class="step-optional">Skippable</div>
+                </div>
+                <div class="phone">
+                  <div class="phone-screen">
+                    <div class="status-bar">
+                      <span>9:41</span>
+                      <span>5G 100%</span>
+                    </div>
+                    <div class="screen-body">
+                      <div>
+                        <h3 class="headline block" data-block-id="screen-3-headline">Add your OpenAI API key</h3>
+                        <p class="subcopy block" data-block-id="screen-3-copy">This step turns on document analysis with third-party AI models. Your key comes from you and is stored only on this device.</p>
+                      </div>
+                      <div class="surface-card block" data-block-id="screen-3-card">
+                        <div class="fake-field">Paste API key here</div>
+                        <div class="secure-banner" style="margin-top: 12px;">
+                          <strong aria-hidden="true">✓</strong>
+                          <div>Your key is encrypted and saved in local app storage. Orca only unlocks it when it needs to use it or show it to you.</div>
+                        </div>
+                        <div class="auth-panel" style="margin-top: 12px;">
+                          You may be asked for device authentication when saving, showing, or using the key. Normal browsing does not need an unlock.
+                        </div>
+                      </div>
+                      <div class="button-stack">
+                        <div class="cta primary block" data-block-id="screen-3-primary">Save API Key</div>
+                        <div class="cta ghost block" data-block-id="screen-3-skip">Skip for Now</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </article>
+
+              <article class="screen-card">
+                <div class="screen-head">
+                  <div class="step-badge">Step 4</div>
+                  <div class="step-optional">Skippable</div>
+                </div>
+                <div class="phone">
+                  <div class="phone-screen">
+                    <div class="status-bar">
+                      <span>9:41</span>
+                      <span>5G 100%</span>
+                    </div>
+                    <div class="screen-body">
+                      <div>
+                        <h3 class="headline block" data-block-id="screen-4-headline">Import your first documents</h3>
+                        <p class="subcopy block" data-block-id="screen-4-copy">Choose a vehicle, then import receipts, invoices, or service PDFs. Orca keeps the original files on this device.</p>
+                      </div>
+                      <div class="surface-card document-preview block" data-block-id="screen-4-card">
+                        <div class="doc-row">
+                          <div class="doc-thumb" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                              <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path>
+                              <path d="M14 3v5h5"></path>
+                            </svg>
+                          </div>
+                          <div class="doc-meta">
+                            <strong>Brake service invoice.pdf</strong>
+                            <span>Imported for 2021 Toyota RAV4</span>
+                          </div>
+                          <span class="tag">PDF</span>
+                        </div>
+                        <div class="progress-rail">
+                          <div class="progress-fill"></div>
+                        </div>
+                        <div class="bullet-list">
+                          <div class="bullet-item">
+                            <div class="bullet-dot">i</div>
+                            <div>You can select more than one image or PDF.</div>
+                          </div>
+                          <div class="bullet-item">
+                            <div class="bullet-dot">i</div>
+                            <div>If you skip the API key, you can turn on analysis later.</div>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="button-stack">
+                        <div class="cta primary block" data-block-id="screen-4-primary">Import Document</div>
+                        <div class="cta ghost block" data-block-id="screen-4-skip">Finish Setup</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            </div>
+
+            <p class="footer-note block" data-block-id="screens-footer">Suggested transition behavior: after step 2, the wizard should remember whether at least one vehicle exists. If the user exits during step 3 or step 4, the app should not show the wizard again on every launch once the first-run state has been acknowledged.</p>
+          </div>
+        </section>
+
+        <section class="tab-panel" id="tab-notes" role="tabpanel" aria-labelledby="tab-button-notes" data-tab-panel="notes">
+          <div class="content-card">
+            <h2 class="block" data-block-id="notes-title">Implementation Notes And Product Fit</h2>
+            <h3 class="block" data-block-id="notes-principles-title">Design principles</h3>
+            <ul>
+              <li class="block" data-block-id="principle-1">The wizard should feel like a guided setup, not a hard gate. Only vehicle creation is truly essential for useful app structure.</li>
+              <li class="block" data-block-id="principle-2">Step 3 and step 4 should be recoverable later from the existing app surfaces, so skipping does not strand the user.</li>
+              <li class="block" data-block-id="principle-3">Security and AI-use language should be explicit but short: local encrypted storage, third-party AI for analysis, and device auth only when a protected action needs the key.</li>
+              <li class="block" data-block-id="principle-4">Document import should preserve the existing guidance about multiple images or PDFs and the fact that originals stay local.</li>
+            </ul>
+
+            <h3 class="block" data-block-id="notes-doc-gap-title">Implementation note</h3>
+            <div class="callout block" data-block-id="notes-doc-gap-copy">
+              The implemented direction is to keep one secure API-key storage flow while exposing it from two entry points: first-run onboarding and the existing <code>Settings</code> screen.
+            </div>
+
+            <h3 class="block" data-block-id="notes-followup-title">Likely follow-up decisions</h3>
+            <ul>
+              <li class="block" data-block-id="followup-1">Should step 2 open the full create-vehicle form inline, or navigate into the existing vehicle-create screen and return to the wizard afterward?</li>
+              <li class="block" data-block-id="followup-2">Should step 3 use the exact current Settings copy and storage/auth logic so the onboarding screen is only a different entry point?</li>
+              <li class="block" data-block-id="followup-3">Should step 4 allow import without a configured API key and leave the document in a queued-but-not-configured state, matching the existing scheduler behavior?</li>
+            </ul>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <aside class="side-column">
+      <section class="comment-panel">
+        <h2>Review Notes</h2>
+        <p>Select text inside a single paragraph, bullet, or mockup note, add a comment, then export your review notes as prompt-ready text.</p>
+
+        <div class="selection-box">
+          <h3 class="sr-only">Current selection</h3>
+          <div class="selection-preview" id="selectionPreview">Select a single block to attach a comment.</div>
+          <textarea id="commentInput" placeholder="Add a UX note, wording tweak, or flow concern..."></textarea>
+          <div class="selection-actions">
+            <button type="button" class="primary" id="saveCommentButton">Save comment</button>
+            <button type="button" id="clearSelectionButton">Clear selection</button>
+          </div>
+          <p class="small-note">Commenting works on a single block at a time so the export stays precise.</p>
+        </div>
+
+        <div class="comment-list">
+          <h3>Saved comments</h3>
+          <div id="commentList">
+            <div class="empty-state">No comments yet.</div>
+          </div>
+        </div>
+
+        <div class="export-box">
+          <h3>Export</h3>
+          <div class="export-help">Export JSON if you want structured data. Export prompts if you want ready-to-paste review instructions for the next iteration.</div>
+          <div class="export-actions">
+            <button type="button" id="exportJsonButton">Export JSON</button>
+            <button type="button" id="exportPromptsButton">Export prompts</button>
+          </div>
+        </div>
+      </section>
+    </aside>
+  </div>
+
+  <script>
+    const storageKey = "orca-new-user-wizard-comments";
+    const tabButtons = Array.from(document.querySelectorAll(".tab-button"));
+    const tabPanels = Array.from(document.querySelectorAll(".tab-panel"));
+    const selectionPreview = document.getElementById("selectionPreview");
+    const commentInput = document.getElementById("commentInput");
+    const commentList = document.getElementById("commentList");
+    const commentStatus = document.getElementById("commentStatus");
+    const saveCommentButton = document.getElementById("saveCommentButton");
+    const clearSelectionButton = document.getElementById("clearSelectionButton");
+    const clearCommentsButton = document.getElementById("clearCommentsButton");
+    const exportJsonButton = document.getElementById("exportJsonButton");
+    const exportPromptsButton = document.getElementById("exportPromptsButton");
+
+    let comments = loadComments();
+    let activeSelection = null;
+
+    tabButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const tab = button.dataset.tab;
+        tabButtons.forEach((item) => {
+          item.setAttribute("aria-selected", String(item === button));
+        });
+        tabPanels.forEach((panel) => {
+          panel.classList.toggle("active", panel.dataset.tabPanel === tab);
+        });
+      });
+    });
+
+    document.addEventListener("selectionchange", () => {
+      const selection = window.getSelection();
+      if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
+        return;
+      }
+
+      const range = selection.getRangeAt(0);
+      const block = range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE
+        ? range.commonAncestorContainer.closest(".block")
+        : range.commonAncestorContainer.parentElement.closest(".block");
+
+      if (!block) {
+        return;
+      }
+
+      const blockText = block.textContent.trim();
+      const selectedText = selection.toString().trim();
+      if (!selectedText || !blockText.includes(selectedText)) {
+        return;
+      }
+
+      const panel = block.closest("[data-tab-panel]");
+      activeSelection = {
+        blockId: block.dataset.blockId,
+        blockText,
+        selectedText,
+        tab: panel ? panel.dataset.tabPanel : "overview",
+      };
+      selectionPreview.textContent = selectedText;
+    });
+
+    saveCommentButton.addEventListener("click", () => {
+      const body = commentInput.value.trim();
+      if (!activeSelection || !body) {
+        return;
+      }
+
+      comments.unshift({
+        id: crypto.randomUUID(),
+        createdAt: new Date().toISOString(),
+        ...activeSelection,
+        body,
+      });
+      persistComments();
+      commentInput.value = "";
+      clearSelection();
+      renderComments();
+    });
+
+    clearSelectionButton.addEventListener("click", () => {
+      clearSelection();
+    });
+
+    clearCommentsButton.addEventListener("click", () => {
+      comments = [];
+      persistComments();
+      renderComments();
+    });
+
+    exportJsonButton.addEventListener("click", () => {
+      downloadFile("new-user-wizard-comments.json", JSON.stringify(comments, null, 2), "application/json");
+    });
+
+    exportPromptsButton.addEventListener("click", () => {
+      const lines = comments.map((comment) => {
+        return [
+          "Section: " + comment.tab,
+          "Block: " + comment.blockId,
+          "Selected text: " + comment.selectedText,
+          "Reviewer comment: " + comment.body,
+          "Instruction: Update the new-user-wizard HTML mockup and any related product docs accordingly.",
+        ].join("\n");
+      });
+      downloadFile("new-user-wizard-comments.txt", lines.join("\n\n---\n\n"), "text/plain");
+    });
+
+    function clearSelection() {
+      activeSelection = null;
+      selectionPreview.textContent = "Select a single block to attach a comment.";
+      const selection = window.getSelection();
+      if (selection) {
+        selection.removeAllRanges();
+      }
+    }
+
+    function loadComments() {
+      try {
+        const raw = window.localStorage.getItem(storageKey);
+        return raw ? JSON.parse(raw) : [];
+      } catch (error) {
+        return [];
+      }
+    }
+
+    function persistComments() {
+      window.localStorage.setItem(storageKey, JSON.stringify(comments));
+    }
+
+    function renderComments() {
+      const count = comments.length;
+      commentStatus.textContent = count === 1 ? "1 comment saved locally" : count + " comments saved locally";
+
+      if (count === 0) {
+        commentList.innerHTML = '<div class="empty-state">No comments yet.</div>';
+        return;
+      }
+
+      commentList.innerHTML = "";
+      comments.forEach((comment) => {
+        const item = document.createElement("article");
+        item.className = "comment-item";
+        item.innerHTML = `
+          <div class="comment-meta">
+            <strong>${escapeHtml(comment.tab)}</strong>
+            <span>${new Date(comment.createdAt).toLocaleString()}</span>
+          </div>
+          <div class="comment-quote">${escapeHtml(comment.selectedText)}</div>
+          <div class="comment-body">${escapeHtml(comment.body)}</div>
+          <div class="comment-jump">Block: ${escapeHtml(comment.blockId)}</div>
+        `;
+        item.addEventListener("click", () => jumpToComment(comment));
+        commentList.appendChild(item);
+      });
+    }
+
+    function jumpToComment(comment) {
+      const button = document.querySelector('.tab-button[data-tab="' + comment.tab + '"]');
+      if (button) {
+        button.click();
+      }
+      const block = document.querySelector('[data-block-id="' + comment.blockId + '"]');
+      if (!block) {
+        return;
+      }
+      block.scrollIntoView({ behavior: "smooth", block: "center" });
+      block.innerHTML = highlightSelectedText(block.innerHTML, comment.selectedText);
+      window.setTimeout(() => {
+        block.innerHTML = block.innerHTML.replaceAll('<mark class="comment-highlight">', "").replaceAll("</mark>", "");
+      }, 1800);
+    }
+
+    function highlightSelectedText(html, selectedText) {
+      const escaped = escapeRegExp(selectedText);
+      return html.replace(new RegExp(escaped), '<mark class="comment-highlight">$&</mark>');
+    }
+
+    function downloadFile(filename, content, type) {
+      const blob = new Blob([content], { type });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function escapeHtml(value) {
+      return value
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    function escapeRegExp(value) {
+      return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+
+    renderComments();
+  </script>
+</body>
+</html>

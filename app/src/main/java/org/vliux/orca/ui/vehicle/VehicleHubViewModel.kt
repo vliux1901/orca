@@ -36,6 +36,10 @@ internal fun VehicleRoute.toSavedState(): ArrayList<String> = ArrayList(
     when (this) {
         VehicleRoute.List -> listOf("list")
         VehicleRoute.Settings -> listOf("settings")
+        VehicleRoute.OnboardingWelcome -> listOf("onboarding", "welcome")
+        VehicleRoute.OnboardingVehicles -> listOf("onboarding", "vehicles")
+        VehicleRoute.OnboardingApiKey -> listOf("onboarding", "api-key")
+        VehicleRoute.OnboardingImport -> listOf("onboarding", "import")
         is VehicleRoute.Search -> listOf("search", query)
         is VehicleRoute.Detail -> listOf("detail", vehicleId)
         is VehicleRoute.DocumentDetail -> listOf("document", vehicleId, documentId)

@@ -294,7 +294,7 @@ internal fun VehicleListScreen(
 }
 
 @Composable
-private fun ImportVehiclePickerDialog(
+internal fun ImportVehiclePickerDialog(
     vehicles: List<VehicleEntity>,
     isImporting: Boolean,
     onDismiss: () -> Unit,

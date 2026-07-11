@@ -81,6 +81,7 @@ import org.vliux.orca.data.model.VehicleEntity
 import org.vliux.orca.search.SearchAnswer
 import org.vliux.orca.search.SearchCitation
 import org.vliux.orca.search.SearchResultItem
+import org.vliux.orca.settings.ImportDocumentGuidancePreference
 import org.vliux.orca.worker.DocumentExtractionQueueResult
 import org.vliux.orca.worker.DocumentExtractionScheduler
 
@@ -90,6 +91,7 @@ internal fun VehicleListScreen(
     vehicleRepository: VehicleRepository,
     documentRepository: DocumentRepository,
     documentExtractionScheduler: DocumentExtractionScheduler,
+    importDocumentGuidancePreference: ImportDocumentGuidancePreference,
     onOpenSettings: () -> Unit,
     onOpenSearch: (String) -> Unit,
     onCreateVehicle: () -> Unit,
@@ -105,6 +107,7 @@ internal fun VehicleListScreen(
     var menuExpanded by remember { mutableStateOf(false) }
     var fabMenuOpen by remember { mutableStateOf(false) }
     var vehiclePickerOpen by remember { mutableStateOf(false) }
+    var importGuidanceOpen by remember { mutableStateOf(false) }
     var importError by remember { mutableStateOf<String?>(null) }
     var isImporting by remember { mutableStateOf(false) }
     var selectedImportVehicleId by remember { mutableStateOf<String?>(null) }
@@ -261,6 +264,28 @@ internal fun VehicleListScreen(
             onSelectVehicle = { vehicleId ->
                 vehiclePickerOpen = false
                 selectedImportVehicleId = vehicleId
+                if (importDocumentGuidancePreference.shouldShowGuidance()) {
+                    importGuidanceOpen = true
+                } else {
+                    isImporting = true
+                    launcher.launch(SUPPORTED_IMPORT_MIME_TYPES)
+                }
+            },
+        )
+    }
+
+    if (importGuidanceOpen) {
+        ImportDocumentGuidanceDialog(
+            onDismiss = {
+                importGuidanceOpen = false
+                selectedImportVehicleId = null
+                isImporting = false
+            },
+            onContinue = { dontShowAgain ->
+                if (dontShowAgain) {
+                    importDocumentGuidancePreference.disableGuidance()
+                }
+                importGuidanceOpen = false
                 isImporting = true
                 launcher.launch(SUPPORTED_IMPORT_MIME_TYPES)
             },

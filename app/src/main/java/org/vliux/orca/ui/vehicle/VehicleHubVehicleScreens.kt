@@ -60,6 +60,7 @@ import org.vliux.orca.data.VehicleMaintenanceSummaryItem
 import org.vliux.orca.data.VehicleRepository
 import org.vliux.orca.data.model.DocumentListItem
 import org.vliux.orca.data.model.VehicleEntity
+import org.vliux.orca.settings.ImportDocumentGuidancePreference
 import org.vliux.orca.worker.DocumentExtractionQueueResult
 import org.vliux.orca.worker.DocumentExtractionScheduler
 
@@ -70,6 +71,7 @@ internal fun VehicleDetailScreen(
     vehicleRepository: VehicleRepository,
     documentRepository: DocumentRepository,
     documentExtractionScheduler: DocumentExtractionScheduler,
+    importDocumentGuidancePreference: ImportDocumentGuidancePreference,
     vehicleId: String,
     onBack: () -> Unit,
     onEditVehicle: () -> Unit,
@@ -112,6 +114,7 @@ internal fun VehicleDetailScreen(
     var isImporting by remember(vehicleId) { mutableStateOf(false) }
     var retryingDocumentId by remember(vehicleId) { mutableStateOf<String?>(null) }
     var actionMenuExpanded by remember(vehicleId) { mutableStateOf(false) }
+    var importGuidanceOpen by remember(vehicleId) { mutableStateOf(false) }
     val loadedVehicle = screenState.vehicle
 
     val launcher = rememberLauncherForActivityResult(OpenMultipleDocuments()) { uris ->
@@ -143,6 +146,17 @@ internal fun VehicleDetailScreen(
         }
     }
 
+    fun beginImportFlow() {
+        if (isImporting) {
+            return
+        }
+        if (importDocumentGuidancePreference.shouldShowGuidance()) {
+            importGuidanceOpen = true
+        } else {
+            launcher.launch(SUPPORTED_IMPORT_MIME_TYPES)
+        }
+    }
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
@@ -154,7 +168,7 @@ internal fun VehicleDetailScreen(
                         expanded = actionMenuExpanded,
                         onExpandedChange = { actionMenuExpanded = it },
                         onEditVehicle = onEditVehicle,
-                        onImportFiles = { launcher.launch(SUPPORTED_IMPORT_MIME_TYPES) },
+                        onImportFiles = ::beginImportFlow,
                         isImporting = isImporting,
                     )
                 },
@@ -164,9 +178,7 @@ internal fun VehicleDetailScreen(
             if (loadedVehicle != null) {
                 FloatingActionButton(
                     onClick = {
-                        if (!isImporting) {
-                            launcher.launch(SUPPORTED_IMPORT_MIME_TYPES)
-                        }
+                        beginImportFlow()
                     },
                     containerColor = MaterialTheme.colorScheme.secondary,
                     contentColor = MaterialTheme.colorScheme.onSecondary,
@@ -238,7 +250,7 @@ internal fun VehicleDetailScreen(
                     }
                 } else if (screenState.documents.isEmpty()) {
                     item {
-                        EmptyDocumentState(onImport = { launcher.launch(SUPPORTED_IMPORT_MIME_TYPES) })
+                        EmptyDocumentState(onImport = ::beginImportFlow)
                     }
                 } else {
                     items(screenState.documents, key = { it.documentId }) { document ->
@@ -276,6 +288,19 @@ internal fun VehicleDetailScreen(
                 }
             }
         }
+    }
+
+    if (importGuidanceOpen) {
+        ImportDocumentGuidanceDialog(
+            onDismiss = { importGuidanceOpen = false },
+            onContinue = { dontShowAgain ->
+                if (dontShowAgain) {
+                    importDocumentGuidancePreference.disableGuidance()
+                }
+                importGuidanceOpen = false
+                launcher.launch(SUPPORTED_IMPORT_MIME_TYPES)
+            },
+        )
     }
 }
 

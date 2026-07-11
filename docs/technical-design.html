@@ -305,7 +305,7 @@
             <h2>Architecture Summary</h2>
             <ul>
               <li class="block" data-block-id="arch-1">UI: Compose screens for vehicles, import, documents, timeline, edit, and ask/search.</li>
-              <li class="block" data-block-id="arch-1a">UI should also expose a Settings screen from the vehicle-list overflow menu so the user can provide an OpenAI API key on device and explicitly unlock the stored key with biometrics or device credentials before Orca decrypts it.</li>
+              <li class="block" data-block-id="arch-1a">UI should also expose a Settings screen from the vehicle-list overflow menu so the user can provide an OpenAI API key on device. When Orca needs to decrypt the stored key for extraction or display, it should prompt for biometrics or device credentials inline with that action instead of requiring a separate manual unlock step ahead of time.</li>
               <li class="block" data-block-id="arch-2">ViewModel: screen state and command handling.</li>
               <li class="block" data-block-id="arch-3">Repository: local DB plus app-private file storage.</li>
               <li class="block" data-block-id="arch-4">Processing: source-file preparation, cloud vision extraction, validation, normalization, event building, and indexing.</li>
@@ -316,6 +316,7 @@
           <article class="content-card">
             <h2>Primary V1 Flow</h2>
             <pre class="block" data-block-id="arch-6"><code>User imports PDF/image
+  -&gt; app prompts for device auth if a stored API key must be unlocked
   -&gt; app copies one or more source files to private storage
   -&gt; document row is created with status = queued
   -&gt; source rows are created in import order

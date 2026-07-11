@@ -11,7 +11,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.vliux.orca.data.DocumentRepository
@@ -56,11 +55,12 @@ class DocumentExtractionSchedulerTest {
                 repository = repository,
                 providerRuntimeConfigStore = configuredProviderRuntimeConfigStore(),
                 workEnqueuer = enqueuer,
+                openAiApiKeyStore = SchedulerFakeOpenAiApiKeyStore(initialApiKey = "token", hasStoredApiKey = true),
             )
 
             val queued = scheduler.queueDocumentExtraction(documentId)
 
-            assertTrue(queued)
+            assertEquals(DocumentExtractionQueueResult.QUEUED, queued)
             assertEquals(listOf(documentId), enqueuer.enqueuedDocumentIds)
             assertEquals(
                 ExtractionStatus.QUEUED.name,
@@ -91,11 +91,107 @@ class DocumentExtractionSchedulerTest {
                 repository = repository,
                 providerRuntimeConfigStore = unconfiguredProviderRuntimeConfigStore(),
                 workEnqueuer = enqueuer,
+                openAiApiKeyStore = SchedulerFakeOpenAiApiKeyStore(initialApiKey = "", hasStoredApiKey = false),
             )
 
             val queued = scheduler.queueDocumentExtraction(documentId)
 
-            assertFalse(queued)
+            assertEquals(DocumentExtractionQueueResult.NOT_CONFIGURED, queued)
+            assertTrue(enqueuer.enqueuedDocumentIds.isEmpty())
+            assertEquals(
+                ExtractionStatus.NOT_STARTED.name,
+                repository.observeDocumentList("vehicle-123").first().single().extractionStatus,
+            )
+        } finally {
+            rootDir.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun queueDocumentExtractionUnlocksStoredKeyAndEnqueuesWhenAuthenticationSucceeds() = runTest {
+        val rootDir = createTempDirectory(prefix = "orca-files-").toFile()
+        try {
+            val store = SchedulerDocumentStore(knownVehicleIds = setOf("vehicle-123"))
+            val repository = DocumentRepository(
+                store = store,
+                fileStorage = AppFileStorage(rootDir) { error("Uri path should not be used in scheduler tests.") },
+            )
+            val documentId = repository.createDocument(
+                vehicleId = "vehicle-123",
+                imports = listOf(
+                    preparedImport("receipt.png", "image/png", byteArrayOf(1, 2, 3), rootDir),
+                ),
+            )
+            val enqueuer = RecordingDocumentExtractionWorkEnqueuer()
+            val apiKeyStore = SchedulerFakeOpenAiApiKeyStore(
+                initialApiKey = "",
+                hasStoredApiKey = true,
+                unlockResult = OpenAiApiKeyMutationResult.UNLOCKED,
+                unlockedApiKey = "token",
+            )
+            val scheduler = DocumentExtractionScheduler(
+                repository = repository,
+                providerRuntimeConfigStore = ProviderRuntimeConfigStore(
+                    metadata = ProviderRuntimeMetadata(
+                        providerName = "openai",
+                        requestUrl = "https://example.invalid/v1/responses",
+                        modelName = "gpt-test",
+                    ),
+                    openAiApiKeyStore = apiKeyStore,
+                ),
+                workEnqueuer = enqueuer,
+                openAiApiKeyStore = apiKeyStore,
+            )
+
+            val queued = scheduler.queueDocumentExtraction(documentId) { apiKeyStore.performUnlockForTest() }
+
+            assertEquals(DocumentExtractionQueueResult.QUEUED, queued)
+            assertEquals(1, apiKeyStore.unlockCount)
+            assertEquals(listOf(documentId), enqueuer.enqueuedDocumentIds)
+        } finally {
+            rootDir.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun queueDocumentExtractionReturnsAuthCancelledWhenStoredKeyRemainsLocked() = runTest {
+        val rootDir = createTempDirectory(prefix = "orca-files-").toFile()
+        try {
+            val store = SchedulerDocumentStore(knownVehicleIds = setOf("vehicle-123"))
+            val repository = DocumentRepository(
+                store = store,
+                fileStorage = AppFileStorage(rootDir) { error("Uri path should not be used in scheduler tests.") },
+            )
+            val documentId = repository.createDocument(
+                vehicleId = "vehicle-123",
+                imports = listOf(
+                    preparedImport("receipt.png", "image/png", byteArrayOf(1, 2, 3), rootDir),
+                ),
+            )
+            val enqueuer = RecordingDocumentExtractionWorkEnqueuer()
+            val apiKeyStore = SchedulerFakeOpenAiApiKeyStore(
+                initialApiKey = "",
+                hasStoredApiKey = true,
+                unlockResult = OpenAiApiKeyMutationResult.AUTH_CANCELLED,
+            )
+            val scheduler = DocumentExtractionScheduler(
+                repository = repository,
+                providerRuntimeConfigStore = ProviderRuntimeConfigStore(
+                    metadata = ProviderRuntimeMetadata(
+                        providerName = "openai",
+                        requestUrl = "https://example.invalid/v1/responses",
+                        modelName = "gpt-test",
+                    ),
+                    openAiApiKeyStore = apiKeyStore,
+                ),
+                workEnqueuer = enqueuer,
+                openAiApiKeyStore = apiKeyStore,
+            )
+
+            val queued = scheduler.queueDocumentExtraction(documentId) { apiKeyStore.performUnlockForTest() }
+
+            assertEquals(DocumentExtractionQueueResult.AUTH_CANCELLED, queued)
+            assertEquals(1, apiKeyStore.unlockCount)
             assertTrue(enqueuer.enqueuedDocumentIds.isEmpty())
             assertEquals(
                 ExtractionStatus.NOT_STARTED.name,
@@ -128,7 +224,7 @@ class DocumentExtractionSchedulerTest {
             requestUrl = "https://example.invalid/v1/responses",
             modelName = "gpt-test",
         ),
-        openAiApiKeyStore = SchedulerFakeOpenAiApiKeyStore("token"),
+        openAiApiKeyStore = SchedulerFakeOpenAiApiKeyStore(initialApiKey = "token", hasStoredApiKey = true),
     )
 
     private fun unconfiguredProviderRuntimeConfigStore(): ProviderRuntimeConfigStore = ProviderRuntimeConfigStore(
@@ -137,17 +233,28 @@ class DocumentExtractionSchedulerTest {
             requestUrl = "https://example.invalid/v1/responses",
             modelName = "gpt-test",
         ),
-        openAiApiKeyStore = SchedulerFakeOpenAiApiKeyStore(""),
+        openAiApiKeyStore = SchedulerFakeOpenAiApiKeyStore(initialApiKey = "", hasStoredApiKey = false),
     )
 }
 
 private class SchedulerFakeOpenAiApiKeyStore(
-    initialValue: String,
+    initialApiKey: String = "",
+    private val hasStoredApiKey: Boolean = initialApiKey.isNotBlank(),
+    private val unlockResult: OpenAiApiKeyMutationResult = OpenAiApiKeyMutationResult.UNLOCKED,
+    private val unlockedApiKey: String = initialApiKey,
 ) : OpenAiApiKeyStore {
-    private val state = MutableStateFlow(initialValue)
+    private val state = MutableStateFlow(initialApiKey)
     private val accessState = MutableStateFlow(
-        if (initialValue.isBlank()) OpenAiApiKeyAccessState.NOT_STORED else OpenAiApiKeyAccessState.UNLOCKED,
+        when {
+            state.value.isNotBlank() -> OpenAiApiKeyAccessState.UNLOCKED
+            hasStoredApiKey -> OpenAiApiKeyAccessState.LOCKED
+            else -> OpenAiApiKeyAccessState.NOT_STORED
+        },
     )
+    var unlockCount: Int = 0
+        private set
+
+    suspend fun performUnlockForTest(): OpenAiApiKeyMutationResult = unlockInternal()
 
     override fun observeApiKey() = state
 
@@ -162,8 +269,30 @@ private class SchedulerFakeOpenAiApiKeyStore(
     }
 
     override suspend fun unlockApiKey(activity: FragmentActivity): OpenAiApiKeyMutationResult {
-        accessState.value = if (state.value.isBlank()) OpenAiApiKeyAccessState.NOT_STORED else OpenAiApiKeyAccessState.UNLOCKED
-        return OpenAiApiKeyMutationResult.UNLOCKED
+        return unlockInternal()
+    }
+
+    private fun unlockInternal(): OpenAiApiKeyMutationResult {
+        unlockCount += 1
+        return when (unlockResult) {
+            OpenAiApiKeyMutationResult.UNLOCKED -> {
+                state.value = unlockedApiKey
+                accessState.value = OpenAiApiKeyAccessState.UNLOCKED
+                OpenAiApiKeyMutationResult.UNLOCKED
+            }
+            OpenAiApiKeyMutationResult.AUTH_CANCELLED -> {
+                accessState.value = if (hasStoredApiKey) OpenAiApiKeyAccessState.LOCKED else OpenAiApiKeyAccessState.NOT_STORED
+                OpenAiApiKeyMutationResult.AUTH_CANCELLED
+            }
+            OpenAiApiKeyMutationResult.AUTH_UNAVAILABLE -> {
+                accessState.value = if (hasStoredApiKey) OpenAiApiKeyAccessState.LOCKED else OpenAiApiKeyAccessState.NOT_STORED
+                OpenAiApiKeyMutationResult.AUTH_UNAVAILABLE
+            }
+            else -> {
+                accessState.value = if (hasStoredApiKey) OpenAiApiKeyAccessState.LOCKED else OpenAiApiKeyAccessState.NOT_STORED
+                unlockResult
+            }
+        }
     }
 
     override suspend fun clearApiKey(): OpenAiApiKeyMutationResult {
@@ -172,7 +301,7 @@ private class SchedulerFakeOpenAiApiKeyStore(
         return OpenAiApiKeyMutationResult.CLEARED
     }
 
-    override fun hasStoredApiKey(): Boolean = state.value.isNotBlank()
+    override fun hasStoredApiKey(): Boolean = hasStoredApiKey
 }
 
 private class RecordingDocumentExtractionWorkEnqueuer : DocumentExtractionWorkEnqueuer {

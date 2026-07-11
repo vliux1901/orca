@@ -2,6 +2,7 @@ package org.vliux.orca.ui.vehicle
 
 import androidx.compose.runtime.saveable.Saver
 import java.time.format.DateTimeFormatter
+import org.vliux.orca.worker.DocumentExtractionQueueResult
 
 internal sealed interface VehicleRoute {
     data object List : VehicleRoute
@@ -138,7 +139,7 @@ internal val vehicleFormDraftSaver: Saver<VehicleFormDraft, Any> = Saver(
 
 internal data class ImportResult(
     val documentId: String,
-    val queued: Boolean,
+    val queueResult: DocumentExtractionQueueResult,
 )
 
 internal val SUPPORTED_IMPORT_MIME_TYPES = arrayOf("image/*", "application/pdf")

@@ -1,6 +1,7 @@
 package org.vliux.orca.ui.vehicle
 
 import android.content.Intent
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts.OpenDocument
 import androidx.activity.result.contract.ActivityResultContracts.OpenMultipleDocuments
@@ -46,6 +47,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
@@ -57,6 +59,7 @@ import org.vliux.orca.data.VehicleMaintenanceSummaryItem
 import org.vliux.orca.data.VehicleRepository
 import org.vliux.orca.data.model.DocumentListItem
 import org.vliux.orca.data.model.VehicleEntity
+import org.vliux.orca.worker.DocumentExtractionQueueResult
 import org.vliux.orca.worker.DocumentExtractionScheduler
 
 internal const val VehicleDetailHeaderImageTestTag = "vehicleDetailHeaderImage"
@@ -72,9 +75,13 @@ internal fun VehicleDetailScreen(
     onOpenDocument: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val activity = LocalActivity.current as? FragmentActivity
     val context = LocalContext.current
     val importQueuedMessage = stringResource(R.string.vehicle_import_queued)
     val importNotConfiguredMessage = stringResource(R.string.vehicle_import_not_configured)
+    val importAuthCancelledMessage = stringResource(R.string.vehicle_import_auth_cancelled)
+    val importAuthUnavailableMessage = stringResource(R.string.vehicle_import_auth_unavailable)
+    val importKeyErrorMessage = stringResource(R.string.vehicle_import_key_error)
     val importFailedMessage = stringResource(R.string.vehicle_import_failed)
     val scope = rememberCoroutineScope()
     val vehicleDetailViewModel: VehicleDetailViewModel = viewModel(
@@ -110,13 +117,15 @@ internal fun VehicleDetailScreen(
             runCatching {
                 val requests = uris.map { uri -> uri.toSourceImportRequest(context) }
                 val documentId = documentRepository.importDocument(vehicleId, requests)
-                val queued = documentExtractionScheduler.queueDocumentExtraction(documentId)
-                ImportResult(documentId = documentId, queued = queued)
+                val queueResult = documentExtractionScheduler.queueDocumentExtraction(documentId, activity)
+                ImportResult(documentId = documentId, queueResult = queueResult)
             }.onSuccess { result ->
-                importMessage = if (result.queued) {
-                    importQueuedMessage
-                } else {
-                    importNotConfiguredMessage
+                importMessage = when (result.queueResult) {
+                    DocumentExtractionQueueResult.QUEUED -> importQueuedMessage
+                    DocumentExtractionQueueResult.NOT_CONFIGURED -> importNotConfiguredMessage
+                    DocumentExtractionQueueResult.AUTH_CANCELLED -> importAuthCancelledMessage
+                    DocumentExtractionQueueResult.AUTH_UNAVAILABLE -> importAuthUnavailableMessage
+                    DocumentExtractionQueueResult.ERROR -> importKeyErrorMessage
                 }
                 onOpenDocument(result.documentId)
             }.onFailure { error ->

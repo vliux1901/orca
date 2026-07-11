@@ -17,8 +17,10 @@
     <string name="openai_api_key_auth_cancelled">Authentication was cancelled.</string>
     <string name="openai_api_key_auth_unavailable">Set up biometric or device credentials to unlock the stored API key.</string>
     <string name="openai_api_key_error">Could not access the stored API key.</string>
+    <string name="openai_api_key_prompt_title">Authenticate to unlock your API key</string>
+    <string name="openai_api_key_prompt_subtitle">Your OpenAI API key is stored securely on this device. Use biometrics or device unlock so Orca can use it for extraction.</string>
     <string name="openai_api_key_locked_title">Stored key is locked</string>
-    <string name="openai_api_key_locked_message">Unlock the saved API key with biometrics or device credentials before Orca can display or use it for extraction.</string>
+    <string name="openai_api_key_locked_message">Unlock the saved API key with biometrics or device credentials when Orca needs to display it or send imported files for extraction.</string>
     <string name="openai_api_key_unlock">Unlock Stored Key</string>
 
     <string name="vehicle_details_title">Vehicle details</string>
@@ -33,7 +35,10 @@
     <string name="edit_vehicle_title">Edit Vehicle</string>
     <string name="vehicle_editor_intro">Vehicle profiles own imported maintenance documents and later extraction results.</string>
     <string name="vehicle_import_queued">Imported document and queued extraction.</string>
-    <string name="vehicle_import_not_configured">Imported document. Extraction is unavailable until an API key is saved and unlocked in Settings.</string>
+    <string name="vehicle_import_not_configured">Imported document. Extraction is unavailable until an API key is saved in Settings.</string>
+    <string name="vehicle_import_auth_cancelled">Imported document. Extraction did not start because device authentication was cancelled.</string>
+    <string name="vehicle_import_auth_unavailable">Imported document. Set up biometric or device credentials so Orca can unlock the stored API key during import.</string>
+    <string name="vehicle_import_key_error">Imported document. Orca could not unlock the stored API key for extraction.</string>
     <string name="vehicle_import_failed">Failed to import files.</string>
     <string name="save_vehicle_failed">Failed to save vehicle.</string>
     <string name="saving">Saving...</string>

@@ -8,6 +8,7 @@ import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import dagger.hilt.android.qualifiers.ApplicationContext
+import org.vliux.orca.R
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -60,7 +61,7 @@ private enum class AuthenticationResult {
 
 @Singleton
 class KeystoreOpenAiApiKeyStore @Inject constructor(
-    @ApplicationContext context: Context,
+    @ApplicationContext private val context: Context,
 ) : OpenAiApiKeyStore {
     private val preferences: SharedPreferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
     private val apiKeyFlow = MutableStateFlow("")
@@ -176,8 +177,8 @@ class KeystoreOpenAiApiKeyStore @Inject constructor(
                 },
             )
             val promptInfo = BiometricPrompt.PromptInfo.Builder()
-                .setTitle("Unlock OpenAI API key")
-                .setSubtitle("Use biometric authentication or device unlock to access the stored key.")
+                .setTitle(context.getString(R.string.openai_api_key_prompt_title))
+                .setSubtitle(context.getString(R.string.openai_api_key_prompt_subtitle))
                 .setAllowedAuthenticators(authenticators)
                 .build()
             prompt.authenticate(promptInfo)

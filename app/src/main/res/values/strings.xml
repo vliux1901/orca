@@ -47,9 +47,12 @@
     <string name="save_vehicle_failed">Failed to save vehicle.</string>
     <string name="saving">Saving...</string>
     <string name="save_vehicle">Save Vehicle</string>
+    <string name="create_vehicle_action">Create Vehicle</string>
     <string name="edit_vehicle_action">Edit Vehicle</string>
     <string name="importing">Importing...</string>
-    <string name="import_files">Import Files</string>
+    <string name="import_document">Import Document</string>
+    <string name="import_existing_vehicle_title">Import into Existing Vehicle</string>
+    <string name="import_existing_vehicle_message">Choose which vehicle should receive these files.</string>
     <string name="vehicle_mileage_unknown">Mileage unknown</string>
     <string name="vehicle_mileage_mi">%1$d mi</string>
     <string name="vehicle_plate">Plate %1$s</string>

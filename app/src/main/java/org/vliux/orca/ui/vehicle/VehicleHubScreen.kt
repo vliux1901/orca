@@ -34,6 +34,8 @@ fun VehicleHubScreen(
     when (val currentRoute = route) {
         VehicleRoute.List -> VehicleListScreen(
             vehicleRepository = vehicleRepository,
+            documentRepository = documentRepository,
+            documentExtractionScheduler = documentExtractionScheduler,
             modifier = modifier,
             onOpenSettings = {
                 routeViewModel.updateRoute {
@@ -53,6 +55,14 @@ fun VehicleHubScreen(
             onOpenVehicle = { vehicleId ->
                 routeViewModel.updateRoute {
                     VehicleRoute.Detail(vehicleId = vehicleId)
+                }
+            },
+            onOpenDocument = { vehicleId, documentId ->
+                routeViewModel.updateRoute {
+                    VehicleRoute.DocumentDetail(
+                        vehicleId = vehicleId,
+                        documentId = documentId,
+                    )
                 }
             },
         )

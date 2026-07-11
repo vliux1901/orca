@@ -258,6 +258,7 @@ internal fun VehicleProfileCard(
     onClick: (() -> Unit)? = null,
     imageSize: Dp = 80.dp,
     imageTestTag: String? = null,
+    actionContent: @Composable (() -> Unit)? = null,
 ) {
     Card(
         modifier = modifier
@@ -279,6 +280,7 @@ internal fun VehicleProfileCard(
             ) {
                 Text(
                     text = vehicle.displayName,
+                    modifier = Modifier.fillMaxWidth(),
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSecondary,
@@ -307,6 +309,7 @@ internal fun VehicleProfileCard(
                         VehicleProfileChip(label = stringResource(R.string.vehicle_vin_suffix, vin.takeLast(6)))
                     }
                 }
+                actionContent?.invoke()
             }
             VehicleArtwork(
                 photoUri = vehicle.photoUri,

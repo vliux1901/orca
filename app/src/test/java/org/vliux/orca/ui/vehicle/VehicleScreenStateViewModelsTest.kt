@@ -90,6 +90,14 @@ class VehicleScreenStateViewModelsTest {
         assertEquals("Family SUV", viewModel.uiState.value.vehicle?.displayName)
     }
 
+    @Test
+    fun vehiclePickerLabelIncludesDisplayNameAndModelSummary() {
+        assertEquals(
+            "Family SUV | 2020 Toyota Highlander",
+            vehiclePickerLabel(vehicleEntity()),
+        )
+    }
+
     private fun vehicleEntity() = VehicleEntity(
         vehicleId = "vehicle-123",
         displayName = "Family SUV",

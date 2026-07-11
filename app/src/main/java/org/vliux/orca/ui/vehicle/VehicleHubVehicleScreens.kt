@@ -26,6 +26,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -159,6 +160,25 @@ internal fun VehicleDetailScreen(
                 },
             )
         },
+        floatingActionButton = {
+            if (loadedVehicle != null) {
+                FloatingActionButton(
+                    onClick = {
+                        if (!isImporting) {
+                            launcher.launch(SUPPORTED_IMPORT_MIME_TYPES)
+                        }
+                    },
+                    containerColor = MaterialTheme.colorScheme.secondary,
+                    contentColor = MaterialTheme.colorScheme.onSecondary,
+                ) {
+                    Text(
+                        text = "+",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Medium,
+                    )
+                }
+            }
+        },
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
@@ -175,9 +195,7 @@ internal fun VehicleDetailScreen(
                         title = stringResource(R.string.vehicle_not_found_title),
                         message = stringResource(R.string.vehicle_not_found_message),
                     )
-                    else -> VehicleDetailHeaderCard(
-                        vehicle = loadedVehicle,
-                    )
+                    else -> VehicleDetailHeaderCard(vehicle = loadedVehicle)
                 }
             }
 
@@ -440,7 +458,7 @@ private fun RowScope.VehicleDetailActionsMenu(
             text = {
                 Text(
                     stringResource(
-                        if (isImporting) R.string.importing else R.string.import_files,
+                        if (isImporting) R.string.importing else R.string.import_document,
                     ),
                 )
             },
@@ -562,7 +580,7 @@ private fun EmptyDocumentState(
                 style = MaterialTheme.typography.bodyMedium,
             )
             Button(onClick = onImport) {
-                Text(stringResource(R.string.import_files))
+                Text(stringResource(R.string.import_document))
             }
         }
     }

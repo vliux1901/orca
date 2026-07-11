@@ -1,5 +1,8 @@
 package org.vliux.orca.ui.vehicle
 
+import androidx.activity.compose.LocalActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts.OpenMultipleDocuments
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -23,8 +26,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -39,6 +45,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -48,6 +55,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -57,11 +65,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
+import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import kotlinx.coroutines.launch
+import org.vliux.orca.data.DocumentRepository
 import org.vliux.orca.R
 import org.vliux.orca.data.SearchRepository
 import org.vliux.orca.data.VehicleRepository
@@ -69,20 +81,64 @@ import org.vliux.orca.data.model.VehicleEntity
 import org.vliux.orca.search.SearchAnswer
 import org.vliux.orca.search.SearchCitation
 import org.vliux.orca.search.SearchResultItem
+import org.vliux.orca.worker.DocumentExtractionQueueResult
+import org.vliux.orca.worker.DocumentExtractionScheduler
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun VehicleListScreen(
     vehicleRepository: VehicleRepository,
+    documentRepository: DocumentRepository,
+    documentExtractionScheduler: DocumentExtractionScheduler,
     onOpenSettings: () -> Unit,
     onOpenSearch: (String) -> Unit,
     onCreateVehicle: () -> Unit,
     onOpenVehicle: (String) -> Unit,
+    onOpenDocument: (String, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val activity = LocalActivity.current as? FragmentActivity
+    val context = LocalContext.current
     val vehiclesFlow = remember(vehicleRepository) { vehicleRepository.observeVehicles() }
     val vehicles by vehiclesFlow.collectAsStateWithLifecycle(initialValue = emptyList())
+    val importFailedMessage = stringResource(R.string.vehicle_import_failed)
     var menuExpanded by remember { mutableStateOf(false) }
+    var fabMenuOpen by remember { mutableStateOf(false) }
+    var vehiclePickerOpen by remember { mutableStateOf(false) }
+    var importError by remember { mutableStateOf<String?>(null) }
+    var isImporting by remember { mutableStateOf(false) }
+    var selectedImportVehicleId by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+
+    val launcher = rememberLauncherForActivityResult(OpenMultipleDocuments()) { uris ->
+        val vehicleId = selectedImportVehicleId
+        selectedImportVehicleId = null
+        if (uris.isEmpty() || vehicleId == null) {
+            isImporting = false
+            return@rememberLauncherForActivityResult
+        }
+        scope.launch {
+            importError = null
+            runCatching {
+                val requests = uris.map { uri -> uri.toSourceImportRequest(context) }
+                val documentId = documentRepository.importDocument(vehicleId, requests)
+                val queueResult = documentExtractionScheduler.queueDocumentExtraction(documentId, activity)
+                VehicleListImportResult(vehicleId = vehicleId, documentId = documentId, queueResult = queueResult)
+            }.onSuccess { result ->
+                when (result.queueResult) {
+                    DocumentExtractionQueueResult.QUEUED,
+                    DocumentExtractionQueueResult.NOT_CONFIGURED,
+                    DocumentExtractionQueueResult.AUTH_CANCELLED,
+                    DocumentExtractionQueueResult.AUTH_UNAVAILABLE,
+                    DocumentExtractionQueueResult.ERROR,
+                    -> onOpenDocument(result.vehicleId, result.documentId)
+                }
+            }.onFailure { error ->
+                importError = error.message ?: importFailedMessage
+            }
+            isImporting = false
+        }
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -122,16 +178,46 @@ internal fun VehicleListScreen(
             }
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = onCreateVehicle,
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
+            Box(
+                modifier = Modifier.wrapContentSize(Alignment.BottomEnd),
             ) {
-                Text(
-                    text = "+",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Medium,
-                )
+                DropdownMenu(
+                    expanded = fabMenuOpen,
+                    onDismissRequest = { fabMenuOpen = false },
+                    offset = DpOffset(x = 0.dp, y = (-8).dp),
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.create_vehicle_action)) },
+                        onClick = {
+                            fabMenuOpen = false
+                            onCreateVehicle()
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.import_document)) },
+                        onClick = {
+                            fabMenuOpen = false
+                            vehiclePickerOpen = true
+                        },
+                    )
+                }
+                FloatingActionButton(
+                    onClick = {
+                        if (vehicles.isEmpty()) {
+                            onCreateVehicle()
+                        } else {
+                            fabMenuOpen = true
+                        }
+                    },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                ) {
+                    Text(
+                        text = "+",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Medium,
+                    )
+                }
             }
         },
     ) { innerPadding ->
@@ -143,6 +229,11 @@ internal fun VehicleListScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(bottom = 96.dp),
         ) {
+            importError?.let { message ->
+                item {
+                    ErrorCard(message = message)
+                }
+            }
             if (vehicles.isEmpty()) {
                 item {
                     EmptyVehicleState(onCreateVehicle = onCreateVehicle)
@@ -157,7 +248,76 @@ internal fun VehicleListScreen(
             }
         }
     }
+
+    if (vehiclePickerOpen) {
+        ImportVehiclePickerDialog(
+            vehicles = vehicles,
+            isImporting = isImporting,
+            onDismiss = {
+                if (!isImporting) {
+                    vehiclePickerOpen = false
+                }
+            },
+            onSelectVehicle = { vehicleId ->
+                vehiclePickerOpen = false
+                selectedImportVehicleId = vehicleId
+                isImporting = true
+                launcher.launch(SUPPORTED_IMPORT_MIME_TYPES)
+            },
+        )
+    }
 }
+
+@Composable
+private fun ImportVehiclePickerDialog(
+    vehicles: List<VehicleEntity>,
+    isImporting: Boolean,
+    onDismiss: () -> Unit,
+    onSelectVehicle: (String) -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.import_existing_vehicle_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(stringResource(R.string.import_existing_vehicle_message))
+                vehicles.forEach { vehicle ->
+                    TextButton(
+                        onClick = { onSelectVehicle(vehicle.vehicleId) },
+                        enabled = !isImporting,
+                    ) {
+                        Text(vehiclePickerLabel(vehicle))
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                enabled = !isImporting,
+            ) {
+                Text(stringResource(R.string.cancel))
+            }
+        },
+    )
+}
+
+internal fun vehiclePickerLabel(vehicle: VehicleEntity): String = buildString {
+    append(vehicle.displayName)
+    append(" | ")
+    append(vehicle.year)
+    append(' ')
+    append(vehicle.make)
+    append(' ')
+    append(vehicle.model)
+}
+
+internal data class VehicleListImportResult(
+    val vehicleId: String,
+    val documentId: String,
+    val queueResult: DocumentExtractionQueueResult,
+)
 
 @Composable
 private fun AppIcon() {

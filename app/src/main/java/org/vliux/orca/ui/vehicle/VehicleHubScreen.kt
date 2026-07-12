@@ -221,7 +221,7 @@ fun VehicleHubScreen(
                 routeViewModel.updateRoute { navigateBack() }
             },
             onSkip = {
-                routeViewModel.updateRoute { VehicleRoute.OnboardingImport }
+                routeViewModel.updateRoute { VehicleRoute.List }
             },
             onSaved = {
                 routeViewModel.updateRoute { VehicleRoute.OnboardingImport }

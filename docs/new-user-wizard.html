@@ -785,7 +785,7 @@
                   </div>
                   <div class="mini-step block" data-block-id="mini-step-4">
                     <strong>Step 4</strong>
-                    Show import as the natural follow-up once a vehicle and optional API key exist.
+                    Show import only after the user saves an API key; skipping the key should end onboarding instead.
                   </div>
                 </div>
               </aside>
@@ -796,7 +796,7 @@
         <section class="tab-panel" id="tab-screens" role="tabpanel" aria-labelledby="tab-button-screens" data-tab-panel="screens">
           <div class="content-card">
             <h2 class="block" data-block-id="screens-title">Screen Mockups</h2>
-            <p class="block" data-block-id="screens-intro">These mockups show the intended flow, tone, and screen structure for first-run setup. The copy aims to be short, clear, and non-technical.</p>
+            <p class="block" data-block-id="screens-intro">These mockups show the intended flow, tone, and screen structure for first-run setup. The copy aims to be short, clear, and non-technical. Step 4 is conditional and appears only if the user saves an API key in step 3.</p>
 
             <div class="phone-grid">
               <article class="screen-card">
@@ -925,6 +925,7 @@
                       <div class="button-stack">
                         <div class="cta primary block" data-block-id="screen-3-primary">Save API Key</div>
                         <div class="cta ghost block" data-block-id="screen-3-skip">Skip for Now</div>
+                        <div class="helper-note block" data-block-id="screen-3-skip-note">Skipping ends setup and returns the user to the vehicle hub. They can add the key later in Settings.</div>
                       </div>
                     </div>
                   </div>
@@ -985,7 +986,7 @@
               </article>
             </div>
 
-            <p class="footer-note block" data-block-id="screens-footer">Suggested transition behavior: after step 2, the wizard should remember whether at least one vehicle exists. If the user exits during step 3 or step 4, the app should not show the wizard again on every launch once the first-run state has been acknowledged.</p>
+            <p class="footer-note block" data-block-id="screens-footer">Suggested transition behavior: after step 2, the wizard should remember whether at least one vehicle exists. If the user skips step 3, onboarding should end immediately. If the user reaches step 4 or exits during step 3, the app should not show the wizard again on every launch once the first-run state has been acknowledged.</p>
           </div>
         </section>
 
@@ -995,7 +996,7 @@
             <h3 class="block" data-block-id="notes-principles-title">Design principles</h3>
             <ul>
               <li class="block" data-block-id="principle-1">The wizard should feel like a guided setup, not a hard gate. Only vehicle creation is truly essential for useful app structure.</li>
-              <li class="block" data-block-id="principle-2">Step 3 and step 4 should be recoverable later from the existing app surfaces, so skipping does not strand the user.</li>
+              <li class="block" data-block-id="principle-2">Step 3 should be recoverable later from the existing app surfaces, and step 4 should remain reachable after API key setup, so skipping does not strand the user.</li>
               <li class="block" data-block-id="principle-3">Security and AI-use language should be explicit but short: local encrypted storage, third-party AI for analysis, and device auth only when a protected action needs the key.</li>
               <li class="block" data-block-id="principle-4">Document import should preserve the existing guidance about multiple images or PDFs and the fact that originals stay local.</li>
             </ul>

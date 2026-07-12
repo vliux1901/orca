@@ -7,7 +7,9 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import kotlinx.coroutines.flow.MutableStateFlow
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.vliux.orca.settings.OpenAiApiKeyAccessState
@@ -48,6 +50,26 @@ class OnboardingScreenTest {
         composeRule.onNodeWithTag(OnboardingApiKeyFieldTestTag).assertIsDisplayed()
         composeRule.onNodeWithText("Your key is encrypted and saved in local app storage.").assertIsDisplayed()
         composeRule.onNodeWithText("Skip for now").assertIsDisplayed()
+    }
+
+    @Test
+    fun apiKeyScreenSkipInvokesExitAction() {
+        var skipped = false
+
+        composeRule.setContent {
+            MaterialTheme {
+                OnboardingApiKeyScreen(
+                    openAiApiKeyStore = FakeOnboardingOpenAiApiKeyStore(),
+                    onBack = {},
+                    onSkip = { skipped = true },
+                    onSaved = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Skip for now").performClick()
+
+        assertTrue(skipped)
     }
 
     @Test

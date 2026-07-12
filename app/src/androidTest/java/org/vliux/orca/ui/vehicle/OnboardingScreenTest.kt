@@ -1,8 +1,10 @@
 package org.vliux.orca.ui.vehicle
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -46,6 +48,25 @@ class OnboardingScreenTest {
         composeRule.onNodeWithTag(OnboardingApiKeyFieldTestTag).assertIsDisplayed()
         composeRule.onNodeWithText("Your key is encrypted and saved in local app storage.").assertIsDisplayed()
         composeRule.onNodeWithText("Skip for now").assertIsDisplayed()
+    }
+
+    @Test
+    fun importScreenDoesNotShowExistingVehicleList() {
+        composeRule.setContent {
+            MaterialTheme {
+                OnboardingImportContent(
+                    hasVehicles = true,
+                    importError = null,
+                    isImporting = false,
+                    onImport = {},
+                    onFinish = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Import your first documents").assertIsDisplayed()
+        composeRule.onAllNodesWithText("Choose where documents belong").assertCountEquals(0)
+        composeRule.onNodeWithText("Import Document").assertIsDisplayed()
     }
 }
 

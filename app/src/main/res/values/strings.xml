@@ -182,6 +182,4 @@
     <string name="onboarding_import_message">Choose a vehicle, then import receipts, invoices, or service PDFs. Orca keeps the original files on this device.</string>
     <string name="onboarding_import_no_vehicle_title">Add a vehicle first</string>
     <string name="onboarding_import_no_vehicle_message">Document import needs at least one vehicle profile.</string>
-    <string name="onboarding_import_vehicle_title">Choose where documents belong</string>
-    <string name="onboarding_import_vehicle_message">If you add more than one vehicle, you can pick the right one during import.</string>
 </resources>

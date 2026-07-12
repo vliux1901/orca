@@ -386,63 +386,17 @@ internal fun OnboardingImportScreen(
         modifier = modifier,
         onBack = onBack,
     ) { innerPadding ->
-        LazyColumn(
+        OnboardingImportContent(
+            hasVehicles = vehicles.isNotEmpty(),
+            importError = importError,
+            isImporting = isImporting,
+            onImport = ::beginImport,
+            onFinish = onFinish,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
                 .padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(vertical = 20.dp),
-        ) {
-            item {
-                OnboardingStepHeader(
-                    step = 4,
-                    title = stringResource(R.string.onboarding_import_title),
-                    body = stringResource(R.string.onboarding_import_message),
-                    optional = true,
-                )
-            }
-            importError?.let { message ->
-                item {
-                    ErrorCard(message = message)
-                }
-            }
-            if (vehicles.isEmpty()) {
-                item {
-                    InfoCard(
-                        title = stringResource(R.string.onboarding_import_no_vehicle_title),
-                        message = stringResource(R.string.onboarding_import_no_vehicle_message),
-                    )
-                }
-            } else {
-                item {
-                    SectionHeader(
-                        title = stringResource(R.string.onboarding_import_vehicle_title),
-                        subtitle = stringResource(R.string.onboarding_import_vehicle_message),
-                    )
-                }
-                items(vehicles, key = { it.vehicleId }) { vehicle ->
-                    VehicleProfileCard(vehicle = vehicle, imageSize = 80.dp)
-                }
-            }
-            item {
-                Button(
-                    onClick = ::beginImport,
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = vehicles.isNotEmpty() && !isImporting,
-                ) {
-                    Text(stringResource(if (isImporting) R.string.importing else R.string.import_document))
-                }
-            }
-            item {
-                TextButton(
-                    onClick = onFinish,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(stringResource(R.string.finish_setup))
-                }
-            }
-        }
+        )
     }
 
     if (vehiclePickerOpen) {
@@ -483,6 +437,61 @@ internal fun OnboardingImportScreen(
                 launcher.launch(SUPPORTED_IMPORT_MIME_TYPES)
             },
         )
+    }
+}
+
+@Composable
+internal fun OnboardingImportContent(
+    hasVehicles: Boolean,
+    importError: String?,
+    isImporting: Boolean,
+    onImport: () -> Unit,
+    onFinish: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    LazyColumn(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(vertical = 20.dp),
+    ) {
+        item {
+            OnboardingStepHeader(
+                step = 4,
+                title = stringResource(R.string.onboarding_import_title),
+                body = stringResource(R.string.onboarding_import_message),
+                optional = true,
+            )
+        }
+        importError?.let { message ->
+            item {
+                ErrorCard(message = message)
+            }
+        }
+        if (!hasVehicles) {
+            item {
+                InfoCard(
+                    title = stringResource(R.string.onboarding_import_no_vehicle_title),
+                    message = stringResource(R.string.onboarding_import_no_vehicle_message),
+                )
+            }
+        }
+        item {
+            Button(
+                onClick = onImport,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = hasVehicles && !isImporting,
+            ) {
+                Text(stringResource(if (isImporting) R.string.importing else R.string.import_document))
+            }
+        }
+        item {
+            TextButton(
+                onClick = onFinish,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.finish_setup))
+            }
+        }
     }
 }
 

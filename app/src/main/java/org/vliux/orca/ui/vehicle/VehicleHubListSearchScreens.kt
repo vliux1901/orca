@@ -73,6 +73,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import kotlinx.coroutines.launch
+import org.vliux.orca.BuildConfig
 import org.vliux.orca.data.DocumentRepository
 import org.vliux.orca.R
 import org.vliux.orca.data.SearchRepository
@@ -93,6 +94,7 @@ internal fun VehicleListScreen(
     documentExtractionScheduler: DocumentExtractionScheduler,
     importDocumentGuidancePreference: ImportDocumentGuidancePreference,
     onOpenSettings: () -> Unit,
+    onOpenDebug: () -> Unit,
     onOpenSearch: (String) -> Unit,
     onCreateVehicle: () -> Unit,
     onOpenVehicle: (String) -> Unit,
@@ -175,6 +177,8 @@ internal fun VehicleListScreen(
                             expanded = menuExpanded,
                             onExpandedChange = { menuExpanded = it },
                             onOpenSettings = onOpenSettings,
+                            onOpenDebug = onOpenDebug,
+                            showDebugMenu = BuildConfig.DEBUG,
                         )
                     }
                 }
@@ -570,6 +574,8 @@ private fun OverflowMenuDropdown(
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenDebug: () -> Unit,
+    showDebugMenu: Boolean,
 ) {
     androidx.compose.material3.DropdownMenu(
         expanded = expanded,
@@ -582,6 +588,15 @@ private fun OverflowMenuDropdown(
                 onOpenSettings()
             },
         )
+        if (showDebugMenu) {
+            androidx.compose.material3.DropdownMenuItem(
+                text = { Text(stringResource(R.string.debug_menu_title)) },
+                onClick = {
+                    onExpandedChange(false)
+                    onOpenDebug()
+                },
+            )
+        }
     }
 }
 

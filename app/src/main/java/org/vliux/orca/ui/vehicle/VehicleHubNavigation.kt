@@ -7,6 +7,7 @@ import org.vliux.orca.worker.DocumentExtractionQueueResult
 internal sealed interface VehicleRoute {
     data object List : VehicleRoute
     data object Settings : VehicleRoute
+    data object Debug : VehicleRoute
     data object OnboardingWelcome : VehicleRoute
     data object OnboardingVehicles : VehicleRoute
     data object OnboardingApiKey : VehicleRoute
@@ -26,6 +27,7 @@ internal sealed interface VehicleRoute {
 internal fun VehicleRoute.serializeForSave(): String = when (this) {
     VehicleRoute.List -> "list"
     VehicleRoute.Settings -> "settings"
+    VehicleRoute.Debug -> "debug"
     VehicleRoute.OnboardingWelcome -> "onboarding:welcome"
     VehicleRoute.OnboardingVehicles -> "onboarding:vehicles"
     VehicleRoute.OnboardingApiKey -> "onboarding:api-key"
@@ -46,6 +48,7 @@ internal fun List<String>.toVehicleRouteOrNull(): VehicleRoute? {
     return when (kind) {
         "list" -> VehicleRoute.List
         "settings" -> VehicleRoute.Settings
+        "debug" -> VehicleRoute.Debug
         "onboarding" -> when (getOrNull(1)) {
             "welcome" -> VehicleRoute.OnboardingWelcome
             "vehicles" -> VehicleRoute.OnboardingVehicles
@@ -76,6 +79,7 @@ internal fun String.deserializeVehicleRouteOrNull(): VehicleRoute? {
     return when (parts.firstOrNull()) {
         "list" -> VehicleRoute.List
         "settings" -> VehicleRoute.Settings
+        "debug" -> VehicleRoute.Debug
         "onboarding" -> when (parts.getOrNull(1)) {
             "welcome" -> VehicleRoute.OnboardingWelcome
             "vehicles" -> VehicleRoute.OnboardingVehicles
@@ -104,6 +108,7 @@ internal fun String.deserializeVehicleRouteOrNull(): VehicleRoute? {
 internal fun VehicleRoute.logLabel(): String = when (this) {
     VehicleRoute.List -> "list"
     VehicleRoute.Settings -> "settings"
+    VehicleRoute.Debug -> "debug"
     VehicleRoute.OnboardingWelcome -> "onboarding(welcome)"
     VehicleRoute.OnboardingVehicles -> "onboarding(vehicles)"
     VehicleRoute.OnboardingApiKey -> "onboarding(apiKey)"
@@ -117,6 +122,7 @@ internal fun VehicleRoute.logLabel(): String = when (this) {
 internal fun VehicleRoute.navigateBack(): VehicleRoute = when (this) {
     VehicleRoute.List -> VehicleRoute.List
     VehicleRoute.Settings -> VehicleRoute.List
+    VehicleRoute.Debug -> VehicleRoute.List
     VehicleRoute.OnboardingWelcome -> VehicleRoute.List
     VehicleRoute.OnboardingVehicles -> VehicleRoute.OnboardingWelcome
     VehicleRoute.OnboardingApiKey -> VehicleRoute.OnboardingVehicles
@@ -130,6 +136,7 @@ internal fun VehicleRoute.navigateBack(): VehicleRoute = when (this) {
         is VehicleRoute.DocumentDetail -> parent
         is VehicleRoute.Search -> parent
         VehicleRoute.Settings -> VehicleRoute.List
+        VehicleRoute.Debug -> VehicleRoute.List
         VehicleRoute.OnboardingWelcome -> VehicleRoute.OnboardingWelcome
         VehicleRoute.OnboardingVehicles -> VehicleRoute.OnboardingVehicles
         VehicleRoute.OnboardingApiKey -> VehicleRoute.OnboardingApiKey

@@ -42,6 +42,16 @@ class VehicleRouteStateTest {
     }
 
     @Test
+    fun debugRouteRoundTripsThroughSavedStateEncoding() {
+        val route: VehicleRoute = VehicleRoute.Debug
+
+        val restored = listOf("debug").toVehicleRouteOrNull()
+
+        assertEquals(route, restored)
+        assertEquals("debug", route.serializeForSave())
+    }
+
+    @Test
     fun onboardingApiKeyRouteRoundTripsThroughSavedStateEncoding() {
         val route: VehicleRoute = VehicleRoute.OnboardingApiKey
 

@@ -7,6 +7,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import org.vliux.orca.BuildConfig
 import org.vliux.orca.data.DocumentRepository
 import org.vliux.orca.data.FactRepository
 import org.vliux.orca.data.SearchRepository
@@ -57,6 +58,13 @@ fun VehicleHubScreen(
             onOpenSettings = {
                 routeViewModel.updateRoute {
                     VehicleRoute.Settings
+                }
+            },
+            onOpenDebug = {
+                if (BuildConfig.DEBUG) {
+                    routeViewModel.updateRoute {
+                        VehicleRoute.Debug
+                    }
                 }
             },
             onOpenSearch = { query ->
@@ -168,6 +176,23 @@ fun VehicleHubScreen(
                 routeViewModel.updateRoute { navigateBack() }
             },
         )
+        VehicleRoute.Debug -> {
+            if (BuildConfig.DEBUG) {
+                DebugScreen(
+                    modifier = modifier,
+                    onBack = {
+                        routeViewModel.updateRoute { navigateBack() }
+                    },
+                    onShowNewUserWizard = {
+                        routeViewModel.updateRoute { VehicleRoute.OnboardingWelcome }
+                    },
+                )
+            } else {
+                LaunchedEffect(Unit) {
+                    routeViewModel.updateRoute { VehicleRoute.List }
+                }
+            }
+        }
         VehicleRoute.OnboardingWelcome -> OnboardingWelcomeScreen(
             modifier = modifier,
             onNext = {

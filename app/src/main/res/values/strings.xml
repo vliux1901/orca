@@ -2,6 +2,10 @@
     <string name="app_name">Orca</string>
     <string name="back">Back</string>
     <string name="settings">Settings</string>
+    <string name="debug_menu_title">Debug</string>
+    <string name="debug_new_user_wizard_title">New user wizard</string>
+    <string name="debug_new_user_wizard_message">Open the first-run setup flow again on this device.</string>
+    <string name="debug_show_new_user_wizard">Show new user wizard</string>
     <string name="options">Options</string>
     <string name="openai_api_key_guide_title">Add your OpenAI API key</string>
     <string name="openai_api_key_guide_step_1_prefix">1. Sign in to</string>

@@ -144,6 +144,16 @@ interface DocumentDao {
     @Query("SELECT * FROM documents WHERE documentId = :documentId")
     suspend fun getDocument(documentId: String): DocumentEntity?
 
+    @Query(
+        """
+        SELECT documentId, title, sourceCount, importStatus, extractionStatus, occurredAt AS occurredOn, createdAt, updatedAt
+        FROM documents
+        WHERE vehicleId = :vehicleId
+        ORDER BY createdAt DESC
+        """,
+    )
+    suspend fun getDocumentList(vehicleId: String): List<DocumentListItem>
+
     @Query("SELECT * FROM documents WHERE documentId = :documentId")
     fun observeDocument(documentId: String): Flow<DocumentEntity?>
 

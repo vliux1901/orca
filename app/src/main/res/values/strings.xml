@@ -53,6 +53,7 @@
     <string name="save_vehicle">Save Vehicle</string>
     <string name="create_vehicle_action">Create Vehicle</string>
     <string name="edit_vehicle_action">Edit Vehicle</string>
+    <string name="delete_vehicle_action">Delete Vehicle</string>
     <string name="importing">Importing...</string>
     <string name="import_document">Import Document</string>
     <string name="import_document_guidance_title">Import documents</string>
@@ -127,10 +128,12 @@
     <string name="show">Show</string>
     <string name="hide">Hide</string>
     <string name="delete_document_title">Delete Document</string>
+    <string name="delete_vehicle_title">Delete Vehicle</string>
     <string name="delete">Delete</string>
     <string name="deleting">Deleting...</string>
     <string name="cancel">Cancel</string>
     <string name="unable_delete_document">Unable to delete document.</string>
+    <string name="unable_delete_vehicle">Unable to delete vehicle.</string>
     <string name="document_detail_status">Import %1$s | Extraction %2$s</string>
     <string name="document_latest_run">Latest run %1$s via %2$s/%3$s</string>
     <string name="document_cloud_disclosure">Imported source files stay on this device. When extraction runs, the original PDFs and images are sent to cloud AI to build structured maintenance facts.</string>

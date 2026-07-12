@@ -59,6 +59,7 @@ interface DocumentStore {
     )
 
     suspend fun getDocument(documentId: String): DocumentEntity?
+    suspend fun getDocumentList(vehicleId: String): List<DocumentListItem>
     fun observeDocument(documentId: String): Flow<DocumentEntity?>
 
     suspend fun getSources(documentId: String): List<DocumentSourceEntity>

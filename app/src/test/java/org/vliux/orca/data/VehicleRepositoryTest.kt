@@ -227,6 +227,35 @@ class VehicleRepositoryTest {
             summary.map { it.eventDate },
         )
     }
+
+    @Test
+    fun deleteVehicleRemovesStoredRow() = runTest {
+        val dao = FakeVehicleDao(
+            VehicleEntity(
+                vehicleId = "vehicle-123",
+                displayName = "Family SUV",
+                make = "Toyota",
+                model = "Highlander",
+                year = 2020,
+                licensePlate = null,
+                vin = null,
+                color = null,
+                photoUri = null,
+                currentMileage = 45123,
+                createdAt = now,
+                updatedAt = now,
+            ),
+        )
+        val repository = VehicleRepository(
+            dao = dao,
+            observeVehicleMaintenanceHistory = { flowOf(emptyList()) },
+        )
+
+        repository.deleteVehicle("vehicle-123")
+
+        assertNull(dao.getVehicle("vehicle-123"))
+        assertTrue(repository.observeVehicles().first().isEmpty())
+    }
 }
 
 private class FakeVehicleDao(
@@ -242,6 +271,11 @@ private class FakeVehicleDao(
 
     override suspend fun upsertVehicle(vehicle: VehicleEntity) {
         vehicles[vehicle.vehicleId] = vehicle
+        publish()
+    }
+
+    override suspend fun deleteVehicle(vehicleId: String) {
+        vehicles.remove(vehicleId)
         publish()
     }
 
@@ -268,6 +302,10 @@ private class SlowVehicleDao(
 
     override suspend fun upsertVehicle(vehicle: VehicleEntity) {
         vehicles[vehicle.vehicleId] = vehicle
+    }
+
+    override suspend fun deleteVehicle(vehicleId: String) {
+        vehicles.remove(vehicleId)
     }
 
     override suspend fun getVehicle(vehicleId: String): VehicleEntity? = vehicles[vehicleId]

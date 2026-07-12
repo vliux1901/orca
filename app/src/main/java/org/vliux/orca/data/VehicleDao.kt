@@ -12,6 +12,9 @@ interface VehicleDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertVehicle(vehicle: VehicleEntity)
 
+    @Query("DELETE FROM vehicles WHERE vehicleId = :vehicleId")
+    suspend fun deleteVehicle(vehicleId: String)
+
     @Query("SELECT * FROM vehicles WHERE vehicleId = :vehicleId")
     suspend fun getVehicle(vehicleId: String): VehicleEntity?
 

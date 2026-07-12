@@ -117,6 +117,12 @@ class DocumentRepository(
         OrcaLog.info("Deleted document=${document.documentId.takeLast(8)} and ${sourcePaths.size} stored source file(s).")
     }
 
+    suspend fun deleteDocumentsForVehicle(vehicleId: String) {
+        store.getDocumentList(vehicleId).forEach { document ->
+            deleteDocument(document.documentId)
+        }
+    }
+
     fun observeDocumentList(vehicleId: String): Flow<List<DocumentListItem>> =
         documentListFlows.getOrPut(vehicleId) {
             store.observeDocumentList(vehicleId).shareIn(

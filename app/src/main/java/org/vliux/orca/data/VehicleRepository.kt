@@ -111,6 +111,10 @@ class VehicleRepository(
         )
     }
 
+    suspend fun deleteVehicle(vehicleId: String) {
+        dao.deleteVehicle(vehicleId)
+    }
+
     private fun buildMaintenanceSummary(
         history: List<VehicleMaintenanceHistoryEntry>,
     ): List<VehicleMaintenanceSummaryItem> = history

@@ -25,6 +25,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
@@ -80,6 +81,7 @@ internal fun VehicleDetailScreen(
 ) {
     val activity = LocalActivity.current as? FragmentActivity
     val context = LocalContext.current
+    val unableDeleteVehicleMessage = stringResource(R.string.unable_delete_vehicle)
     val importQueuedMessage = stringResource(R.string.vehicle_import_queued)
     val importNotConfiguredMessage = stringResource(R.string.vehicle_import_not_configured)
     val importAuthCancelledMessage = stringResource(R.string.vehicle_import_auth_cancelled)
@@ -115,6 +117,8 @@ internal fun VehicleDetailScreen(
     var retryingDocumentId by remember(vehicleId) { mutableStateOf<String?>(null) }
     var actionMenuExpanded by remember(vehicleId) { mutableStateOf(false) }
     var importGuidanceOpen by remember(vehicleId) { mutableStateOf(false) }
+    var showDeleteConfirmation by remember(vehicleId) { mutableStateOf(false) }
+    var isDeletingVehicle by remember(vehicleId) { mutableStateOf(false) }
     val loadedVehicle = screenState.vehicle
 
     val launcher = rememberLauncherForActivityResult(OpenMultipleDocuments()) { uris ->
@@ -170,6 +174,8 @@ internal fun VehicleDetailScreen(
                         onEditVehicle = onEditVehicle,
                         onImportFiles = ::beginImportFlow,
                         isImporting = isImporting,
+                        onDeleteVehicle = { showDeleteConfirmation = true },
+                        isDeletingVehicle = isDeletingVehicle,
                     )
                 },
             )
@@ -299,6 +305,53 @@ internal fun VehicleDetailScreen(
                 }
                 importGuidanceOpen = false
                 launcher.launch(SUPPORTED_IMPORT_MIME_TYPES)
+            },
+        )
+    }
+
+    if (showDeleteConfirmation) {
+        AlertDialog(
+            onDismissRequest = {
+                if (!isDeletingVehicle) {
+                    showDeleteConfirmation = false
+                }
+            },
+            title = {
+                Text(stringResource(R.string.delete_vehicle_title))
+            },
+            text = {
+                Text(vehicleDeleteConfirmationMessage(loadedVehicle?.displayName))
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        isDeletingVehicle = true
+                        importError = null
+                        scope.launch {
+                            runCatching {
+                                documentRepository.deleteDocumentsForVehicle(vehicleId)
+                                vehicleRepository.deleteVehicle(vehicleId)
+                            }.onSuccess {
+                                showDeleteConfirmation = false
+                                onBack()
+                            }.onFailure { error ->
+                                importError = error.message ?: unableDeleteVehicleMessage
+                            }
+                            isDeletingVehicle = false
+                        }
+                    },
+                    enabled = !isDeletingVehicle,
+                ) {
+                    Text(stringResource(if (isDeletingVehicle) R.string.deleting else R.string.delete))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showDeleteConfirmation = false },
+                    enabled = !isDeletingVehicle,
+                ) {
+                    Text(stringResource(R.string.cancel))
+                }
             },
         )
     }
@@ -452,6 +505,7 @@ internal fun VehicleEditorScreen(
             }
         }
     }
+
 }
 
 @Composable
@@ -461,6 +515,8 @@ private fun RowScope.VehicleDetailActionsMenu(
     onEditVehicle: () -> Unit,
     onImportFiles: () -> Unit,
     isImporting: Boolean,
+    onDeleteVehicle: () -> Unit,
+    isDeletingVehicle: Boolean,
 ) {
     IconButton(onClick = { onExpandedChange(!expanded) }) {
         Text(
@@ -473,13 +529,6 @@ private fun RowScope.VehicleDetailActionsMenu(
         onDismissRequest = { onExpandedChange(false) },
     ) {
         DropdownMenuItem(
-            text = { Text(stringResource(R.string.edit_vehicle_action)) },
-            onClick = {
-                onExpandedChange(false)
-                onEditVehicle()
-            },
-        )
-        DropdownMenuItem(
             text = {
                 Text(
                     stringResource(
@@ -491,7 +540,23 @@ private fun RowScope.VehicleDetailActionsMenu(
                 onExpandedChange(false)
                 onImportFiles()
             },
-            enabled = !isImporting,
+            enabled = !isImporting && !isDeletingVehicle,
+        )
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.edit_vehicle_action)) },
+            onClick = {
+                onExpandedChange(false)
+                onEditVehicle()
+            },
+            enabled = !isDeletingVehicle,
+        )
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.delete_vehicle_action)) },
+            onClick = {
+                onExpandedChange(false)
+                onDeleteVehicle()
+            },
+            enabled = !isDeletingVehicle,
         )
     }
 }
@@ -505,6 +570,16 @@ internal fun VehicleDetailHeaderCard(
         imageSize = 88.dp,
         imageTestTag = VehicleDetailHeaderImageTestTag,
     )
+}
+
+internal fun vehicleDeleteConfirmationMessage(
+    vehicleDisplayName: String?,
+): String = buildString {
+    append("Delete this vehicle")
+    vehicleDisplayName?.takeIf { it.isNotBlank() }?.let { name ->
+        append(" \"").append(name).append("\"")
+    }
+    append("? All related documents and extracted maintenance records will also be deleted. This cannot be undone.")
 }
 
 @Composable

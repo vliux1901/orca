@@ -73,6 +73,7 @@ class RoomDocumentStore(
     ) = dao.updateDocumentExtractionResult(documentId, title, extractionStatus, latestRunId, occurredOn, updatedAt)
 
     override suspend fun getDocument(documentId: String): DocumentEntity? = dao.getDocument(documentId)
+    override suspend fun getDocumentList(vehicleId: String): List<DocumentListItem> = dao.getDocumentList(vehicleId)
     override fun observeDocument(documentId: String): Flow<DocumentEntity?> = dao.observeDocument(documentId)
     override suspend fun getSources(documentId: String): List<DocumentSourceEntity> = dao.getSources(documentId)
     override fun observeSources(documentId: String): Flow<List<DocumentSourceEntity>> = dao.observeSources(documentId)

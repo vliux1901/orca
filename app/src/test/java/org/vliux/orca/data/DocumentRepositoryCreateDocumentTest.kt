@@ -167,6 +167,47 @@ class DocumentRepositoryCreateDocumentTest {
     }
 
     @Test
+    fun deleteDocumentsForVehicleRemovesAllDocumentsAndCopiedFiles() = runTest {
+        val rootDir = createTempDirectory(prefix = "orca-files-").toFile()
+        try {
+            val store = InMemoryDocumentStore(knownVehicleIds = setOf("vehicle-123", "vehicle-999"))
+            val repository = DocumentRepository(
+                store = store,
+                fileStorage = AppFileStorage(rootDir) { error("Uri path should not be used in prepared-import tests.") },
+            )
+            val firstDocumentId = repository.createDocument(
+                vehicleId = "vehicle-123",
+                imports = listOf(
+                    preparedImport("receipt.png", "image/png", byteArrayOf(1, 2, 3), rootDir),
+                ),
+            )
+            val secondDocumentId = repository.createDocument(
+                vehicleId = "vehicle-123",
+                imports = listOf(
+                    preparedImport("invoice.pdf", "application/pdf", byteArrayOf(4, 5, 6, 7), rootDir),
+                ),
+            )
+            val otherVehicleDocumentId = repository.createDocument(
+                vehicleId = "vehicle-999",
+                imports = listOf(
+                    preparedImport("other.pdf", "application/pdf", byteArrayOf(8, 9), rootDir),
+                ),
+            )
+
+            repository.deleteDocumentsForVehicle("vehicle-123")
+
+            assertEquals(emptyList<DocumentListItem>(), repository.observeDocumentList("vehicle-123").first())
+            assertEquals(null, repository.getDocument(firstDocumentId))
+            assertEquals(null, repository.getDocument(secondDocumentId))
+            assertTrue(File(rootDir, "vehicles/vehicle-123").walkTopDown().none { it.exists() && it.isFile })
+            assertEquals(otherVehicleDocumentId, repository.observeDocumentList("vehicle-999").first().single().documentId)
+            assertTrue(repository.getDocument(otherVehicleDocumentId) != null)
+        } finally {
+            rootDir.deleteRecursively()
+        }
+    }
+
+    @Test
     fun markDocumentQueuedUpdatesListAndDetailState() = runTest {
         val rootDir = createTempDirectory(prefix = "orca-files-").toFile()
         try {
@@ -825,6 +866,7 @@ private class InMemoryDocumentStore(
     }
 
     override suspend fun getDocument(documentId: String): DocumentEntity? = documents[documentId]
+    override suspend fun getDocumentList(vehicleId: String): List<DocumentListItem> = documentListFlow(vehicleId).value
     override fun observeDocument(documentId: String): Flow<DocumentEntity?> = documentFlow(documentId)
     override suspend fun getSources(documentId: String): List<DocumentSourceEntity> = sources[documentId].orEmpty().sortedBy { it.sourceOrder }
     override fun observeSources(documentId: String): Flow<List<DocumentSourceEntity>> = sourceFlow(documentId)

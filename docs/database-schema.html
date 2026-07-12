@@ -570,6 +570,7 @@ data class SearchEntryEntity(
               <li class="block" data-block-id="rules-4">User edits create a new active fact and mark the replaced extracted fact inactive rather than updating history in place.</li>
               <li class="block" data-block-id="rules-4b">If a correction is entered for a scalar field that did not have an extracted fact row, save a new active user-edited fact with no <code>replacesFactId</code> and rebuild the effective event/search state from active records.</li>
               <li class="block" data-block-id="rules-5">Deleting a document cascades to sources, extraction runs, facts, events, service items, and search entries.</li>
+              <li class="block" data-block-id="rules-5a">Deleting a vehicle cascades to its documents, which in turn cascade to sources, extraction runs, facts, events, service items, and search entries.</li>
             </ul>
           </article>
 

@@ -518,6 +518,7 @@ private class ProcessorDocumentStore(
     }
 
     override suspend fun getDocument(documentId: String): DocumentEntity? = documents[documentId]
+    override suspend fun getDocumentList(vehicleId: String): List<DocumentListItem> = documentListFlow(vehicleId).value
 
     override fun observeDocument(documentId: String): Flow<DocumentEntity?> = documentFlow(documentId)
 

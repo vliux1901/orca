@@ -3,7 +3,10 @@ package org.vliux.orca.ui.vehicle
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.ImageDecoder
 import android.net.Uri
+import android.os.Build
+import android.util.Size
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -45,6 +48,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.SemanticsPropertyKey
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -378,12 +383,20 @@ internal fun VehicleArtwork(
     testTag: String? = null,
 ) {
     val context = LocalContext.current
-    val imageModifier = if (testTag != null) modifier.testTag(testTag) else modifier
     val imageBitmap = rememberVehiclePhotoBitmap(
         context = context,
         photoUri = photoUri,
         maxDimension = 512,
     )
+    val imageModifier = (
+        if (testTag != null) {
+            modifier.testTag(testTag)
+        } else {
+            modifier
+        }
+        ).semantics {
+            set(VehicleArtworkHasPhotoKey, imageBitmap != null)
+        }
 
     if (imageBitmap != null) {
         Image(
@@ -444,6 +457,32 @@ private fun decodeScaledBitmap(
     uri: Uri,
     maxDimension: Int,
 ): Bitmap? {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        runCatching {
+            context.contentResolver.loadThumbnail(uri, Size(maxDimension, maxDimension), null)
+        }.getOrNull()?.let { return it }
+    }
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        runCatching {
+            val source = ImageDecoder.createSource(context.contentResolver, uri)
+            ImageDecoder.decodeBitmap(source) { decoder, info, _ ->
+                decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+                val width = info.size.width
+                val height = info.size.height
+                if (width > 0 && height > 0) {
+                    val scale = maxOf(width, height).toFloat() / maxDimension.toFloat()
+                    if (scale > 1f) {
+                        decoder.setTargetSize(
+                            (width / scale).toInt().coerceAtLeast(1),
+                            (height / scale).toInt().coerceAtLeast(1),
+                        )
+                    }
+                }
+            }
+        }.getOrNull()?.let { return it }
+    }
+
     val bounds = BitmapFactory.Options().apply {
         inJustDecodeBounds = true
     }
@@ -464,6 +503,8 @@ private fun decodeScaledBitmap(
         }
     }.getOrNull()
 }
+
+internal val VehicleArtworkHasPhotoKey = SemanticsPropertyKey<Boolean>("VehicleArtworkHasPhoto")
 
 private fun calculateInSampleSize(
     width: Int,

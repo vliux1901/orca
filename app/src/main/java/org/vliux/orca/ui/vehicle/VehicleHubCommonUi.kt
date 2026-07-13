@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CardColors
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -313,15 +314,17 @@ internal fun VehicleProfileCard(
     onClick: (() -> Unit)? = null,
     imageSize: Dp = 80.dp,
     imageTestTag: String? = null,
+    colors: CardColors = CardDefaults.cardColors(
+        containerColor = MaterialTheme.colorScheme.secondary,
+    ),
+    contentColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSecondary,
     actionContent: @Composable (() -> Unit)? = null,
 ) {
     Card(
         modifier = modifier
             .fillMaxWidth()
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondary,
-        ),
+        colors = colors,
     ) {
         Row(
             modifier = Modifier
@@ -338,30 +341,40 @@ internal fun VehicleProfileCard(
                     modifier = Modifier.fillMaxWidth(),
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSecondary,
+                    color = contentColor,
                 )
                 Text(
                     text = "${vehicle.year} ${vehicle.make} ${vehicle.model}",
                     style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSecondary,
+                    color = contentColor,
                 )
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     VehicleProfileChip(
+                        contentColor = contentColor,
                         label = vehicle.currentMileage?.let {
                             stringResource(R.string.vehicle_mileage_mi, it)
                         } ?: stringResource(R.string.vehicle_mileage_unknown),
                     )
                     vehicle.licensePlate?.takeIf { it.isNotBlank() }?.let { plate ->
-                        VehicleProfileChip(label = stringResource(R.string.vehicle_plate, plate))
+                        VehicleProfileChip(
+                            contentColor = contentColor,
+                            label = stringResource(R.string.vehicle_plate, plate),
+                        )
                     }
                     vehicle.color?.takeIf { it.isNotBlank() }?.let { color ->
-                        VehicleProfileChip(label = stringResource(R.string.vehicle_color_chip, color))
+                        VehicleProfileChip(
+                            contentColor = contentColor,
+                            label = stringResource(R.string.vehicle_color_chip, color),
+                        )
                     }
                     vehicle.vin?.takeIf { it.isNotBlank() }?.let { vin ->
-                        VehicleProfileChip(label = stringResource(R.string.vehicle_vin_suffix, vin.takeLast(6)))
+                        VehicleProfileChip(
+                            contentColor = contentColor,
+                            label = stringResource(R.string.vehicle_vin_suffix, vin.takeLast(6)),
+                        )
                     }
                 }
                 actionContent?.invoke()
@@ -418,11 +431,12 @@ internal fun VehicleArtwork(
 
 @Composable
 private fun VehicleProfileChip(
+    contentColor: androidx.compose.ui.graphics.Color,
     label: String,
 ) {
     Surface(
-        color = MaterialTheme.colorScheme.onSecondary.copy(alpha = 0.12f),
-        contentColor = MaterialTheme.colorScheme.onSecondary,
+        color = contentColor.copy(alpha = 0.12f),
+        contentColor = contentColor,
         shape = MaterialTheme.shapes.small,
     ) {
         Text(

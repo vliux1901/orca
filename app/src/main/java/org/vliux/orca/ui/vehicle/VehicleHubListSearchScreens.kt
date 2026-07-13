@@ -29,6 +29,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -83,6 +84,7 @@ import org.vliux.orca.search.SearchAnswer
 import org.vliux.orca.search.SearchCitation
 import org.vliux.orca.search.SearchResultItem
 import org.vliux.orca.settings.ImportDocumentGuidancePreference
+import org.vliux.orca.ui.theme.SkyBlue80
 import org.vliux.orca.worker.DocumentExtractionQueueResult
 import org.vliux.orca.worker.DocumentExtractionScheduler
 
@@ -745,5 +747,12 @@ private fun VehicleSummaryCard(
         vehicle = vehicle,
         onClick = onOpenVehicle,
         imageSize = 88.dp,
+        colors = vehicleListCardColors(),
+        contentColor = MaterialTheme.colorScheme.onSurface,
     )
 }
+
+@Composable
+private fun vehicleListCardColors() = CardDefaults.cardColors(
+    containerColor = SkyBlue80,
+)

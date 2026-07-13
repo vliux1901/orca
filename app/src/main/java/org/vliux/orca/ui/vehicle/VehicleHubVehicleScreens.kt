@@ -413,7 +413,8 @@ internal fun VehicleEditorScreen(
         }
     }
 
-    val validation = formDraft.validate()
+    val isCreateMode = vehicleId == null
+    val validation = formDraft.validate(requireYear = !isCreateMode)
     val screenTitle = if (vehicleId == null) {
         stringResource(R.string.new_vehicle_title)
     } else {
@@ -452,7 +453,8 @@ internal fun VehicleEditorScreen(
             } else {
                 VehicleForm(
                     draft = formDraft,
-                    showCatalogSelectors = vehicleId == null,
+                    isCreateMode = isCreateMode,
+                    showCatalogSelectors = isCreateMode,
                     onDraftChange = {
                         formDraft = it
                         saveError = null
@@ -460,7 +462,9 @@ internal fun VehicleEditorScreen(
                     onPickPhoto = { photoPickerLauncher.launch(arrayOf("image/*")) },
                     onRemovePhoto = { formDraft = formDraft.copy(photoUri = null) },
                 )
-                validation.errorMessage?.let { message ->
+                validation.errorMessage
+                    ?.takeUnless { it == "Display name, make, and model are required." }
+                    ?.let { message ->
                     Text(
                         text = message,
                         style = MaterialTheme.typography.bodyMedium,
@@ -474,38 +478,34 @@ internal fun VehicleEditorScreen(
                         color = MaterialTheme.colorScheme.error,
                     )
                 }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                ) {
-                    Button(
-                        onClick = {
-                            val request = validation.request ?: return@Button
-                            isSaving = true
-                            scope.launch {
-                                runCatching {
-                                    if (vehicleId == null) {
-                                        vehicleRepository.createVehicle(request)
-                                    } else {
-                                        vehicleRepository.updateVehicle(vehicleId, request)
-                                        vehicleId
-                                    }
-                                }.onSuccess { savedVehicleId ->
-                                    onSaved(savedVehicleId)
-                                }.onFailure { error ->
-                                    saveError = error.message ?: saveVehicleFailedMessage
+                Button(
+                    onClick = {
+                        val request = validation.request ?: return@Button
+                        isSaving = true
+                        scope.launch {
+                            runCatching {
+                                if (vehicleId == null) {
+                                    vehicleRepository.createVehicle(request)
+                                } else {
+                                    vehicleRepository.updateVehicle(vehicleId, request)
+                                    vehicleId
                                 }
-                                isSaving = false
+                            }.onSuccess { savedVehicleId ->
+                                onSaved(savedVehicleId)
+                            }.onFailure { error ->
+                                saveError = error.message ?: saveVehicleFailedMessage
                             }
-                        },
-                        enabled = !isSaving && validation.request != null,
-                    ) {
-                        Text(
-                            stringResource(
-                                if (isSaving) R.string.saving else R.string.save_vehicle,
-                            ),
-                        )
-                    }
+                            isSaving = false
+                        }
+                    },
+                    modifier = if (isCreateMode) Modifier.fillMaxWidth() else Modifier,
+                    enabled = !isSaving && validation.request != null,
+                ) {
+                    Text(
+                        stringResource(
+                            if (isSaving) R.string.saving else R.string.save_vehicle,
+                        ),
+                    )
                 }
             }
         }
@@ -757,92 +757,115 @@ private fun DocumentSummaryCard(
 @Composable
 private fun VehicleForm(
     draft: VehicleFormDraft,
+    isCreateMode: Boolean,
     showCatalogSelectors: Boolean,
     onDraftChange: (VehicleFormDraft) -> Unit,
     onPickPhoto: () -> Unit,
     onRemovePhoto: () -> Unit,
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = vehicleCardColors(),
+    Column(
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = vehicleCardColors(),
         ) {
-            VehicleTextField(
-                label = stringResource(R.string.vehicle_display_name_label),
-                value = draft.displayName,
-                onValueChange = { onDraftChange(draft.copy(displayName = it)) },
-            )
-            if (showCatalogSelectors) {
-                CatalogVehicleFields(
-                    draft = draft,
-                    onDraftChange = onDraftChange,
-                )
-            } else {
-                VehicleTextField(
-                    label = stringResource(R.string.vehicle_make_label),
-                    value = draft.make,
-                    onValueChange = { onDraftChange(draft.copy(make = it)) },
-                )
-                VehicleTextField(
-                    label = stringResource(R.string.vehicle_model_label),
-                    value = draft.model,
-                    onValueChange = { onDraftChange(draft.copy(model = it)) },
-                )
-            }
-            VehicleTextField(
-                label = stringResource(R.string.vehicle_year_label),
-                value = draft.year,
-                onValueChange = { onDraftChange(draft.copy(year = it)) },
-                keyboardType = KeyboardType.Number,
-            )
-            VehicleTextField(
-                label = stringResource(R.string.vehicle_license_plate_optional_label),
-                value = draft.licensePlate,
-                onValueChange = { onDraftChange(draft.copy(licensePlate = it)) },
-            )
-            VehicleTextField(
-                label = stringResource(R.string.vehicle_vin_optional_label),
-                value = draft.vin,
-                onValueChange = { onDraftChange(draft.copy(vin = it)) },
-            )
-            VehicleTextField(
-                label = stringResource(R.string.vehicle_color_optional_label),
-                value = draft.color,
-                onValueChange = { onDraftChange(draft.copy(color = it)) },
-            )
-            Text(
-                text = stringResource(R.string.vehicle_photo_optional_label),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                text = stringResource(R.string.vehicle_photo_picker_description),
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            VehicleArtwork(
-                photoUri = draft.photoUri,
-                contentDescription = stringResource(R.string.vehicle_photo_preview),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(180.dp),
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Button(onClick = onPickPhoto) {
-                    Text(
-                        stringResource(
-                            if (draft.photoUri == null) R.string.vehicle_choose_photo else R.string.vehicle_change_photo,
-                        ),
+                VehicleTextField(
+                    label = stringResource(R.string.vehicle_display_name_label),
+                    value = draft.displayName,
+                    onValueChange = { onDraftChange(draft.copy(displayName = it)) },
+                )
+                if (showCatalogSelectors) {
+                    CatalogVehicleFields(
+                        draft = draft,
+                        onDraftChange = onDraftChange,
+                    )
+                } else {
+                    VehicleTextField(
+                        label = stringResource(R.string.vehicle_make_label),
+                        value = draft.make,
+                        onValueChange = { onDraftChange(draft.copy(make = it)) },
+                    )
+                    VehicleTextField(
+                        label = stringResource(R.string.vehicle_model_label),
+                        value = draft.model,
+                        onValueChange = { onDraftChange(draft.copy(model = it)) },
                     )
                 }
-                if (draft.photoUri != null) {
-                    Button(onClick = onRemovePhoto) {
-                        Text(stringResource(R.string.vehicle_remove_photo))
+                VehicleTextField(
+                    label = stringResource(
+                        if (isCreateMode) R.string.vehicle_year_optional_label else R.string.vehicle_year_label,
+                    ),
+                    value = draft.year,
+                    onValueChange = { onDraftChange(draft.copy(year = it)) },
+                    keyboardType = KeyboardType.Number,
+                )
+                VehicleTextField(
+                    label = stringResource(R.string.vehicle_license_plate_optional_label),
+                    value = draft.licensePlate,
+                    onValueChange = { onDraftChange(draft.copy(licensePlate = it)) },
+                )
+                if (!isCreateMode) {
+                    VehicleTextField(
+                        label = stringResource(R.string.vehicle_vin_optional_label),
+                        value = draft.vin,
+                        onValueChange = { onDraftChange(draft.copy(vin = it)) },
+                    )
+                    VehicleTextField(
+                        label = stringResource(R.string.vehicle_color_optional_label),
+                        value = draft.color,
+                        onValueChange = { onDraftChange(draft.copy(color = it)) },
+                    )
+                }
+            }
+        }
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = vehicleCardColors(),
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    text = stringResource(R.string.vehicle_photo_optional_label),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Text(
+                    text = stringResource(R.string.vehicle_photo_picker_description),
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                VehicleArtwork(
+                    photoUri = draft.photoUri,
+                    contentDescription = stringResource(R.string.vehicle_photo_preview),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp),
+                )
+                if (draft.photoUri == null) {
+                    TextButton(onClick = onPickPhoto) {
+                        Text(stringResource(R.string.vehicle_choose_photo))
+                    }
+                } else {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        TextButton(onClick = onPickPhoto) {
+                            Text(stringResource(R.string.vehicle_change_photo))
+                        }
+                        TextButton(onClick = onRemovePhoto) {
+                            Text(stringResource(R.string.vehicle_remove_photo))
+                        }
                     }
                 }
             }

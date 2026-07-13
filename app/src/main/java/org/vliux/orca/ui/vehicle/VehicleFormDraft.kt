@@ -14,14 +14,18 @@ data class VehicleFormDraft(
     val photoUri: String? = null,
     val currentMileage: Int? = null,
 ) {
-    fun validate(): VehicleFormValidation {
-        if (displayName.isBlank() || make.isBlank() || model.isBlank() || year.isBlank()) {
-            return VehicleFormValidation(errorMessage = "Display name, make, model, and year are required.")
+    fun validate(requireYear: Boolean = true): VehicleFormValidation {
+        if (displayName.isBlank() || make.isBlank() || model.isBlank()) {
+            return VehicleFormValidation(errorMessage = "Display name, make, and model are required.")
         }
 
-        val parsedYear = year.toIntOrNull()
-            ?: return VehicleFormValidation(errorMessage = "Year must be a number.")
-        if (parsedYear <= 0) {
+        val parsedYear = when {
+            year.isBlank() && !requireYear -> 0
+            year.isBlank() -> return VehicleFormValidation(errorMessage = "Year is required.")
+            else -> year.toIntOrNull()
+                ?: return VehicleFormValidation(errorMessage = "Year must be a number.")
+        }
+        if (parsedYear < 0 || (requireYear && parsedYear == 0)) {
             return VehicleFormValidation(errorMessage = "Year must be greater than 0.")
         }
 
@@ -45,7 +49,7 @@ data class VehicleFormDraft(
             displayName = vehicle.displayName,
             make = vehicle.make,
             model = vehicle.model,
-            year = vehicle.year.toString(),
+            year = vehicle.year.takeIf { it > 0 }?.toString().orEmpty(),
             licensePlate = vehicle.licensePlate.orEmpty(),
             vin = vehicle.vin.orEmpty(),
             color = vehicle.color.orEmpty(),

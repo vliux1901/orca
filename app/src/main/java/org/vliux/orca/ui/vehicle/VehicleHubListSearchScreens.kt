@@ -337,11 +337,13 @@ internal fun ImportVehiclePickerDialog(
 internal fun vehiclePickerLabel(vehicle: VehicleEntity): String = buildString {
     append(vehicle.displayName)
     append(" | ")
-    append(vehicle.year)
-    append(' ')
-    append(vehicle.make)
-    append(' ')
-    append(vehicle.model)
+    append(
+        vehicleYearMakeModelText(
+            year = vehicle.year,
+            make = vehicle.make,
+            model = vehicle.model,
+        ),
+    )
 }
 
 internal data class VehicleListImportResult(

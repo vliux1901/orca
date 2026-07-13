@@ -344,7 +344,11 @@ internal fun VehicleProfileCard(
                     color = contentColor,
                 )
                 Text(
-                    text = "${vehicle.year} ${vehicle.make} ${vehicle.model}",
+                    text = vehicleYearMakeModelText(
+                        year = vehicle.year,
+                        make = vehicle.make,
+                        model = vehicle.model,
+                    ),
                     style = MaterialTheme.typography.titleMedium,
                     color = contentColor,
                 )
@@ -388,6 +392,16 @@ internal fun VehicleProfileCard(
         }
     }
 }
+
+internal fun vehicleYearMakeModelText(
+    year: Int,
+    make: String,
+    model: String,
+): String = listOfNotNull(
+    year.takeIf { it > 0 }?.toString(),
+    make.takeIf { it.isNotBlank() },
+    model.takeIf { it.isNotBlank() },
+).joinToString(" ")
 
 @Composable
 internal fun VehicleArtwork(

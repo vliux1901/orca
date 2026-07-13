@@ -89,6 +89,7 @@
     <string name="vehicle_model_choose_make_first">Select a make first to choose from suggested models, or switch to manual make entry.</string>
     <string name="vehicle_model_manual_helper">If the model is not listed for this make, enter it manually.</string>
     <string name="vehicle_year_label">Year</string>
+    <string name="vehicle_year_optional_label">Year (Optional)</string>
     <string name="vehicle_license_plate_optional_label">License Plate (Optional)</string>
     <string name="vehicle_vin_optional_label">VIN (Optional)</string>
     <string name="vehicle_color_optional_label">Color (Optional)</string>

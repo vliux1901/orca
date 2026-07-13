@@ -14,7 +14,7 @@ class VehicleFormDraftTest {
 
         assertNull(validation.request)
         assertEquals(
-            "Display name, make, model, and year are required.",
+            "Display name, make, and model are required.",
             validation.errorMessage,
         )
     }
@@ -54,6 +54,19 @@ class VehicleFormDraftTest {
         ).validate()
 
         assertEquals("Year must be a number.", invalidYear.errorMessage)
+    }
+
+    @Test
+    fun validateAllowsBlankYearWhenOptional() {
+        val validation = VehicleFormDraft(
+            displayName = "Family SUV",
+            make = "Toyota",
+            model = "Highlander",
+            year = "",
+        ).validate(requireYear = false)
+
+        assertNull(validation.errorMessage)
+        assertEquals(0, validation.request?.year)
     }
 
     @Test
@@ -100,5 +113,27 @@ class VehicleFormDraftTest {
         assertEquals(45123, draft.currentMileage)
         assertEquals(45123, draft.validate().request?.currentMileage)
         assertTrue(draft.validate().request != null)
+    }
+
+    @Test
+    fun fromEntityLeavesYearBlankWhenStoredYearUnknown() {
+        val draft = VehicleFormDraft.fromEntity(
+            VehicleEntity(
+                vehicleId = "vehicle-123",
+                displayName = "Family SUV",
+                make = "Toyota",
+                model = "Highlander",
+                year = 0,
+                licensePlate = null,
+                vin = null,
+                color = null,
+                photoUri = null,
+                currentMileage = null,
+                createdAt = Instant.parse("2026-07-03T00:00:00Z"),
+                updatedAt = Instant.parse("2026-07-03T00:00:00Z"),
+            ),
+        )
+
+        assertEquals("", draft.year)
     }
 }

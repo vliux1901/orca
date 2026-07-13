@@ -98,6 +98,14 @@ class VehicleScreenStateViewModelsTest {
         )
     }
 
+    @Test
+    fun vehiclePickerLabelOmitsUnknownYear() {
+        assertEquals(
+            "Family SUV | Toyota Highlander",
+            vehiclePickerLabel(vehicleEntity().copy(year = 0)),
+        )
+    }
+
     private fun vehicleEntity() = VehicleEntity(
         vehicleId = "vehicle-123",
         displayName = "Family SUV",

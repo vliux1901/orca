@@ -95,9 +95,9 @@ internal fun OnboardingWelcomeScreen(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                     )
-                    WelcomeBullet(text = stringResource(R.string.onboarding_welcome_bullet_vehicle))
-                    WelcomeBullet(text = stringResource(R.string.onboarding_welcome_bullet_local))
-                    WelcomeBullet(text = stringResource(R.string.onboarding_welcome_bullet_ai))
+                    OnboardingBullet(text = stringResource(R.string.onboarding_welcome_bullet_vehicle))
+                    OnboardingBullet(text = stringResource(R.string.onboarding_welcome_bullet_local))
+                    OnboardingBullet(text = stringResource(R.string.onboarding_welcome_bullet_ai))
                 }
             }
             Spacer(modifier = Modifier.weight(1f))
@@ -243,8 +243,12 @@ internal fun OnboardingApiKeyScreen(
                     ) {
                         Text(stringResource(R.string.onboarding_api_key_open_platform))
                     }
-                    Text(stringResource(R.string.onboarding_api_key_local_only))
-                    Text(stringResource(R.string.onboarding_api_key_auth_note))
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        OnboardingBullet(text = stringResource(R.string.onboarding_api_key_local_only))
+                        OnboardingBullet(text = stringResource(R.string.onboarding_api_key_auth_note))
+                    }
                 }
             }
             OutlinedTextField(
@@ -563,7 +567,7 @@ private fun OnboardingStepHeader(
 }
 
 @Composable
-private fun WelcomeBullet(
+private fun OnboardingBullet(
     text: String,
 ) {
     Row(

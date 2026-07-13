@@ -49,6 +49,7 @@ class OnboardingScreenTest {
 
         composeRule.onNodeWithTag(OnboardingApiKeyFieldTestTag).assertIsDisplayed()
         composeRule.onNodeWithText("Your key is encrypted and saved in local app storage.").assertIsDisplayed()
+        composeRule.onNodeWithText("You may be asked for device authentication when saving, showing, or using the key.").assertIsDisplayed()
         composeRule.onNodeWithText("Skip for now").assertIsDisplayed()
     }
 

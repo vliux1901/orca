@@ -914,13 +914,19 @@
                       </div>
                       <div class="surface-card block" data-block-id="screen-3-card">
                         <div class="fake-field">Paste API key here</div>
-                        <div class="secure-banner" style="margin-top: 12px;">
-                          <strong aria-hidden="true">✓</strong>
-                          <div>Your key is encrypted and saved in local app storage. Orca only unlocks it when it needs to use it or show it to you.</div>
-                        </div>
-                        <div class="auth-panel" style="margin-top: 12px;">
-                          You may be asked for device authentication when saving, showing, or using the key. Normal browsing does not need an unlock.
-                        </div>
+                        <ul style="margin: 12px 0 0; padding-left: 20px; display: grid; gap: 12px;">
+                          <li>
+                            <div class="secure-banner" style="margin-top: 0;">
+                              <strong aria-hidden="true">✓</strong>
+                              <div>Your key is encrypted and saved in local app storage. Orca only unlocks it when it needs to use it or show it to you.</div>
+                            </div>
+                          </li>
+                          <li>
+                            <div class="auth-panel" style="margin-top: 0;">
+                              You may be asked for device authentication when saving, showing, or using the key. Normal browsing does not need an unlock.
+                            </div>
+                          </li>
+                        </ul>
                       </div>
                       <div class="button-stack">
                         <div class="cta primary block" data-block-id="screen-3-primary">Save API Key</div>

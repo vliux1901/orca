@@ -51,7 +51,7 @@ class VehicleFormDraftTest {
             make = "Toyota",
             model = "Highlander",
             year = "twenty",
-        ).validate()
+        ).validate(requireYear = false)
 
         assertEquals("Year must be a number.", invalidYear.errorMessage)
     }

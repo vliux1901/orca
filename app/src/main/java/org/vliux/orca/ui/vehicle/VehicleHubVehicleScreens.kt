@@ -414,7 +414,7 @@ internal fun VehicleEditorScreen(
     }
 
     val isCreateMode = vehicleId == null
-    val validation = formDraft.validate(requireYear = !isCreateMode)
+    val validation = formDraft.validate(requireYear = false)
     val screenTitle = if (vehicleId == null) {
         stringResource(R.string.new_vehicle_title)
     } else {
@@ -498,7 +498,7 @@ internal fun VehicleEditorScreen(
                             isSaving = false
                         }
                     },
-                    modifier = if (isCreateMode) Modifier.fillMaxWidth() else Modifier,
+                    modifier = Modifier.fillMaxWidth(),
                     enabled = !isSaving && validation.request != null,
                 ) {
                     Text(
@@ -798,7 +798,7 @@ private fun VehicleForm(
                 }
                 VehicleTextField(
                     label = stringResource(
-                        if (isCreateMode) R.string.vehicle_year_optional_label else R.string.vehicle_year_label,
+                        R.string.vehicle_year_optional_label,
                     ),
                     value = draft.year,
                     onValueChange = { onDraftChange(draft.copy(year = it)) },
@@ -809,18 +809,6 @@ private fun VehicleForm(
                     value = draft.licensePlate,
                     onValueChange = { onDraftChange(draft.copy(licensePlate = it)) },
                 )
-                if (!isCreateMode) {
-                    VehicleTextField(
-                        label = stringResource(R.string.vehicle_vin_optional_label),
-                        value = draft.vin,
-                        onValueChange = { onDraftChange(draft.copy(vin = it)) },
-                    )
-                    VehicleTextField(
-                        label = stringResource(R.string.vehicle_color_optional_label),
-                        value = draft.color,
-                        onValueChange = { onDraftChange(draft.copy(color = it)) },
-                    )
-                }
             }
         }
 

@@ -31,6 +31,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -448,6 +452,7 @@ internal fun VehicleEditorScreen(
             } else {
                 VehicleForm(
                     draft = formDraft,
+                    showCatalogSelectors = vehicleId == null,
                     onDraftChange = {
                         formDraft = it
                         saveError = null
@@ -752,6 +757,7 @@ private fun DocumentSummaryCard(
 @Composable
 private fun VehicleForm(
     draft: VehicleFormDraft,
+    showCatalogSelectors: Boolean,
     onDraftChange: (VehicleFormDraft) -> Unit,
     onPickPhoto: () -> Unit,
     onRemovePhoto: () -> Unit,
@@ -769,16 +775,23 @@ private fun VehicleForm(
                 value = draft.displayName,
                 onValueChange = { onDraftChange(draft.copy(displayName = it)) },
             )
-            VehicleTextField(
-                label = stringResource(R.string.vehicle_make_label),
-                value = draft.make,
-                onValueChange = { onDraftChange(draft.copy(make = it)) },
-            )
-            VehicleTextField(
-                label = stringResource(R.string.vehicle_model_label),
-                value = draft.model,
-                onValueChange = { onDraftChange(draft.copy(model = it)) },
-            )
+            if (showCatalogSelectors) {
+                CatalogVehicleFields(
+                    draft = draft,
+                    onDraftChange = onDraftChange,
+                )
+            } else {
+                VehicleTextField(
+                    label = stringResource(R.string.vehicle_make_label),
+                    value = draft.make,
+                    onValueChange = { onDraftChange(draft.copy(make = it)) },
+                )
+                VehicleTextField(
+                    label = stringResource(R.string.vehicle_model_label),
+                    value = draft.model,
+                    onValueChange = { onDraftChange(draft.copy(model = it)) },
+                )
+            }
             VehicleTextField(
                 label = stringResource(R.string.vehicle_year_label),
                 value = draft.year,
@@ -833,6 +846,176 @@ private fun VehicleForm(
                     }
                 }
             }
+        }
+    }
+}
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun CatalogVehicleFields(
+    draft: VehicleFormDraft,
+    onDraftChange: (VehicleFormDraft) -> Unit,
+) {
+    val makeCatalog = findVehicleMakeCatalog(draft.make)
+    val catalogModels = makeCatalog?.models.orEmpty()
+    val makeOptions = remember { knownVehicleMakes() }
+    var makeExpanded by remember { mutableStateOf(false) }
+    var modelExpanded by remember { mutableStateOf(false) }
+    var isManualMakeEntry by rememberSaveable {
+        mutableStateOf(draft.make.isNotBlank() && makeCatalog == null)
+    }
+    var isManualModelEntry by rememberSaveable {
+        mutableStateOf(
+            draft.model.isNotBlank() && (isManualMakeEntry || (catalogModels.isNotEmpty() && draft.model !in catalogModels)),
+        )
+    }
+
+    VehicleCatalogDropdownField(
+        label = stringResource(R.string.vehicle_make_label),
+        value = if (isManualMakeEntry) stringResource(R.string.vehicle_manual_entry_selected) else draft.make,
+        placeholder = stringResource(R.string.vehicle_make_placeholder),
+        expanded = makeExpanded,
+        onExpandedChange = { makeExpanded = it },
+        options = makeOptions,
+        manualOptionLabel = stringResource(R.string.vehicle_manual_entry_option),
+        onOptionSelected = { selectedMake ->
+            isManualMakeEntry = false
+            isManualModelEntry = false
+            val selectedCatalog = findVehicleMakeCatalog(selectedMake)
+            val selectedModel = draft.model.takeIf { model -> selectedCatalog?.models?.contains(model) == true }.orEmpty()
+            onDraftChange(draft.copy(make = selectedMake, model = selectedModel))
+        },
+        onManualEntrySelected = {
+            isManualMakeEntry = true
+            isManualModelEntry = true
+            onDraftChange(draft.copy(make = "", model = ""))
+        },
+    )
+    if (isManualMakeEntry) {
+        Text(
+            text = stringResource(R.string.vehicle_make_manual_helper),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        VehicleTextField(
+            label = stringResource(R.string.vehicle_make_label),
+            value = draft.make,
+            onValueChange = { onDraftChange(draft.copy(make = it, model = draft.model.takeIf { isManualModelEntry }.orEmpty())) },
+        )
+        VehicleTextField(
+            label = stringResource(R.string.vehicle_model_label),
+            value = draft.model,
+            onValueChange = { onDraftChange(draft.copy(model = it)) },
+        )
+        return
+    }
+
+    if (draft.make.isBlank()) {
+        Text(
+            text = stringResource(R.string.vehicle_model_choose_make_first),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        return
+    }
+
+    if (catalogModels.isEmpty()) {
+        Text(
+            text = stringResource(R.string.vehicle_model_manual_helper),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        VehicleTextField(
+            label = stringResource(R.string.vehicle_model_label),
+            value = draft.model,
+            onValueChange = { onDraftChange(draft.copy(model = it)) },
+        )
+        return
+    }
+
+    VehicleCatalogDropdownField(
+        label = stringResource(R.string.vehicle_model_label),
+        value = if (isManualModelEntry) stringResource(R.string.vehicle_manual_entry_selected) else draft.model,
+        placeholder = stringResource(R.string.vehicle_model_placeholder),
+        expanded = modelExpanded,
+        onExpandedChange = { modelExpanded = it },
+        options = catalogModels,
+        manualOptionLabel = stringResource(R.string.vehicle_manual_entry_option),
+        onOptionSelected = { selectedModel ->
+            isManualModelEntry = false
+            onDraftChange(draft.copy(model = selectedModel))
+        },
+        onManualEntrySelected = {
+            isManualModelEntry = true
+            onDraftChange(draft.copy(model = ""))
+        },
+    )
+    if (isManualModelEntry) {
+        Text(
+            text = stringResource(R.string.vehicle_model_manual_helper),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        VehicleTextField(
+            label = stringResource(R.string.vehicle_model_label),
+            value = draft.model,
+            onValueChange = { onDraftChange(draft.copy(model = it)) },
+        )
+    }
+}
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun VehicleCatalogDropdownField(
+    label: String,
+    value: String,
+    placeholder: String,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    options: List<String>,
+    manualOptionLabel: String,
+    onOptionSelected: (String) -> Unit,
+    onManualEntrySelected: () -> Unit,
+) {
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = onExpandedChange,
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = {},
+            modifier = Modifier
+                .menuAnchor(
+                    type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
+                    enabled = true,
+                )
+                .fillMaxWidth(),
+            readOnly = true,
+            label = { Text(label) },
+            placeholder = { Text(placeholder) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+        )
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { onExpandedChange(false) },
+            modifier = Modifier.exposedDropdownSize(),
+        ) {
+            options.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option) },
+                    onClick = {
+                        onExpandedChange(false)
+                        onOptionSelected(option)
+                    },
+                )
+            }
+            DropdownMenuItem(
+                text = { Text(manualOptionLabel) },
+                onClick = {
+                    onExpandedChange(false)
+                    onManualEntrySelected()
+                },
+            )
         }
     }
 }

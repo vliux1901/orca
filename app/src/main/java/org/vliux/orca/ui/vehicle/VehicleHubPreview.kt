@@ -7,6 +7,7 @@ import android.graphics.pdf.PdfRenderer
 import android.os.ParcelFileDescriptor
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,15 +26,22 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -43,6 +51,7 @@ import org.vliux.orca.R
 import org.vliux.orca.data.model.DocumentSourceEntity
 import org.vliux.orca.importing.AppFileStorage
 import java.io.File
+import kotlin.math.min
 
 @Composable
 internal fun SourcePreviewGrid(
@@ -181,11 +190,10 @@ internal fun FullScreenSourcePreviewDialog(
                     }
                 } else {
                     if (imageBitmap != null) {
-                        Image(
+                        ZoomableFullScreenImage(
                             bitmap = imageBitmap,
                             contentDescription = source.fileName,
                             modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Fit,
                         )
                     } else {
                         PreviewUnavailableState()
@@ -209,6 +217,66 @@ internal fun FullScreenSourcePreviewDialog(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun ZoomableFullScreenImage(
+    bitmap: androidx.compose.ui.graphics.ImageBitmap,
+    contentDescription: String,
+    modifier: Modifier = Modifier,
+) {
+    var containerSize by remember { mutableStateOf(IntSize.Zero) }
+    var scale by rememberSaveable(bitmap.width, bitmap.height) { mutableStateOf(1f) }
+    var offset by remember(bitmap.width, bitmap.height) { mutableStateOf(Offset.Zero) }
+
+    Box(
+        modifier = modifier
+            .onSizeChanged { containerSize = it }
+            .pointerInput(bitmap.width, bitmap.height, containerSize) {
+                detectTransformGestures { centroid, pan, zoom, _ ->
+                    if (containerSize == IntSize.Zero) {
+                        return@detectTransformGestures
+                    }
+                    val updatedScale = clampPreviewGestureScale(scale * zoom)
+                    val nextMaxOffset = maxPreviewGestureOffset(
+                        containerSize = containerSize,
+                        bitmapSize = IntSize(bitmap.width, bitmap.height),
+                        scale = updatedScale,
+                    )
+                    val centroidDelta = centroid - Offset(
+                        x = containerSize.width / 2f,
+                        y = containerSize.height / 2f,
+                    )
+                    val scaledOffset = (offset + centroidDelta / scale) -
+                        (centroidDelta / updatedScale + pan / scale)
+
+                    scale = updatedScale
+                    offset = clampPreviewGestureOffset(
+                        offset = scaledOffset,
+                        maxOffset = nextMaxOffset,
+                    )
+                    if (scale <= 1.01f) {
+                        scale = 1f
+                        offset = Offset.Zero
+                    }
+                }
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Image(
+            bitmap = bitmap,
+            contentDescription = contentDescription,
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    translationX = offset.x * scale
+                    translationY = offset.y * scale
+                    scaleX = scale
+                    scaleY = scale
+                },
+            contentScale = ContentScale.Fit,
+        )
     }
 }
 
@@ -403,6 +471,36 @@ private fun decodeScaledBitmap(
         BitmapFactory.decodeFile(file.absolutePath, options)
     }.getOrNull()
 }
+
+internal fun clampPreviewGestureScale(scale: Float): Float = scale.coerceIn(1f, 4f)
+
+internal fun maxPreviewGestureOffset(
+    containerSize: IntSize,
+    bitmapSize: IntSize,
+    scale: Float,
+): Offset {
+    if (containerSize == IntSize.Zero || bitmapSize == IntSize.Zero || scale <= 1f) {
+        return Offset.Zero
+    }
+    val fitScale = min(
+        containerSize.width.toFloat() / bitmapSize.width.toFloat(),
+        containerSize.height.toFloat() / bitmapSize.height.toFloat(),
+    )
+    val displayedWidth = bitmapSize.width * fitScale * scale
+    val displayedHeight = bitmapSize.height * fitScale * scale
+    return Offset(
+        x = ((displayedWidth - containerSize.width) / 2f / scale).coerceAtLeast(0f),
+        y = ((displayedHeight - containerSize.height) / 2f / scale).coerceAtLeast(0f),
+    )
+}
+
+internal fun clampPreviewGestureOffset(
+    offset: Offset,
+    maxOffset: Offset,
+): Offset = Offset(
+    x = offset.x.coerceIn(-maxOffset.x, maxOffset.x),
+    y = offset.y.coerceIn(-maxOffset.y, maxOffset.y),
+)
 
 private fun decodePdfPagePreview(
     file: File,

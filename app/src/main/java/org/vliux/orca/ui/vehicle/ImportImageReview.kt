@@ -8,9 +8,16 @@ import android.graphics.Matrix
 import android.net.Uri
 import android.os.Build
 import android.provider.OpenableColumns
-import android.util.Size
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,24 +37,31 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import java.io.ByteArrayOutputStream
+import kotlin.math.min
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.vliux.orca.R
@@ -79,11 +93,6 @@ internal fun ImportImageReviewDialog(
     var currentReviewIndex by rememberSaveable(sources) { mutableIntStateOf(0) }
     val currentSource = reviewableSources[currentReviewIndex]
     val currentRotation = rotations[currentSource.selectionIndex]
-    val previewBitmap = rememberImportReviewBitmap(
-        context = context,
-        uri = currentSource.uri,
-        maxDimension = 2200,
-    )
     val isLastImage = currentReviewIndex == reviewableSources.lastIndex
 
     Dialog(
@@ -107,24 +116,17 @@ internal fun ImportImageReviewDialog(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(
-                            text = stringResource(
-                                R.string.import_image_review_title,
-                                currentReviewIndex + 1,
-                                reviewableSources.size,
-                            ),
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        currentSource.displayName?.takeIf { it.isNotBlank() }?.let { fileName ->
-                            Text(
-                                text = fileName,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
+                    Text(
+                        text = stringResource(
+                            if (reviewableSources.size == 1) {
+                                R.string.import_image_review_title_single
+                            } else {
+                                R.string.import_image_review_title_multiple
+                            },
+                        ),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
                     TextButton(onClick = onDismiss) {
                         Text(stringResource(R.string.cancel))
                     }
@@ -168,34 +170,64 @@ internal fun ImportImageReviewDialog(
                             shape = MaterialTheme.shapes.large,
                         )
                         .padding(12.dp),
-                    contentAlignment = Alignment.Center,
                 ) {
-                    if (previewBitmap != null) {
-                        Image(
-                            bitmap = previewBitmap.asImageBitmap(),
-                            contentDescription = stringResource(R.string.import_image_review_preview),
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .graphicsLayer {
-                                    rotationZ = currentRotation * 90f
-                                },
-                            contentScale = ContentScale.Fit,
-                        )
-                    } else {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        if (reviewableSources.size > 1) {
                             Text(
-                                text = stringResource(R.string.preview_unavailable),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                            Text(
-                                text = stringResource(R.string.import_image_review_preview_unavailable_message),
-                                style = MaterialTheme.typography.bodyMedium,
+                                text = stringResource(
+                                    R.string.import_image_review_progress,
+                                    currentReviewIndex + 1,
+                                    reviewableSources.size,
+                                ),
+                                style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
+                        }
+                        Box(
+                            modifier = Modifier.weight(1f),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            AnimatedContent(
+                                targetState = currentReviewIndex,
+                                transitionSpec = {
+                                    if (targetState > initialState) {
+                                        slideInHorizontally(
+                                            animationSpec = tween(durationMillis = 280),
+                                            initialOffsetX = { width -> width / 3 },
+                                        ) + fadeIn(animationSpec = tween(durationMillis = 280)) togetherWith
+                                            slideOutHorizontally(
+                                                animationSpec = tween(durationMillis = 280),
+                                                targetOffsetX = { width -> -width / 3 },
+                                            ) + fadeOut(animationSpec = tween(durationMillis = 220))
+                                    } else {
+                                        slideInHorizontally(
+                                            animationSpec = tween(durationMillis = 280),
+                                            initialOffsetX = { width -> -width / 3 },
+                                        ) + fadeIn(animationSpec = tween(durationMillis = 280)) togetherWith
+                                            slideOutHorizontally(
+                                                animationSpec = tween(durationMillis = 280),
+                                                targetOffsetX = { width -> width / 3 },
+                                            ) + fadeOut(animationSpec = tween(durationMillis = 220))
+                                    }
+                                },
+                                label = "import-image-review-transition",
+                            ) { targetReviewIndex ->
+                                val targetSource = reviewableSources[targetReviewIndex]
+                                val targetRotation = rotations[targetSource.selectionIndex]
+                                val targetBitmap = rememberImportReviewBitmap(
+                                    context = context,
+                                    uri = targetSource.uri,
+                                )
+                                key(targetSource.selectionIndex, targetRotation) {
+                                    ZoomableImportImagePreview(
+                                        bitmap = targetBitmap,
+                                        quarterTurns = targetRotation,
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -249,17 +281,99 @@ internal fun ImportImageReviewDialog(
 }
 
 @Composable
+private fun ZoomableImportImagePreview(
+    bitmap: Bitmap?,
+    quarterTurns: Int,
+    modifier: Modifier = Modifier,
+) {
+    if (bitmap == null) {
+        Column(
+            modifier = modifier,
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.preview_unavailable),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = stringResource(R.string.import_image_review_preview_unavailable_message),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        return
+    }
+
+    var containerSize by remember { mutableStateOf(IntSize.Zero) }
+    var scale by rememberSaveable { mutableStateOf(1f) }
+    var offset by remember { mutableStateOf(Offset.Zero) }
+    val normalizedTurns = normalizedQuarterTurns(quarterTurns)
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .onSizeChanged { containerSize = it }
+            .pointerInput(bitmap, normalizedTurns, containerSize) {
+                detectTransformGestures { centroid, pan, zoom, _ ->
+                    if (containerSize == IntSize.Zero) {
+                        return@detectTransformGestures
+                    }
+                    val updatedScale = clampImportImageScale(scale * zoom)
+                    val rotatedSize = rotatedBitmapSize(bitmap, normalizedTurns)
+                    val nextMaxOffset = maxPreviewOffset(
+                        containerSize = containerSize,
+                        bitmapSize = rotatedSize,
+                        scale = updatedScale,
+                    )
+                    val centroidDelta = centroid - Offset(
+                        x = containerSize.width / 2f,
+                        y = containerSize.height / 2f,
+                    )
+                    val scaledOffset = (offset + centroidDelta / scale) -
+                        (centroidDelta / updatedScale + pan / scale)
+
+                    scale = updatedScale
+                    offset = clampPreviewOffset(
+                        offset = scaledOffset,
+                        maxOffset = nextMaxOffset,
+                    )
+                    if (scale <= 1.01f) {
+                        scale = 1f
+                        offset = Offset.Zero
+                    }
+                }
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Image(
+            bitmap = bitmap.asImageBitmap(),
+            contentDescription = stringResource(R.string.import_image_review_preview),
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    translationX = offset.x * scale
+                    translationY = offset.y * scale
+                    scaleX = scale
+                    scaleY = scale
+                    rotationZ = normalizedTurns * 90f
+                },
+            contentScale = ContentScale.Fit,
+        )
+    }
+}
+
+@Composable
 private fun rememberImportReviewBitmap(
     context: Context,
     uri: Uri,
-    maxDimension: Int,
 ) = produceState<Bitmap?>(
     initialValue = null,
     key1 = uri,
-    key2 = maxDimension,
 ) {
     value = withContext(Dispatchers.IO) {
-        decodeScaledBitmap(context, uri, maxDimension)
+        decodeOriginalBitmap(context, uri)
     }
 }.value
 
@@ -302,10 +416,9 @@ internal fun PendingImportSource.toSourceImportRequest(
         displayName = reviewedImageDisplayName(displayName, targetMimeType),
         mimeType = targetMimeType,
     ) {
-        val bitmap = decodeScaledBitmap(
+        val bitmap = decodeOriginalBitmap(
             context = context,
             uri = uri,
-            maxDimension = 4096,
         ) ?: error("Unable to decode image for review.")
         val rotatedBitmap = rotateBitmap(bitmap, normalizedQuarterTurns)
         bitmapToBytes(rotatedBitmap, targetMimeType)
@@ -358,70 +471,68 @@ private fun bitmapToBytes(
     }
 }
 
-private fun decodeScaledBitmap(
+private fun decodeOriginalBitmap(
     context: Context,
     uri: Uri,
-    maxDimension: Int,
 ): Bitmap? {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-        runCatching {
-            context.contentResolver.loadThumbnail(uri, Size(maxDimension, maxDimension), null)
-        }.getOrNull()?.let { return it }
-    }
-
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
         runCatching {
             val source = ImageDecoder.createSource(context.contentResolver, uri)
             ImageDecoder.decodeBitmap(source) { decoder, info, _ ->
                 decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
-                val width = info.size.width
-                val height = info.size.height
-                if (width > 0 && height > 0) {
-                    val scale = maxOf(width, height).toFloat() / maxDimension.toFloat()
-                    if (scale > 1f) {
-                        decoder.setTargetSize(
-                            (width / scale).toInt().coerceAtLeast(1),
-                            (height / scale).toInt().coerceAtLeast(1),
-                        )
-                    }
-                }
+                decoder.isMutableRequired = false
             }
         }.getOrNull()?.let { return it }
     }
 
-    val bounds = BitmapFactory.Options().apply {
-        inJustDecodeBounds = true
-    }
-    context.contentResolver.openInputStream(uri)?.use { input ->
-        BitmapFactory.decodeStream(input, null, bounds)
-    } ?: return null
-    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) {
-        return null
-    }
-
-    val options = BitmapFactory.Options().apply {
-        inSampleSize = calculateInSampleSize(bounds.outWidth, bounds.outHeight, maxDimension)
-        inPreferredConfig = Bitmap.Config.ARGB_8888
-    }
     return runCatching {
         context.contentResolver.openInputStream(uri)?.use { input ->
-            BitmapFactory.decodeStream(input, null, options)
+            BitmapFactory.decodeStream(
+                input,
+                null,
+                BitmapFactory.Options().apply {
+                    inPreferredConfig = Bitmap.Config.ARGB_8888
+                },
+            )
         }
     }.getOrNull()
 }
 
-private fun calculateInSampleSize(
-    width: Int,
-    height: Int,
-    maxDimension: Int,
-): Int {
-    var sampleSize = 1
-    var currentWidth = width
-    var currentHeight = height
-    while (currentWidth > maxDimension || currentHeight > maxDimension) {
-        currentWidth /= 2
-        currentHeight /= 2
-        sampleSize *= 2
-    }
-    return sampleSize
+internal fun clampImportImageScale(scale: Float): Float = scale.coerceIn(1f, 4f)
+
+private fun rotatedBitmapSize(
+    bitmap: Bitmap,
+    quarterTurns: Int,
+): IntSize = if (quarterTurns % 2 == 0) {
+    IntSize(bitmap.width, bitmap.height)
+} else {
+    IntSize(bitmap.height, bitmap.width)
 }
+
+internal fun maxPreviewOffset(
+    containerSize: IntSize,
+    bitmapSize: IntSize,
+    scale: Float,
+): Offset {
+    if (containerSize == IntSize.Zero || bitmapSize == IntSize.Zero || scale <= 1f) {
+        return Offset.Zero
+    }
+    val fitScale = min(
+        containerSize.width.toFloat() / bitmapSize.width.toFloat(),
+        containerSize.height.toFloat() / bitmapSize.height.toFloat(),
+    )
+    val displayedWidth = bitmapSize.width * fitScale * scale
+    val displayedHeight = bitmapSize.height * fitScale * scale
+    return Offset(
+        x = ((displayedWidth - containerSize.width) / 2f / scale).coerceAtLeast(0f),
+        y = ((displayedHeight - containerSize.height) / 2f / scale).coerceAtLeast(0f),
+    )
+}
+
+internal fun clampPreviewOffset(
+    offset: Offset,
+    maxOffset: Offset,
+): Offset = Offset(
+    x = offset.x.coerceIn(-maxOffset.x, maxOffset.x),
+    y = offset.y.coerceIn(-maxOffset.y, maxOffset.y),
+)

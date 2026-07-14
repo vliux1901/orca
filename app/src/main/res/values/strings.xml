@@ -60,7 +60,9 @@
     <string name="import_document_guidance_message_prefix">In the next screen, you can select</string>
     <string name="import_document_guidance_message_emphasis">multiple images or PDF files</string>
     <string name="import_document_guidance_message_suffix">. Orca will import and process them for this vehicle.</string>
-    <string name="import_image_review_title">Review image %1$d of %2$d</string>
+    <string name="import_image_review_title_single">Review image</string>
+    <string name="import_image_review_title_multiple">Review images</string>
+    <string name="import_image_review_progress">%1$d of %2$d images</string>
     <string name="import_image_review_message_title">Confirm this image before extraction</string>
     <string name="import_image_review_message_body">Images that are upright and clear greatly improve extraction accuracy. Rotate this image if needed, then confirm it before Orca starts extraction.</string>
     <string name="import_image_review_mixed_sources_note">Any selected PDFs or other files will import after the reviewed images are confirmed.</string>

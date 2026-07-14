@@ -253,7 +253,7 @@ class KeystoreOpenAiApiKeyStore @Inject constructor(
     private fun decodeBase64(value: String): ByteArray = android.util.Base64.decode(value, android.util.Base64.NO_WRAP)
 
     private companion object {
-        const val PREFERENCES_NAME = "orca_user_settings"
+        const val PREFERENCES_NAME = "openai_api_key_preferences"
         const val KEY_OPENAI_API_KEY = "openai_api_key_ciphertext"
         const val KEY_OPENAI_API_KEY_IV = "openai_api_key_iv"
         const val KEY_ALIAS = "orca_openai_api_key"

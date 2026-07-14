@@ -118,6 +118,7 @@ internal fun VehicleDetailScreen(
     var importError by remember(vehicleId) { mutableStateOf<String?>(null) }
     var importMessage by remember(vehicleId) { mutableStateOf<String?>(null) }
     var isImporting by remember(vehicleId) { mutableStateOf(false) }
+    var pendingImportReviewSources by remember(vehicleId) { mutableStateOf<List<PendingImportSource>?>(null) }
     var retryingDocumentId by remember(vehicleId) { mutableStateOf<String?>(null) }
     var actionMenuExpanded by remember(vehicleId) { mutableStateOf(false) }
     var importGuidanceOpen by remember(vehicleId) { mutableStateOf(false) }
@@ -125,16 +126,12 @@ internal fun VehicleDetailScreen(
     var isDeletingVehicle by remember(vehicleId) { mutableStateOf(false) }
     val loadedVehicle = screenState.vehicle
 
-    val launcher = rememberLauncherForActivityResult(OpenMultipleDocuments()) { uris ->
-        if (uris.isEmpty()) {
-            return@rememberLauncherForActivityResult
-        }
+    fun importRequests(requests: List<org.vliux.orca.importing.SourceImportRequest>) {
         scope.launch {
             isImporting = true
             importError = null
             importMessage = null
             runCatching {
-                val requests = uris.map { uri -> uri.toSourceImportRequest(context) }
                 val documentId = documentRepository.importDocument(vehicleId, requests)
                 val queueResult = documentExtractionScheduler.queueDocumentExtraction(documentId, activity)
                 ImportResult(documentId = documentId, queueResult = queueResult)
@@ -152,6 +149,20 @@ internal fun VehicleDetailScreen(
             }
             isImporting = false
         }
+    }
+
+    val launcher = rememberLauncherForActivityResult(OpenMultipleDocuments()) { uris ->
+        if (uris.isEmpty()) {
+            return@rememberLauncherForActivityResult
+        }
+        val selectedSources = uris.mapIndexed { index, uri ->
+            uri.toPendingImportSource(context, index)
+        }
+        if (selectedSources.any { it.requiresImageReview }) {
+            pendingImportReviewSources = selectedSources
+            return@rememberLauncherForActivityResult
+        }
+        importRequests(selectedSources.map { source -> source.toSourceImportRequest(context) })
     }
 
     fun beginImportFlow() {
@@ -309,6 +320,20 @@ internal fun VehicleDetailScreen(
                 }
                 importGuidanceOpen = false
                 launcher.launch(SUPPORTED_IMPORT_MIME_TYPES)
+            },
+        )
+    }
+
+    pendingImportReviewSources?.let { selectedSources ->
+        ImportImageReviewDialog(
+            sources = selectedSources,
+            onDismiss = {
+                pendingImportReviewSources = null
+                isImporting = false
+            },
+            onComplete = { requests ->
+                pendingImportReviewSources = null
+                importRequests(requests)
             },
         )
     }

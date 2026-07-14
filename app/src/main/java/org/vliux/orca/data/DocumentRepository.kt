@@ -48,18 +48,22 @@ class DocumentRepository(
     suspend fun createDocument(
         vehicleId: String,
         imports: List<SourceImportRequest>,
-    ): String = createDocument(
-        vehicleId = vehicleId,
-        imports = SourceImportOrdering.order(imports).map { request ->
-            PreparedSourceImport(
-                displayName = request.displayName,
-                mimeType = request.mimeType,
-                storeSource = { source ->
-                    fileStorage.copySource(source, request)
-                },
-            )
-        },
-    )
+    ): String = try {
+        createDocument(
+            vehicleId = vehicleId,
+            imports = SourceImportOrdering.order(imports).map { request ->
+                PreparedSourceImport(
+                    displayName = request.displayName,
+                    mimeType = request.mimeType,
+                    storeSource = { source ->
+                        fileStorage.copySource(source, request)
+                    },
+                )
+            },
+        )
+    } finally {
+        imports.forEach(SourceImportRequest::markConsumed)
+    }
 
     internal suspend fun createDocument(
         vehicleId: String,

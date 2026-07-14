@@ -1043,20 +1043,10 @@ internal fun documentDeleteConfirmationMessage(
 }
 
 internal fun Uri.toSourceImportRequest(context: Context): SourceImportRequest {
-    val displayName = context.contentResolver.query(this, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
-        ?.use { cursor ->
-            if (cursor.moveToFirst()) {
-                cursor.getString(0)
-            } else {
-                null
-            }
-        }
-    val mimeType = context.contentResolver.getType(this)
-    return SourceImportRequest(
-        uri = this,
-        displayName = displayName,
-        mimeType = mimeType,
-    )
+    return toPendingImportSource(
+        context = context,
+        selectionIndex = 0,
+    ).toSourceImportRequest(context)
 }
 
 private fun placeholderTextFor(extractionStatus: String): String = when (extractionStatus) {

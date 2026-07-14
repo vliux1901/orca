@@ -337,19 +337,17 @@ internal fun OnboardingImportScreen(
     var vehiclePickerOpen by remember { mutableStateOf(false) }
     var importGuidanceOpen by remember { mutableStateOf(false) }
     var selectedImportVehicleId by remember { mutableStateOf<String?>(null) }
+    var pendingImportReviewSources by remember { mutableStateOf<List<PendingImportSource>?>(null) }
     val scope = rememberCoroutineScope()
 
-    val launcher = rememberLauncherForActivityResult(OpenMultipleDocuments()) { uris ->
-        val vehicleId = selectedImportVehicleId
-        selectedImportVehicleId = null
-        if (uris.isEmpty() || vehicleId == null) {
-            isImporting = false
-            return@rememberLauncherForActivityResult
-        }
+    fun importForVehicle(
+        vehicleId: String,
+        requests: List<org.vliux.orca.importing.SourceImportRequest>,
+    ) {
         scope.launch {
+            isImporting = true
             importError = null
             runCatching {
-                val requests = uris.map { uri -> uri.toSourceImportRequest(context) }
                 val documentId = documentRepository.importDocument(vehicleId, requests)
                 val queueResult = documentExtractionScheduler.queueDocumentExtraction(documentId, activity)
                 VehicleListImportResult(vehicleId = vehicleId, documentId = documentId, queueResult = queueResult)
@@ -367,6 +365,27 @@ internal fun OnboardingImportScreen(
             }
             isImporting = false
         }
+    }
+
+    val launcher = rememberLauncherForActivityResult(OpenMultipleDocuments()) { uris ->
+        val vehicleId = selectedImportVehicleId
+        if (uris.isEmpty() || vehicleId == null) {
+            selectedImportVehicleId = null
+            isImporting = false
+            return@rememberLauncherForActivityResult
+        }
+        val selectedSources = uris.mapIndexed { index, uri ->
+            uri.toPendingImportSource(context, index)
+        }
+        if (selectedSources.any { it.requiresImageReview }) {
+            pendingImportReviewSources = selectedSources
+            return@rememberLauncherForActivityResult
+        }
+        selectedImportVehicleId = null
+        importForVehicle(
+            vehicleId = vehicleId,
+            requests = selectedSources.map { source -> source.toSourceImportRequest(context) },
+        )
     }
 
     fun beginImport() {
@@ -439,6 +458,25 @@ internal fun OnboardingImportScreen(
                 importGuidanceOpen = false
                 isImporting = true
                 launcher.launch(SUPPORTED_IMPORT_MIME_TYPES)
+            },
+        )
+    }
+
+    pendingImportReviewSources?.let { selectedSources ->
+        ImportImageReviewDialog(
+            sources = selectedSources,
+            onDismiss = {
+                pendingImportReviewSources = null
+                selectedImportVehicleId = null
+                isImporting = false
+            },
+            onComplete = { requests ->
+                val vehicleId = selectedImportVehicleId
+                pendingImportReviewSources = null
+                selectedImportVehicleId = null
+                if (vehicleId != null) {
+                    importForVehicle(vehicleId, requests)
+                }
             },
         )
     }

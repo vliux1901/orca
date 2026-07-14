@@ -2,16 +2,47 @@ package org.vliux.orca.importing
 
 import android.content.Context
 import android.net.Uri
+import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.InputStream
 import java.security.MessageDigest
 import org.vliux.orca.data.model.DocumentSourceEntity
 
-data class SourceImportRequest(
-    val uri: Uri,
+class SourceImportRequest(
     val displayName: String?,
     val mimeType: String?,
-)
+    private val openStream: () -> InputStream?,
+    private val onConsumed: () -> Unit = {},
+) {
+    fun openInputStream(): InputStream? = openStream()
+
+    fun markConsumed() {
+        onConsumed()
+    }
+
+    companion object {
+        fun fromUri(
+            uri: Uri,
+            displayName: String?,
+            mimeType: String?,
+            openInputStream: (Uri) -> InputStream?,
+        ): SourceImportRequest = SourceImportRequest(
+            displayName = displayName,
+            mimeType = mimeType,
+            openStream = { openInputStream(uri) },
+        )
+
+        fun fromByteArray(
+            displayName: String?,
+            mimeType: String?,
+            bytesProvider: () -> ByteArray,
+        ): SourceImportRequest = SourceImportRequest(
+            displayName = displayName,
+            mimeType = mimeType,
+            openStream = { ByteArrayInputStream(bytesProvider()) },
+        )
+    }
+}
 
 data class StoredSource(
     val source: DocumentSourceEntity,
@@ -34,7 +65,7 @@ class AppFileStorage(
         source = source,
         mimeType = import.mimeType,
     ) {
-        openInputStream(import.uri)
+        import.openInputStream()
     }
 
     internal fun storeSource(

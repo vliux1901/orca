@@ -1,0 +1,1372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Camera Document Import Review</title>
+  <style>
+    :root {
+      --bg: #f6f1e8;
+      --panel: #fffaf2;
+      --panel-strong: #f3eadc;
+      --ink: #1f241f;
+      --muted: #5d655d;
+      --line: #d8ccb8;
+      --accent: #0d5a66;
+      --accent-soft: #d8edf0;
+      --accent-warm: #cb6d2b;
+      --success: #2f6e46;
+      --warning: #8e5628;
+      --danger: #9a3f3f;
+      --shadow: 0 20px 45px rgba(63, 52, 27, 0.14);
+      --phone-shadow: 0 28px 60px rgba(17, 39, 43, 0.18);
+      --highlight: #fff1a6;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(13, 90, 102, 0.11), transparent 28%),
+        radial-gradient(circle at right 16%, rgba(203, 109, 43, 0.10), transparent 24%),
+        linear-gradient(180deg, #fbf6ed 0%, var(--bg) 100%);
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin: 0;
+      font-family: "IBM Plex Serif", Georgia, serif;
+    }
+
+    p,
+    li {
+      line-height: 1.65;
+    }
+
+    code {
+      font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
+    }
+
+    button,
+    textarea {
+      font: inherit;
+    }
+
+    .shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      gap: 24px;
+      padding: 24px;
+    }
+
+    .workspace,
+    .comment-panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+    }
+
+    .workspace {
+      padding: 18px;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .toolbar-left,
+    .toolbar-right {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .status {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    button {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      border-radius: 12px;
+      padding: 10px 14px;
+      cursor: pointer;
+      transition: 120ms ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      border-color: var(--accent);
+    }
+
+    button.primary {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    button.ghost {
+      background: transparent;
+    }
+
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .tab-button[aria-selected="true"] {
+      background: var(--accent-soft);
+      color: var(--accent);
+      border-color: rgba(13, 90, 102, 0.22);
+      font-weight: 700;
+    }
+
+    .tab-panel {
+      display: none;
+      padding: 12px;
+      border-radius: 18px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(243, 234, 220, 0.7));
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
+
+    .content-card {
+      padding: 20px;
+      background: rgba(255, 255, 255, 0.84);
+      border: 1px solid rgba(216, 204, 184, 0.94);
+      border-radius: 20px;
+    }
+
+    .content-card + .content-card {
+      margin-top: 14px;
+    }
+
+    .content-card h2 {
+      font-size: 1.55rem;
+      margin-bottom: 10px;
+    }
+
+    .content-card h3 {
+      font-size: 1.05rem;
+      margin: 18px 0 8px;
+    }
+
+    .block {
+      border-radius: 8px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(300px, 0.8fr);
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .hero h1 {
+      font-size: clamp(2rem, 4vw, 3.2rem);
+      margin-top: 12px;
+      line-height: 1.05;
+    }
+
+    .summary-list,
+    .mini-map,
+    .phase-grid,
+    .risk-grid,
+    .screen-notes,
+    .tech-grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .summary-list {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      margin-top: 16px;
+    }
+
+    .summary-pill,
+    .mini-step,
+    .phase-card,
+    .risk-card,
+    .tech-card {
+      padding: 14px;
+      border-radius: 18px;
+      border: 1px solid rgba(216, 204, 184, 0.9);
+      background: rgba(255, 255, 255, 0.9);
+    }
+
+    .summary-pill strong,
+    .mini-step strong,
+    .phase-card strong,
+    .risk-card strong,
+    .tech-card strong {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--accent);
+    }
+
+    .callout {
+      padding: 16px;
+      border-radius: 18px;
+      border: 1px solid rgba(154, 63, 63, 0.24);
+      background: rgba(154, 63, 63, 0.08);
+    }
+
+    .callout strong {
+      color: var(--danger);
+    }
+
+    .flow-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .flow-chip {
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(13, 90, 102, 0.08);
+      border: 1px solid rgba(13, 90, 102, 0.18);
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .phone-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(280px, 1fr));
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .screen-card {
+      padding: 16px;
+      border-radius: 24px;
+      background: rgba(255, 255, 255, 0.7);
+      border: 1px solid rgba(216, 204, 184, 0.9);
+    }
+
+    .screen-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .step-badge,
+    .step-kind {
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .step-badge {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    .step-kind {
+      background: rgba(203, 109, 43, 0.12);
+      color: var(--warning);
+    }
+
+    .phone {
+      margin: 0 auto;
+      width: min(100%, 340px);
+      padding: 12px;
+      border-radius: 32px;
+      background: #121818;
+      box-shadow: var(--phone-shadow);
+    }
+
+    .phone-screen {
+      min-height: 640px;
+      border-radius: 24px;
+      padding: 14px;
+      background:
+        radial-gradient(circle at top right, rgba(13, 90, 102, 0.18), transparent 24%),
+        linear-gradient(180deg, #f8f4ed 0%, #f0e7d8 100%);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .status-bar,
+    .app-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .screen-body {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .headline {
+      font-size: 1.42rem;
+      line-height: 1.1;
+    }
+
+    .subcopy {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.96rem;
+    }
+
+    .surface-card,
+    .sheet-card,
+    .list-row,
+    .scan-preview,
+    .preview-tile {
+      border-radius: 18px;
+      border: 1px solid rgba(216, 204, 184, 0.95);
+      background: rgba(255, 255, 255, 0.86);
+    }
+
+    .surface-card,
+    .sheet-card {
+      padding: 14px;
+    }
+
+    .choice-stack,
+    .button-stack,
+    .page-stack {
+      display: grid;
+      gap: 10px;
+    }
+
+    .choice-card {
+      padding: 14px;
+      border-radius: 18px;
+      border: 1px solid rgba(216, 204, 184, 0.95);
+      background: #fff;
+    }
+
+    .choice-card.primary {
+      border-color: rgba(13, 90, 102, 0.24);
+      background: linear-gradient(180deg, rgba(216, 237, 240, 0.95), rgba(255, 255, 255, 0.95));
+    }
+
+    .choice-card strong,
+    .sheet-card strong,
+    .list-row strong,
+    .preview-tile strong {
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .microcopy,
+    .meta-row,
+    .small-note,
+    .tagline {
+      color: var(--muted);
+      font-size: 0.83rem;
+    }
+
+    .check-row,
+    .meta-row,
+    .action-row,
+    .doc-chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .checkbox {
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+      border: 1px solid rgba(13, 90, 102, 0.3);
+      background: var(--accent-soft);
+    }
+
+    .button-stack {
+      margin-top: auto;
+    }
+
+    .cta {
+      padding: 12px 14px;
+      border-radius: 14px;
+      text-align: center;
+      font-weight: 700;
+    }
+
+    .cta.primary {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .cta.secondary {
+      background: rgba(13, 90, 102, 0.08);
+      color: var(--accent);
+    }
+
+    .cta.ghost {
+      background: transparent;
+      border: 1px solid rgba(216, 204, 184, 0.95);
+      color: var(--ink);
+    }
+
+    .sheet-anchor {
+      margin-top: auto;
+      padding: 14px;
+      border-radius: 24px;
+      background: rgba(255, 255, 255, 0.96);
+      border: 1px solid rgba(216, 204, 184, 0.95);
+      box-shadow: 0 -10px 32px rgba(44, 49, 42, 0.09);
+    }
+
+    .scanner-stage {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 12px;
+      border-radius: 18px;
+      background: linear-gradient(180deg, #20353a 0%, #17272b 100%);
+      color: #eef8f8;
+    }
+
+    .scanner-stage .meta-row {
+      color: rgba(238, 248, 248, 0.76);
+    }
+
+    .scan-preview {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      background:
+        linear-gradient(160deg, rgba(244, 240, 233, 0.98), rgba(229, 221, 206, 0.98));
+    }
+
+    .paper {
+      position: absolute;
+      inset: 18px 24px;
+      border-radius: 12px;
+      background: #fffdf9;
+      box-shadow: 0 14px 32px rgba(18, 24, 24, 0.18);
+      padding: 14px;
+      transform: rotate(-3deg);
+    }
+
+    .paper::after {
+      content: "";
+      position: absolute;
+      inset: 10px;
+      border: 2px solid rgba(13, 90, 102, 0.24);
+      border-radius: 8px;
+    }
+
+    .paper-line {
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(31, 36, 31, 0.1);
+      margin-bottom: 10px;
+    }
+
+    .paper-line.short {
+      width: 56%;
+    }
+
+    .paper-line.medium {
+      width: 74%;
+    }
+
+    .scan-corners span {
+      position: absolute;
+      width: 24px;
+      height: 24px;
+      border-color: #9df4c1;
+      border-style: solid;
+    }
+
+    .scan-corners .tl {
+      top: 12px;
+      left: 16px;
+      border-width: 3px 0 0 3px;
+    }
+
+    .scan-corners .tr {
+      top: 12px;
+      right: 16px;
+      border-width: 3px 3px 0 0;
+    }
+
+    .scan-corners .bl {
+      bottom: 12px;
+      left: 16px;
+      border-width: 0 0 3px 3px;
+    }
+
+    .scan-corners .br {
+      right: 16px;
+      bottom: 12px;
+      border-width: 0 3px 3px 0;
+    }
+
+    .capture-button {
+      width: 72px;
+      height: 72px;
+      margin: 0 auto;
+      border-radius: 999px;
+      border: 7px solid rgba(255, 255, 255, 0.85);
+      background: rgba(13, 90, 102, 0.7);
+    }
+
+    .page-stack {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .preview-tile {
+      padding: 10px;
+    }
+
+    .preview-thumb {
+      height: 92px;
+      border-radius: 10px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(240, 233, 220, 0.98));
+      border: 1px solid rgba(216, 204, 184, 0.95);
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+
+    .preview-thumb::before,
+    .preview-thumb::after {
+      content: "";
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      height: 7px;
+      border-radius: 999px;
+      background: rgba(31, 36, 31, 0.09);
+    }
+
+    .preview-thumb::before {
+      top: 18px;
+      box-shadow: 0 15px 0 rgba(31, 36, 31, 0.09), 0 30px 0 rgba(31, 36, 31, 0.09);
+    }
+
+    .preview-thumb::after {
+      top: 58px;
+      width: 56%;
+    }
+
+    .doc-chip {
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(13, 90, 102, 0.08);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .divider {
+      height: 1px;
+      background: rgba(216, 204, 184, 0.95);
+      margin: 4px 0;
+    }
+
+    .screen-notes {
+      margin-top: 18px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .tech-grid,
+    .phase-grid,
+    .risk-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    ul {
+      margin: 10px 0;
+      padding-left: 20px;
+    }
+
+    mark.comment-highlight {
+      background: var(--highlight);
+      color: inherit;
+      padding: 0 2px;
+      border-radius: 4px;
+    }
+
+    .comment-panel {
+      position: sticky;
+      top: 24px;
+      align-self: start;
+      padding: 20px;
+    }
+
+    .comment-panel h2 {
+      margin-bottom: 8px;
+    }
+
+    .comment-panel p,
+    .comment-panel label {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .selection-box,
+    .comment-list,
+    .export-box {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+    }
+
+    .selection-preview,
+    .comment-quote,
+    .empty-state,
+    .export-help {
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: var(--panel-strong);
+      border: 1px solid rgba(216, 204, 184, 0.95);
+    }
+
+    .selection-preview,
+    .comment-quote {
+      color: var(--ink);
+      font-size: 14px;
+      white-space: pre-wrap;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 110px;
+      margin-top: 10px;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      resize: vertical;
+      background: #fff;
+    }
+
+    .selection-actions,
+    .export-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .comment-item {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #fff;
+    }
+
+    .comment-item + .comment-item {
+      margin-top: 12px;
+    }
+
+    .comment-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: baseline;
+      font-size: 13px;
+      margin-bottom: 10px;
+    }
+
+    .comment-meta strong {
+      color: var(--accent);
+    }
+
+    .comment-body {
+      margin-top: 10px;
+      white-space: pre-wrap;
+    }
+
+    .comment-jump {
+      color: var(--warning);
+      font-size: 13px;
+      margin-top: 8px;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    @media (max-width: 1180px) {
+      .shell {
+        grid-template-columns: 1fr;
+      }
+
+      .comment-panel {
+        position: static;
+      }
+    }
+
+    @media (max-width: 920px) {
+      .hero,
+      .summary-list,
+      .screen-notes,
+      .tech-grid,
+      .phase-grid,
+      .risk-grid,
+      .phone-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <main class="main-column">
+      <section class="workspace">
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <strong>Camera Document Import Review</strong>
+            <span class="status" id="commentStatus">0 comments saved locally</span>
+          </div>
+          <div class="toolbar-right">
+            <button type="button" class="ghost" id="clearCommentsButton">Clear comments</button>
+          </div>
+        </div>
+
+        <div class="tabs" role="tablist" aria-label="Camera document import review sections">
+          <button type="button" class="tab-button" role="tab" aria-selected="true" aria-controls="tab-overview" id="tab-button-overview" data-tab="overview">Overview</button>
+          <button type="button" class="tab-button" role="tab" aria-selected="false" aria-controls="tab-screens" id="tab-button-screens" data-tab="screens">Screens</button>
+          <button type="button" class="tab-button" role="tab" aria-selected="false" aria-controls="tab-technical" id="tab-button-technical" data-tab="technical">Technical</button>
+          <button type="button" class="tab-button" role="tab" aria-selected="false" aria-controls="tab-rollout" id="tab-button-rollout" data-tab="rollout">Rollout</button>
+        </div>
+
+        <section class="tab-panel active" id="tab-overview" role="tabpanel" aria-labelledby="tab-button-overview" data-tab-panel="overview">
+          <div class="content-card">
+            <div class="hero">
+              <div>
+                <span class="eyebrow">Import flow proposal</span>
+                <h1 class="block" data-block-id="hero-title">Let users scan paper maintenance documents without creating a second import system.</h1>
+                <p class="block" data-block-id="hero-copy">The proposal keeps Orca's current document-import model intact: the user still ends with one ordered document import per vehicle, stored locally and then queued for extraction. The change is the source of those files. In addition to picker-based imports, Orca should offer a scan path optimized for receipts, invoices, and printed service paperwork, with JPEG pages as the first scanner output format.</p>
+                <div class="summary-list">
+                  <div class="summary-pill block" data-block-id="summary-goal">
+                    <strong>Primary goal</strong>
+                    Add a paper-document path that feels native and low-friction for receipts and service paperwork.
+                  </div>
+                  <div class="summary-pill block" data-block-id="summary-shape">
+                    <strong>Flow shape</strong>
+                    Keep the existing vehicle-targeting and repository flow, then branch only at source acquisition.
+                  </div>
+                  <div class="summary-pill block" data-block-id="summary-reuse">
+                    <strong>Reuse target</strong>
+                    Reuse <code>PendingImportSource</code>, <code>SourceImportRequest</code>, and the existing repository/extraction pipeline.
+                  </div>
+                  <div class="summary-pill block" data-block-id="summary-product">
+                    <strong>Product tradeoff</strong>
+                    Prefer one guided scanner path over exposing raw camera capture first, because paper documents usually need edge detection, multi-page flow, and scan-specific preview.
+                  </div>
+                </div>
+                <div class="flow-strip block" data-block-id="flow-strip">
+                  <div class="flow-chip">Import CTA</div>
+                  <div class="flow-chip">Choose vehicle if needed</div>
+                  <div class="flow-chip">Choose source method</div>
+                  <div class="flow-chip">Scan paper doc</div>
+                  <div class="flow-chip">Review and import</div>
+                  <div class="flow-chip">Open document detail</div>
+                </div>
+              </div>
+
+              <aside class="summary-pill">
+                <strong class="block" data-block-id="overview-fit-title">Why this fits the current app</strong>
+                <div class="mini-map">
+                  <div class="mini-step block" data-block-id="overview-fit-1">
+                    <strong>Same storage contract</strong>
+                    The repository already imports ordered sources and stores originals in app-private files.
+                  </div>
+                  <div class="mini-step block" data-block-id="overview-fit-2">
+                    <strong>Same review philosophy</strong>
+                    Orca already pauses image imports for review before extraction.
+                  </div>
+                  <div class="mini-step block" data-block-id="overview-fit-3">
+                    <strong>Same destination</strong>
+                    Success still lands in document detail with the same extraction queueing behavior.
+                  </div>
+                  <div class="mini-step block" data-block-id="overview-fit-4">
+                    <strong>Scoped product expansion</strong>
+                    This adds a new input method, not a new document domain or processing backend.
+                  </div>
+                </div>
+              </aside>
+            </div>
+          </div>
+
+          <div class="content-card">
+            <h2 class="block" data-block-id="doc-gap-title">Current documentation gap</h2>
+            <div class="callout block" data-block-id="doc-gap-copy">
+              <strong>Conflict to resolve before implementation:</strong>
+              the current PRD still lists <code>Camera capture</code> as out of scope for V1 and also says the current product decision is <code>file upload only</code>. This proposal intentionally changes that product boundary. It should not be implemented silently without updating the PRD and technical design after review.
+            </div>
+            <h3 class="block" data-block-id="proposal-principles-title">Proposal principles</h3>
+            <ul>
+              <li class="block" data-block-id="principle-1">Scanning a paper receipt should not require the user to first save photos into their gallery.</li>
+              <li class="block" data-block-id="principle-2">The import entry points should stay visible where they already exist: vehicle detail, vehicle list, and onboarding.</li>
+              <li class="block" data-block-id="principle-3">The app should keep one shared import pipeline after acquisition so testing, storage, extraction, and error messaging stay consistent.</li>
+              <li class="block" data-block-id="principle-4">When a platform or device cannot support the preferred scanner flow, Orca should fall back to a simpler camera-capture path rather than dead-ending the user.</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="tab-panel" id="tab-screens" role="tabpanel" aria-labelledby="tab-button-screens" data-tab-panel="screens">
+          <div class="content-card">
+            <h2 class="block" data-block-id="screens-title">Mocked Screen Flow</h2>
+            <p class="block" data-block-id="screens-intro">These mockups show the paper-document path from an existing import CTA. The list-screen variant still asks the user to choose a vehicle first, then enters the same method chooser shown here. Step 3 is the last screen before Orca submits the document for extraction.</p>
+
+            <div class="phone-grid">
+              <article class="screen-card">
+                <div class="screen-head">
+                  <div class="step-badge">Step 1</div>
+                  <div class="step-kind">Shared entry</div>
+                </div>
+                <div class="phone">
+                  <div class="phone-screen">
+                    <div class="status-bar"><span>9:41</span><span>5G 100%</span></div>
+                    <div class="app-bar"><span>Vehicle details</span><span>⋮</span></div>
+                    <div class="screen-body">
+                      <div>
+                        <h3 class="headline block" data-block-id="screen-1-headline">Add a maintenance document</h3>
+                        <p class="subcopy block" data-block-id="screen-1-copy">Choose whether the source already exists on your phone or is still on paper. Originals stay local until you run analysis.</p>
+                      </div>
+                      <div class="sheet-anchor block" data-block-id="screen-1-sheet">
+                        <div class="choice-stack">
+                          <div class="choice-card block" data-block-id="screen-1-files">
+                            <strong>Choose existing files</strong>
+                            <div class="microcopy">Use this when the document already exists on the device. Users can select multiple images or PDFs at the same time.</div>
+                          </div>
+                          <div class="choice-card primary block" data-block-id="screen-1-scan">
+                            <strong>Scan paper document</strong>
+                            <div class="microcopy">Use the camera for a receipt, invoice, or printed service record.</div>
+                          </div>
+                        </div>
+                        <div class="check-row" style="margin-top: 12px;">
+                          <div class="checkbox" aria-hidden="true"></div>
+                          <div class="microcopy">Don't show the long import tips again</div>
+                        </div>
+                        <div class="button-stack" style="margin-top: 12px;">
+                          <div class="cta primary block" data-block-id="screen-1-primary">Scan paper document</div>
+                          <div class="cta ghost block" data-block-id="screen-1-cancel">Cancel</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </article>
+
+              <article class="screen-card">
+                <div class="screen-head">
+                  <div class="step-badge">Step 2</div>
+                  <div class="step-kind">Scanner start</div>
+                </div>
+                <div class="phone">
+                  <div class="phone-screen">
+                    <div class="status-bar"><span>9:41</span><span>5G 100%</span></div>
+                    <div class="app-bar"><span>Scan document</span><span>⋮</span></div>
+                    <div class="screen-body">
+                      <div>
+                        <h3 class="headline block" data-block-id="screen-2-headline">Frame the paper document</h3>
+                        <p class="subcopy block" data-block-id="screen-2-copy">Keep the guidance short. Let the camera view dominate the screen so the user can focus on framing the paper.</p>
+                      </div>
+                      <div class="scanner-stage block" data-block-id="screen-2-stage" style="flex: 1;">
+                        <div class="scan-preview">
+                          <div class="paper">
+                            <div class="paper-line medium"></div>
+                            <div class="paper-line"></div>
+                            <div class="paper-line short"></div>
+                            <div class="paper-line"></div>
+                            <div class="paper-line medium"></div>
+                            <div class="paper-line short"></div>
+                          </div>
+                          <div class="scan-corners" aria-hidden="true">
+                            <span class="tl"></span>
+                            <span class="tr"></span>
+                            <span class="bl"></span>
+                            <span class="br"></span>
+                          </div>
+                        </div>
+                        <div class="meta-row">Flatten the paper and avoid hard shadows.</div>
+                        <div class="action-row" style="justify-content: space-between;">
+                          <div class="doc-chip">Auto edges</div>
+                          <div class="capture-button" aria-hidden="true"></div>
+                          <div class="doc-chip">Add page</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </article>
+
+              <article class="screen-card">
+                <div class="screen-head">
+                  <div class="step-badge">Step 3</div>
+                  <div class="step-kind">Scanner review</div>
+                </div>
+                <div class="phone">
+                  <div class="phone-screen">
+                    <div class="status-bar"><span>9:42</span><span>5G 100%</span></div>
+                    <div class="app-bar"><span>Review scan</span><span>Edit</span></div>
+                    <div class="screen-body">
+                      <div>
+                        <h3 class="headline block" data-block-id="screen-3-headline">Confirm the scanned pages</h3>
+                        <p class="subcopy block" data-block-id="screen-3-copy">Use this as the final pre-submit screen. Tapping a page opens a single-page preview so the user can inspect it larger or jump into retake/edit for that page.</p>
+                      </div>
+                      <div class="sheet-card block" data-block-id="screen-3-sheet">
+                        <strong>3 pages ready</strong>
+                        <div class="doc-chip-row" style="margin-top: 8px;">
+                          <div class="doc-chip">Receipt</div>
+                          <div class="doc-chip">JPEG pages</div>
+                          <div class="doc-chip">Vehicle already selected</div>
+                        </div>
+                        <div class="page-stack" style="margin-top: 14px;">
+                          <div class="preview-tile">
+                            <div class="preview-thumb"></div>
+                            <strong>Page 1</strong>
+                            <div class="microcopy">Tap to preview</div>
+                          </div>
+                          <div class="preview-tile">
+                            <div class="preview-thumb"></div>
+                            <strong>Page 2</strong>
+                            <div class="microcopy">Tap to preview</div>
+                          </div>
+                          <div class="preview-tile">
+                            <div class="preview-thumb"></div>
+                            <strong>Page 3</strong>
+                            <div class="microcopy">Tap to preview</div>
+                          </div>
+                        </div>
+                        <div class="meta-row" style="margin-top: 12px;">Tap a page to inspect it larger. Use Edit to reorder, delete, or retake pages.</div>
+                      </div>
+                      <div class="button-stack">
+                        <div class="cta primary block" data-block-id="screen-3-primary">Save and analyze</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            </div>
+
+            <div class="screen-notes">
+              <div class="tech-card block" data-block-id="screen-note-1">
+                <strong>Vehicle-list case</strong>
+                The home-screen import path should still ask the user which vehicle the document belongs to before showing the source-method chooser.
+              </div>
+              <div class="tech-card block" data-block-id="screen-note-2">
+                <strong>Onboarding case</strong>
+                The first-import step in onboarding can expose the same source-method chooser, but the paper-scan option should stay skippable like the rest of onboarding.
+              </div>
+              <div class="tech-card block" data-block-id="screen-note-3">
+                <strong>Page tap behavior</strong>
+                In step 3, tapping a scanned page should open a larger single-page preview. That preview can expose page-specific actions such as retake, delete, or rotate if the scanner SDK allows them.
+              </div>
+              <div class="tech-card block" data-block-id="screen-note-4">
+                <strong>Submission point</strong>
+                Treat step 3 as the final approval surface before Orca stores the JPEG pages and submits the document for extraction.
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="tab-panel" id="tab-technical" role="tabpanel" aria-labelledby="tab-button-technical" data-tab-panel="technical">
+          <div class="content-card">
+            <h2 class="block" data-block-id="tech-title">Technical Design</h2>
+            <p class="block" data-block-id="tech-intro">The cleanest implementation is to treat scanning as another source-acquisition strategy that produces ordered JPEG page files, then hand those files to the current import/repository pipeline. The UI work is larger than the storage work.</p>
+
+            <div class="tech-grid">
+              <div class="tech-card block" data-block-id="tech-architecture">
+                <strong>Architecture direction</strong>
+                Extract a shared import controller from the three current entry points so vehicle detail, vehicle list, and onboarding stop each owning their own picker and review state. Camera support will otherwise triple the launcher and error-handling work.
+              </div>
+              <div class="tech-card block" data-block-id="tech-primary-sdk">
+                <strong>Primary scanner recommendation</strong>
+                Use ML Kit's Android document scanner as the first-choice paper flow. It already provides a dedicated viewfinder, preview UI, multi-page scanning, and can return JPEG page URIs through Activity Result APIs. Orca should treat those JPEG page files as the canonical first implementation.
+              </div>
+              <div class="tech-card block" data-block-id="tech-fallback">
+                <strong>Fallback strategy</strong>
+                If scanner startup fails or the device is unsupported, fall back to a simpler <code>TakePicture</code>-style capture contract backed by an app-owned temporary file URI.
+              </div>
+              <div class="tech-card block" data-block-id="tech-storage">
+                <strong>Storage rule</strong>
+                Keep storing final imported sources only through <code>DocumentRepository.importDocument()</code>. Temporary capture files should live outside the document store and be cleaned up after import or cancellation.
+              </div>
+            </div>
+
+            <h3 class="block" data-block-id="tech-flow-title">Proposed app flow</h3>
+            <ol>
+              <li class="block" data-block-id="flow-1">User taps an existing <code>Import Document</code> CTA.</li>
+              <li class="block" data-block-id="flow-2">If needed, Orca asks which vehicle will own the import.</li>
+              <li class="block" data-block-id="flow-3">Orca opens a shared source-method chooser with <code>Choose existing files</code> and <code>Scan paper document</code>.</li>
+              <li class="block" data-block-id="flow-4">File imports continue through <code>OpenMultipleDocuments()</code> and the current <code>ImportImageReviewDialog</code>.</li>
+              <li class="block" data-block-id="flow-5">Paper scans launch the scanner flow and return ordered JPEG page URIs or a fallback camera capture URI.</li>
+              <li class="block" data-block-id="flow-6">Orca converts the returned pages into <code>SourceImportRequest</code> objects, imports them, queues extraction, and navigates to document detail.</li>
+            </ol>
+
+            <h3 class="block" data-block-id="tech-components-title">Concrete code changes</h3>
+            <ul>
+              <li class="block" data-block-id="component-1">Add a shared import-flow owner in [VehicleHubCommonUi.kt](/home/vliux/code/orca/app/src/main/java/org/vliux/orca/ui/vehicle/VehicleHubCommonUi.kt) or a nearby import-specific file so the three screens stop duplicating launcher state.</li>
+              <li class="block" data-block-id="component-2">Introduce a small sealed model such as <code>ImportAcquisitionMethod</code> with at least <code>FILES</code>, <code>SCAN_DOCUMENT</code>, and internal fallback <code>CAMERA_CAPTURE</code>.</li>
+              <li class="block" data-block-id="component-3">Extend <code>PendingImportSource</code> in [ImportImageReview.kt](/home/vliux/code/orca/app/src/main/java/org/vliux/orca/ui/vehicle/ImportImageReview.kt) so it can represent scanner-origin pages and optionally carry a cleanup callback for temporary files.</li>
+              <li class="block" data-block-id="component-4">Add a temp-file helper, preferably injected through Hilt, that creates and later deletes app-private capture files. This fits the repo's existing dependency style better than ad hoc file handling inside a composable.</li>
+              <li class="block" data-block-id="component-5">Use <code>SourceImportRequest.markConsumed()</code> to trigger temp-file cleanup after <code>DocumentRepository</code> finishes or fails, instead of leaving capture files behind.</li>
+              <li class="block" data-block-id="component-6">Add a new shared UI surface that replaces the current file-only guidance dialog with a method chooser containing short import education plus scanner/file actions.</li>
+            </ul>
+
+            <h3 class="block" data-block-id="tech-scanner-title">Scanner implementation detail</h3>
+            <div class="phase-grid">
+              <div class="phase-card block" data-block-id="scanner-phase-1">
+                <strong>Preferred path</strong>
+                Configure ML Kit document scanner for JPEG page output first. That maps naturally onto Orca's existing ordered-source model and image-preview UI, and it is the explicit recommended format over PNG for the first release.
+              </div>
+              <div class="phase-card block" data-block-id="scanner-phase-2">
+                <strong>Why not PDF first</strong>
+                A scanner-generated PDF is possible, but JPEG pages align better with today's document-detail thumbnail grid, page ordering, and image-based inspection flow. PNG is not the preferred default because scanned paper is photographic content and JPEG keeps storage and upload cost lower. PDF output can remain a later option if retention needs change.
+              </div>
+              <div class="phase-card block" data-block-id="scanner-phase-3">
+                <strong>Review behavior</strong>
+                Skip Orca's current rotate-confirm loop for scanner-origin pages because the scanner SDK already provides preview and retake. Re-running both reviews would feel redundant.
+              </div>
+              <div class="phase-card block" data-block-id="scanner-phase-4">
+                <strong>Fallback behavior</strong>
+                If the scanner path cannot start, drop into a manual capture loop backed by <code>ActivityResultContracts.TakePicture</code>, then send the captured image through Orca's existing review dialog before import.
+              </div>
+            </div>
+
+            <h3 class="block" data-block-id="tech-testing-title">Testing plan</h3>
+            <ul>
+              <li class="block" data-block-id="testing-1">Unit-test the new import-method routing so each entry point chooses the same shared flow.</li>
+              <li class="block" data-block-id="testing-2">Unit-test temp-file cleanup for cancel, success, and repository-failure paths.</li>
+              <li class="block" data-block-id="testing-3">UI-test the chooser surface, fallback messaging, and scanner-unavailable path using fake launchers or adapter interfaces rather than binding tests directly to Play-services UI.</li>
+              <li class="block" data-block-id="testing-4">Keep the current image-review tests for picker-based imports and add coverage proving scanner-origin images bypass duplicate review.</li>
+              <li class="block" data-block-id="testing-5">Run the existing import-related build, unit, and lint verification after product code changes, since this feature touches shared vehicle-import UI.</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="tab-panel" id="tab-rollout" role="tabpanel" aria-labelledby="tab-button-rollout" data-tab-panel="rollout">
+          <div class="content-card">
+            <h2 class="block" data-block-id="rollout-title">Recommended Rollout</h2>
+            <div class="phase-grid">
+              <div class="phase-card block" data-block-id="rollout-phase-1">
+                <strong>Phase 1: Refactor the shared import flow</strong>
+                Move picker state, image-review state, and common success/error handling into one reusable import-flow owner without changing behavior yet.
+              </div>
+              <div class="phase-card block" data-block-id="rollout-phase-2">
+                <strong>Phase 2: Add source-method chooser</strong>
+                Replace the current file-only pre-picker dialog with a chooser that supports both file import and paper scan.
+              </div>
+              <div class="phase-card block" data-block-id="rollout-phase-3">
+                <strong>Phase 3: Integrate scanner path</strong>
+                Add the preferred document-scanner SDK path and transform returned pages into <code>SourceImportRequest</code> objects.
+              </div>
+              <div class="phase-card block" data-block-id="rollout-phase-4">
+                <strong>Phase 4: Add fallback capture path</strong>
+                Handle unsupported devices or scanner-start failures with a simpler manual photo capture path.
+              </div>
+            </div>
+
+            <h3 class="block" data-block-id="risks-title">Open risks and decisions</h3>
+            <div class="risk-grid">
+              <div class="risk-card block" data-block-id="risk-1">
+                <strong>Product wording</strong>
+                The current import guidance copy is file-centric. It needs to be rewritten so <code>Don't show again</code> does not hide the only path explanation for paper scans.
+              </div>
+              <div class="risk-card block" data-block-id="risk-2">
+                <strong>Unsupported-device UX</strong>
+                The primary scanner path has device constraints. Orca needs a friendly fallback message instead of a raw exception.
+              </div>
+              <div class="risk-card block" data-block-id="risk-3">
+                <strong>Duplicate-page artifacts</strong>
+                If multiple result formats are enabled for one scan, the app will create duplicate logical sources. The first implementation should pick one canonical output format: JPEG pages.
+              </div>
+              <div class="risk-card block" data-block-id="risk-4">
+                <strong>UI duplication risk</strong>
+                If the code is not refactored first, the same scanner logic will be duplicated across three screens and become expensive to maintain.
+              </div>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <aside class="comment-panel">
+      <h2>Comments</h2>
+      <p>Select text inside a single paragraph, bullet, or mockup note, add a comment, then export your review notes as prompt-ready text.</p>
+
+      <div class="selection-box">
+        <h3 class="sr-only">Current selection</h3>
+        <div class="selection-preview" id="selectionPreview">Select a single block to attach a comment.</div>
+        <textarea id="commentInput" placeholder="Add a flow concern, implementation note, or copy tweak..."></textarea>
+        <div class="selection-actions">
+          <button type="button" class="primary" id="saveCommentButton">Save comment</button>
+          <button type="button" id="clearSelectionButton">Clear selection</button>
+        </div>
+        <p class="small-note">Commenting works on one block at a time so the export stays precise.</p>
+      </div>
+
+      <div class="comment-list">
+        <h3>Saved comments</h3>
+        <div id="commentList">
+          <div class="empty-state">No comments yet.</div>
+        </div>
+      </div>
+
+      <div class="export-box">
+        <h3>Export</h3>
+        <div class="export-help">Export JSON for structured notes or export prompt text for the next design revision.</div>
+        <div class="export-actions">
+          <button type="button" id="exportJsonButton">Export JSON</button>
+          <button type="button" id="exportPromptsButton">Export prompts</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    const storageKey = "orca-camera-document-import-comments";
+    const tabButtons = Array.from(document.querySelectorAll(".tab-button"));
+    const tabPanels = Array.from(document.querySelectorAll(".tab-panel"));
+    const selectionPreview = document.getElementById("selectionPreview");
+    const commentInput = document.getElementById("commentInput");
+    const commentList = document.getElementById("commentList");
+    const commentStatus = document.getElementById("commentStatus");
+    const saveCommentButton = document.getElementById("saveCommentButton");
+    const clearSelectionButton = document.getElementById("clearSelectionButton");
+    const clearCommentsButton = document.getElementById("clearCommentsButton");
+    const exportJsonButton = document.getElementById("exportJsonButton");
+    const exportPromptsButton = document.getElementById("exportPromptsButton");
+
+    let comments = loadComments();
+    let currentSelection = null;
+
+    tabButtons.forEach((button) => {
+      button.addEventListener("click", () => activateTab(button.dataset.tab));
+    });
+
+    document.addEventListener("selectionchange", () => {
+      const selection = window.getSelection();
+      if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
+        return;
+      }
+
+      const range = selection.getRangeAt(0);
+      const selectedText = selection.toString().trim();
+      if (!selectedText) {
+        return;
+      }
+
+      const startBlock = range.startContainer.parentElement?.closest("[data-block-id]");
+      const endBlock = range.endContainer.parentElement?.closest("[data-block-id]");
+      if (!startBlock || !endBlock || startBlock !== endBlock) {
+        return;
+      }
+
+      const tabPanel = startBlock.closest("[data-tab-panel]");
+      currentSelection = {
+        blockId: startBlock.dataset.blockId,
+        selectedText,
+        tab: tabPanel ? tabPanel.dataset.tabPanel : "overview",
+      };
+      selectionPreview.textContent = selectedText;
+    });
+
+    saveCommentButton.addEventListener("click", () => {
+      const body = commentInput.value.trim();
+      if (!currentSelection || !body) {
+        return;
+      }
+
+      comments.unshift({
+        ...currentSelection,
+        body,
+        createdAt: new Date().toISOString(),
+      });
+      persistComments();
+      commentInput.value = "";
+      clearSelection();
+      renderComments();
+    });
+
+    clearSelectionButton.addEventListener("click", clearSelection);
+
+    clearCommentsButton.addEventListener("click", () => {
+      comments = [];
+      persistComments();
+      renderComments();
+    });
+
+    exportJsonButton.addEventListener("click", () => {
+      downloadFile("camera-document-import-comments.json", JSON.stringify(comments, null, 2), "application/json");
+    });
+
+    exportPromptsButton.addEventListener("click", () => {
+      const lines = comments.map((comment) => {
+        return [
+          "Section: " + comment.tab,
+          "Block: " + comment.blockId,
+          "Selected text: " + comment.selectedText,
+          "Reviewer comment: " + comment.body,
+          "Instruction: Update the camera document import review HTML to address this comment."
+        ].join("\n");
+      });
+      downloadFile("camera-document-import-comments.txt", lines.join("\n\n---\n\n"), "text/plain");
+    });
+
+    renderComments();
+
+    function activateTab(tabName) {
+      tabButtons.forEach((button) => {
+        const isActive = button.dataset.tab === tabName;
+        button.setAttribute("aria-selected", String(isActive));
+      });
+      tabPanels.forEach((panel) => {
+        panel.classList.toggle("active", panel.dataset.tabPanel === tabName);
+      });
+    }
+
+    function clearSelection() {
+      currentSelection = null;
+      selectionPreview.textContent = "Select a single block to attach a comment.";
+      const selection = window.getSelection();
+      if (selection) {
+        selection.removeAllRanges();
+      }
+    }
+
+    function loadComments() {
+      try {
+        const raw = window.localStorage.getItem(storageKey);
+        return raw ? JSON.parse(raw) : [];
+      } catch (error) {
+        return [];
+      }
+    }
+
+    function persistComments() {
+      window.localStorage.setItem(storageKey, JSON.stringify(comments));
+    }
+
+    function renderComments() {
+      const count = comments.length;
+      commentStatus.textContent = count === 1 ? "1 comment saved locally" : count + " comments saved locally";
+
+      if (count === 0) {
+        commentList.innerHTML = '<div class="empty-state">No comments yet.</div>';
+        return;
+      }
+
+      commentList.innerHTML = "";
+      comments.forEach((comment) => {
+        const item = document.createElement("button");
+        item.type = "button";
+        item.className = "comment-item";
+        item.innerHTML = `
+          <div class="comment-meta">
+            <strong>${escapeHtml(comment.tab)}</strong>
+            <span>${new Date(comment.createdAt).toLocaleString()}</span>
+          </div>
+          <div class="comment-quote">${escapeHtml(comment.selectedText)}</div>
+          <div class="comment-body">${escapeHtml(comment.body)}</div>
+          <div class="comment-jump">Block: ${escapeHtml(comment.blockId)}</div>
+        `;
+        item.addEventListener("click", () => jumpToComment(comment));
+        commentList.appendChild(item);
+      });
+    }
+
+    function jumpToComment(comment) {
+      const button = document.querySelector('.tab-button[data-tab="' + comment.tab + '"]');
+      if (button) {
+        activateTab(comment.tab);
+      }
+      const block = document.querySelector('[data-block-id="' + comment.blockId + '"]');
+      if (!block) {
+        return;
+      }
+      block.scrollIntoView({ behavior: "smooth", block: "center" });
+      const originalHtml = block.innerHTML;
+      block.innerHTML = highlightSelectedText(block.innerHTML, comment.selectedText);
+      setTimeout(() => {
+        block.innerHTML = originalHtml;
+      }, 1600);
+    }
+
+    function highlightSelectedText(html, selectedText) {
+      const escaped = selectedText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      return html.replace(new RegExp(escaped), '<mark class="comment-highlight">$&</mark>');
+    }
+
+    function downloadFile(fileName, body, type) {
+      const blob = new Blob([body], { type });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function escapeHtml(value) {
+      return value
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+  </script>
+</body>
+</html>

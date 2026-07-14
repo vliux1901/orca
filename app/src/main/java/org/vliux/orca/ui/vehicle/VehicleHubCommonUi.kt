@@ -54,9 +54,12 @@ import androidx.compose.ui.semantics.SemanticsPropertyKey
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
@@ -218,13 +221,18 @@ internal fun ImportDocumentGuidanceDialog(
     onContinue: (dontShowAgain: Boolean) -> Unit,
 ) {
     var dontShowAgain by rememberSaveable { mutableStateOf(false) }
+    val message = buildImportDocumentGuidanceMessage(
+        prefix = stringResource(R.string.import_document_guidance_message_prefix),
+        emphasis = stringResource(R.string.import_document_guidance_message_emphasis),
+        suffix = stringResource(R.string.import_document_guidance_message_suffix),
+    )
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.import_document_guidance_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(stringResource(R.string.import_document_guidance_message))
+                Text(message)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -257,6 +265,19 @@ internal fun ImportDocumentGuidanceDialog(
         },
     )
 }
+
+internal fun buildImportDocumentGuidanceMessage(
+    prefix: String,
+    emphasis: String,
+    suffix: String,
+): AnnotatedString = AnnotatedString.Builder().apply {
+    append(prefix)
+    append(" ")
+    withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
+        append(emphasis)
+    }
+    append(suffix)
+}.toAnnotatedString()
 
 @Composable
 internal fun vehicleCardColors() = CardDefaults.cardColors(

@@ -57,7 +57,9 @@
     <string name="importing">Importing...</string>
     <string name="import_document">Import Document</string>
     <string name="import_document_guidance_title">Import documents</string>
-    <string name="import_document_guidance_message">In the next screen, you can select multiple images or PDF files. Orca will import and process them for this vehicle.</string>
+    <string name="import_document_guidance_message_prefix">In the next screen, you can select</string>
+    <string name="import_document_guidance_message_emphasis">multiple images or PDF files</string>
+    <string name="import_document_guidance_message_suffix">. Orca will import and process them for this vehicle.</string>
     <string name="import_existing_vehicle_title">Import into Existing Vehicle</string>
     <string name="import_existing_vehicle_message">Choose which vehicle should receive these files.</string>
     <string name="dont_show_again">Don\'t show again</string>

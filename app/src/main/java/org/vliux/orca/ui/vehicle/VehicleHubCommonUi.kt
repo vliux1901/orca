@@ -28,7 +28,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CardColors
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -73,6 +72,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.vliux.orca.R
 import org.vliux.orca.data.model.VehicleEntity
+import org.vliux.orca.ui.theme.SkyBlue80
 import org.vliux.orca.ui.theme.StatusErrorDark
 import org.vliux.orca.ui.theme.StatusErrorLight
 import org.vliux.orca.ui.theme.StatusWarningDark
@@ -277,7 +277,7 @@ internal fun ImportDocumentGuidanceDialog(
                         .fillMaxWidth()
                         .clickable { onChooseScan() },
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        containerColor = SkyBlue80,
                     ),
                 ) {
                     Column(
@@ -302,7 +302,7 @@ internal fun ImportDocumentGuidanceDialog(
                         .fillMaxWidth()
                         .clickable { onChooseFiles() },
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        containerColor = SkyBlue80,
                     ),
                 ) {
                     Column(

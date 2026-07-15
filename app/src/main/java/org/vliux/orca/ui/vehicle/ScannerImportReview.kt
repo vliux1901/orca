@@ -121,19 +121,19 @@ internal fun ScannerImportReviewDialog(
                     }
                 }
 
-                Row(
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     OutlinedButton(
                         onClick = onAddMorePages,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text(stringResource(R.string.scan_review_add_page))
                     }
                     Button(
                         onClick = onSaveAndAnalyze,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text(stringResource(R.string.scan_review_save_and_analyze))
                     }

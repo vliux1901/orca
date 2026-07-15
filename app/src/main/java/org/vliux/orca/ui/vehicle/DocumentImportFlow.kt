@@ -41,6 +41,24 @@ internal data class DocumentImportFlow(
     val addMoreScannerPages: () -> Unit,
 )
 
+internal enum class DocumentImportOverlayStep {
+    NONE,
+    CHOOSER,
+    IMAGE_REVIEW,
+    SCANNER_REVIEW,
+}
+
+internal fun documentImportOverlayStepFor(
+    chooserOpen: Boolean,
+    pendingReviewSources: List<PendingImportSource>?,
+    pendingScannerReviewSources: List<PendingImportSource>?,
+): DocumentImportOverlayStep = when {
+    chooserOpen -> DocumentImportOverlayStep.CHOOSER
+    pendingReviewSources != null -> DocumentImportOverlayStep.IMAGE_REVIEW
+    pendingScannerReviewSources != null -> DocumentImportOverlayStep.SCANNER_REVIEW
+    else -> DocumentImportOverlayStep.NONE
+}
+
 internal sealed interface PendingImportStage {
     data object Cancel : PendingImportStage
     data class ImageReview(val sources: List<PendingImportSource>) : PendingImportStage

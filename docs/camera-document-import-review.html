@@ -1044,7 +1044,7 @@
             <ol>
               <li class="block" data-block-id="flow-1">User taps an existing <code>Import Document</code> CTA.</li>
               <li class="block" data-block-id="flow-2">If needed, Orca asks which vehicle will own the import.</li>
-              <li class="block" data-block-id="flow-3">Orca opens a shared source-method chooser with <code>Camera scan documents</code> first and <code>Import existing files on this device</code> second.</li>
+              <li class="block" data-block-id="flow-3">Orca opens a shared full-screen source-method chooser with <code>Camera scan documents</code> first and <code>Import existing files on this device</code> second.</li>
               <li class="block" data-block-id="flow-4">File imports continue through <code>OpenMultipleDocuments()</code> and the current <code>ImportImageReviewDialog</code>.</li>
               <li class="block" data-block-id="flow-5">Paper scans launch the scanner flow and return ordered JPEG page URIs or a fallback camera capture URI.</li>
               <li class="block" data-block-id="flow-6">Orca converts the returned pages into <code>SourceImportRequest</code> objects, imports them, queues extraction, and navigates to document detail.</li>
@@ -1057,7 +1057,7 @@
               <li class="block" data-block-id="component-3">Extend <code>PendingImportSource</code> in [ImportImageReview.kt](/home/vliux/code/orca/app/src/main/java/org/vliux/orca/ui/vehicle/ImportImageReview.kt) so it can represent scanner-origin pages and optionally carry a cleanup callback for temporary files.</li>
               <li class="block" data-block-id="component-4">Add a temp-file helper, preferably injected through Hilt, that creates and later deletes app-private capture files. This fits the repo's existing dependency style better than ad hoc file handling inside a composable.</li>
               <li class="block" data-block-id="component-5">Use <code>SourceImportRequest.markConsumed()</code> to trigger temp-file cleanup after <code>DocumentRepository</code> finishes or fails, instead of leaving capture files behind.</li>
-              <li class="block" data-block-id="component-6">Add a new shared UI surface that replaces the current file-only guidance dialog with a method chooser containing short import education plus scanner/file actions.</li>
+              <li class="block" data-block-id="component-6">Add a new shared full-screen UI surface that replaces the current file-only guidance dialog with a method chooser containing short import education plus scanner/file actions, and keep the scanner review step in that same in-app full-screen presentation instead of a separate dialog window.</li>
             </ul>
 
             <h3 class="block" data-block-id="tech-scanner-title">Scanner implementation detail</h3>

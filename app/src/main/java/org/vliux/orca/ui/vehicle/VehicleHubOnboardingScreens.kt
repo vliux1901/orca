@@ -391,64 +391,43 @@ internal fun OnboardingImportScreen(
         }
     }
 
-    OnboardingScaffold(
-        modifier = modifier,
-        onBack = onBack,
-    ) { innerPadding ->
-        OnboardingImportContent(
-            hasVehicles = vehicles.isNotEmpty(),
-            importError = importError,
-            isImporting = isImporting,
-            onImport = ::beginImport,
-            onFinish = onFinish,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 20.dp),
-        )
-    }
+    Box(modifier = modifier.fillMaxSize()) {
+        OnboardingScaffold(
+            modifier = Modifier.fillMaxSize(),
+            onBack = onBack,
+        ) { innerPadding ->
+            OnboardingImportContent(
+                hasVehicles = vehicles.isNotEmpty(),
+                importError = importError,
+                isImporting = isImporting,
+                onImport = ::beginImport,
+                onFinish = onFinish,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(horizontal = 20.dp),
+            )
+        }
 
-    if (vehiclePickerOpen) {
-        ImportVehiclePickerDialog(
-            vehicles = vehicles,
-            isImporting = isImporting,
-            onDismiss = {
-                if (!isImporting) {
+        if (vehiclePickerOpen) {
+            ImportVehiclePickerDialog(
+                vehicles = vehicles,
+                isImporting = isImporting,
+                onDismiss = {
+                    if (!isImporting) {
+                        vehiclePickerOpen = false
+                    }
+                },
+                onSelectVehicle = { vehicleId ->
                     vehiclePickerOpen = false
-                }
-            },
-            onSelectVehicle = { vehicleId ->
-                vehiclePickerOpen = false
-                selectedImportVehicleId = vehicleId
-                isImporting = true
-                importFlow.beginImport()
-            },
-        )
-    }
+                    selectedImportVehicleId = vehicleId
+                    isImporting = true
+                    importFlow.beginImport()
+                },
+            )
+        }
 
-    if (importFlow.chooserOpen) {
-        ImportDocumentGuidanceDialog(
-            onDismiss = importFlow.dismissChooser,
-            onChooseFiles = importFlow.chooseFiles,
-            onChooseScan = importFlow.chooseScan,
-        )
-    }
-
-    importFlow.pendingReviewSources?.let { selectedSources ->
-        ImportImageReviewDialog(
-            sources = selectedSources,
-            onDismiss = importFlow.dismissReview,
-            onComplete = importFlow.completeReview,
-        )
-    }
-
-    importFlow.pendingScannerReviewSources?.let { selectedSources ->
-        ScannerImportReviewDialog(
-            sources = selectedSources,
-            onDismiss = importFlow.dismissScannerReview,
-            onAddMorePages = importFlow.addMoreScannerPages,
-            onSaveAndAnalyze = importFlow.completeScannerReview,
-        )
+        DocumentImportFlowOverlay(importFlow = importFlow)
     }
 }
 

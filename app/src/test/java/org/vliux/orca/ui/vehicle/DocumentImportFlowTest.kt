@@ -5,6 +5,30 @@ import org.junit.Test
 
 class DocumentImportFlowTest {
     @Test
+    fun chooserOverlayTakesPriorityWhenVisible() {
+        assertEquals(
+            DocumentImportOverlayStep.CHOOSER,
+            documentImportOverlayStepFor(
+                chooserOpen = true,
+                pendingReviewSources = emptyList(),
+                pendingScannerReviewSources = emptyList(),
+            ),
+        )
+    }
+
+    @Test
+    fun scannerOverlayShownWhenScannerReviewSourcesExist() {
+        assertEquals(
+            DocumentImportOverlayStep.SCANNER_REVIEW,
+            documentImportOverlayStepFor(
+                chooserOpen = false,
+                pendingReviewSources = null,
+                pendingScannerReviewSources = emptyList(),
+            ),
+        )
+    }
+
+    @Test
     fun scannerPagesRouteToScannerReviewBeforeImport() {
         assertEquals(
             PendingImportStageType.SCANNER_REVIEW,

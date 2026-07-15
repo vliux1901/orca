@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -40,7 +41,7 @@ import androidx.compose.ui.window.DialogProperties
 import org.vliux.orca.R
 
 @Composable
-internal fun ScannerImportReviewDialog(
+internal fun ScannerImportReviewScreen(
     sources: List<PendingImportSource>,
     onDismiss: () -> Unit,
     onAddMorePages: () -> Unit,
@@ -49,88 +50,82 @@ internal fun ScannerImportReviewDialog(
     val context = LocalContext.current
     var previewSource by remember(sources) { mutableStateOf<PendingImportSource?>(null) }
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background,
     ) {
-        Surface(
+        Column(
             modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            VehicleTopBar(
+                title = stringResource(R.string.scan_review_title),
+                onBack = onDismiss,
+            )
+
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .safeDrawingPadding(),
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                VehicleTopBar(
-                    title = stringResource(R.string.scan_review_title),
-                    onBack = onDismiss,
-                    applyStatusBarPadding = false,
+                Text(
+                    text = stringResource(R.string.scan_review_subtitle),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    ),
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.scan_review_ready_count, sources.size),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(
+                            text = stringResource(R.string.scan_review_message),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                }
+
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    items(sources, key = { it.selectionIndex }) { source ->
+                        ScannerPageReviewTile(
+                            source = source,
+                            onOpenPreview = { previewSource = source },
+                        )
+                    }
+                }
 
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                        .navigationBarsPadding(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Text(
-                        text = stringResource(R.string.scan_review_subtitle),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-
-                    Card(
+                    OutlinedButton(
+                        onClick = onAddMorePages,
                         modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        ),
                     ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            Text(
-                                text = stringResource(R.string.scan_review_ready_count, sources.size),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                            Text(
-                                text = stringResource(R.string.scan_review_message),
-                                style = MaterialTheme.typography.bodyMedium,
-                            )
-                        }
+                        Text(stringResource(R.string.scan_review_add_page))
                     }
-
-                    LazyColumn(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        items(sources, key = { it.selectionIndex }) { source ->
-                            ScannerPageReviewTile(
-                                source = source,
-                                onOpenPreview = { previewSource = source },
-                            )
-                        }
-                    }
-
-                    Column(
+                    Button(
+                        onClick = onSaveAndAnalyze,
                         modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        OutlinedButton(
-                            onClick = onAddMorePages,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(stringResource(R.string.scan_review_add_page))
-                        }
-                        Button(
-                            onClick = onSaveAndAnalyze,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(stringResource(R.string.scan_review_save_and_analyze))
-                        }
+                        Text(stringResource(R.string.scan_review_save_and_analyze))
                     }
                 }
             }

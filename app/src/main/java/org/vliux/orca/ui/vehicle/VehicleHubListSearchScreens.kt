@@ -156,8 +156,9 @@ internal fun VehicleListScreen(
         },
     )
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
+    Box(modifier = modifier.fillMaxSize()) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
         topBar = {
             Box(
                 modifier = Modifier
@@ -238,76 +239,54 @@ internal fun VehicleListScreen(
                 }
             }
         },
-    ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
-            contentPadding = PaddingValues(top = 20.dp, bottom = 96.dp),
-        ) {
-            importError?.let { message ->
-                item {
-                    ErrorCard(message = message)
+        ) { innerPadding ->
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(horizontal = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+                contentPadding = PaddingValues(top = 20.dp, bottom = 96.dp),
+            ) {
+                importError?.let { message ->
+                    item {
+                        ErrorCard(message = message)
+                    }
                 }
-            }
-            if (vehicles.isEmpty()) {
-                item {
-                    EmptyVehicleState(onCreateVehicle = onCreateVehicle)
-                }
-            } else {
-                items(vehicles, key = { it.vehicleId }) { vehicle ->
-                    VehicleSummaryCard(
-                        vehicle = vehicle,
-                        onOpenVehicle = { onOpenVehicle(vehicle.vehicleId) },
-                    )
+                if (vehicles.isEmpty()) {
+                    item {
+                        EmptyVehicleState(onCreateVehicle = onCreateVehicle)
+                    }
+                } else {
+                    items(vehicles, key = { it.vehicleId }) { vehicle ->
+                        VehicleSummaryCard(
+                            vehicle = vehicle,
+                            onOpenVehicle = { onOpenVehicle(vehicle.vehicleId) },
+                        )
+                    }
                 }
             }
         }
-    }
 
-    if (vehiclePickerOpen) {
-        ImportVehiclePickerDialog(
-            vehicles = vehicles,
-            isImporting = isImporting,
-            onDismiss = {
-                if (!isImporting) {
+        if (vehiclePickerOpen) {
+            ImportVehiclePickerDialog(
+                vehicles = vehicles,
+                isImporting = isImporting,
+                onDismiss = {
+                    if (!isImporting) {
+                        vehiclePickerOpen = false
+                    }
+                },
+                onSelectVehicle = { vehicleId ->
                     vehiclePickerOpen = false
-                }
-            },
-            onSelectVehicle = { vehicleId ->
-                vehiclePickerOpen = false
-                selectedImportVehicleId = vehicleId
-                isImporting = true
-                importFlow.beginImport()
-            },
-        )
-    }
+                    selectedImportVehicleId = vehicleId
+                    isImporting = true
+                    importFlow.beginImport()
+                },
+            )
+        }
 
-    if (importFlow.chooserOpen) {
-        ImportDocumentGuidanceDialog(
-            onDismiss = importFlow.dismissChooser,
-            onChooseFiles = importFlow.chooseFiles,
-            onChooseScan = importFlow.chooseScan,
-        )
-    }
-
-    importFlow.pendingReviewSources?.let { selectedSources ->
-        ImportImageReviewDialog(
-            sources = selectedSources,
-            onDismiss = importFlow.dismissReview,
-            onComplete = importFlow.completeReview,
-        )
-    }
-
-    importFlow.pendingScannerReviewSources?.let { selectedSources ->
-        ScannerImportReviewDialog(
-            sources = selectedSources,
-            onDismiss = importFlow.dismissScannerReview,
-            onAddMorePages = importFlow.addMoreScannerPages,
-            onSaveAndAnalyze = importFlow.completeScannerReview,
-        )
+        DocumentImportFlowOverlay(importFlow = importFlow)
     }
 }
 

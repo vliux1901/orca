@@ -14,12 +14,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -66,8 +66,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.vliux.orca.R
@@ -223,7 +221,7 @@ internal fun InfoCard(
 }
 
 @Composable
-internal fun ImportDocumentGuidanceDialog(
+internal fun ImportDocumentGuidanceScreen(
     onDismiss: () -> Unit,
     onChooseFiles: () -> Unit,
     onChooseScan: () -> Unit,
@@ -234,102 +232,95 @@ internal fun ImportDocumentGuidanceDialog(
         suffix = stringResource(R.string.import_document_guidance_message_suffix),
     )
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background,
     ) {
-        Surface(
+        Column(
             modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            VehicleTopBar(
+                title = stringResource(R.string.import_document_guidance_title),
+                onBack = onDismiss,
+            )
+
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .safeDrawingPadding(),
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                VehicleTopBar(
-                    title = stringResource(R.string.import_document_guidance_title),
-                    onBack = onDismiss,
-                    applyStatusBarPadding = false,
+                Text(
+                    text = stringResource(R.string.import_document_method_message),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
 
-                Column(
+                Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                        .clickable { onChooseScan() },
+                    colors = CardDefaults.cardColors(
+                        containerColor = SkyBlue80,
+                    ),
                 ) {
-                    Text(
-                        text = stringResource(R.string.import_document_method_message),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onChooseScan() },
-                        colors = CardDefaults.cardColors(
-                            containerColor = SkyBlue80,
-                        ),
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
+                        Text(
+                            text = stringResource(R.string.import_document_scan_paper),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(
+                            text = stringResource(R.string.import_document_scan_paper_description),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onChooseFiles() },
+                    colors = CardDefaults.cardColors(
+                        containerColor = SkyBlue80,
+                    ),
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
-                                text = stringResource(R.string.import_document_scan_paper),
+                                text = stringResource(R.string.import_document_choose_files),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold,
                             )
                             Text(
-                                text = stringResource(R.string.import_document_scan_paper_description),
+                                text = stringResource(R.string.import_document_choose_files_description),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
-                    }
-
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onChooseFiles() },
-                        colors = CardDefaults.cardColors(
-                            containerColor = SkyBlue80,
-                        ),
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                Text(
-                                    text = stringResource(R.string.import_document_choose_files),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                )
-                                Text(
-                                    text = stringResource(R.string.import_document_choose_files_description),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                            Text(message, style = MaterialTheme.typography.bodyMedium)
-                        }
+                        Text(message, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
+            }
 
-                Box(modifier = Modifier.weight(1f))
+            Box(modifier = Modifier.weight(1f))
 
-                OutlinedButton(
-                    onClick = onDismiss,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp),
-                ) {
-                    Text(stringResource(R.string.cancel))
-                }
+            OutlinedButton(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .navigationBarsPadding(),
+            ) {
+                Text(stringResource(R.string.cancel))
             }
         }
     }
@@ -347,6 +338,37 @@ internal fun buildImportDocumentGuidanceMessage(
     }
     append(suffix)
 }.toAnnotatedString()
+
+@Composable
+internal fun DocumentImportFlowOverlay(
+    importFlow: DocumentImportFlow,
+) {
+    when (
+        documentImportOverlayStepFor(
+            chooserOpen = importFlow.chooserOpen,
+            pendingReviewSources = importFlow.pendingReviewSources,
+            pendingScannerReviewSources = importFlow.pendingScannerReviewSources,
+        )
+    ) {
+        DocumentImportOverlayStep.NONE -> Unit
+        DocumentImportOverlayStep.CHOOSER -> ImportDocumentGuidanceScreen(
+            onDismiss = importFlow.dismissChooser,
+            onChooseFiles = importFlow.chooseFiles,
+            onChooseScan = importFlow.chooseScan,
+        )
+        DocumentImportOverlayStep.IMAGE_REVIEW -> ImportImageReviewDialog(
+            sources = importFlow.pendingReviewSources.orEmpty(),
+            onDismiss = importFlow.dismissReview,
+            onComplete = importFlow.completeReview,
+        )
+        DocumentImportOverlayStep.SCANNER_REVIEW -> ScannerImportReviewScreen(
+            sources = importFlow.pendingScannerReviewSources.orEmpty(),
+            onDismiss = importFlow.dismissScannerReview,
+            onAddMorePages = importFlow.addMoreScannerPages,
+            onSaveAndAnalyze = importFlow.completeScannerReview,
+        )
+    }
+}
 
 @Composable
 internal fun vehicleCardColors() = CardDefaults.cardColors(

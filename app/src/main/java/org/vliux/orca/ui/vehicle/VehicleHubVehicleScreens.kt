@@ -163,8 +163,9 @@ internal fun VehicleDetailScreen(
         importFlow.beginImport()
     }
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
+    Box(modifier = modifier.fillMaxSize()) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
         topBar = {
             VehicleTopBar(
                 title = stringResource(R.string.vehicle_details_title),
@@ -199,145 +200,122 @@ internal fun VehicleDetailScreen(
                 }
             }
         },
-    ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(bottom = 32.dp),
-        ) {
-            item {
-                when {
-                    !screenState.vehicleLoaded -> CircularProgressIndicator()
-                    loadedVehicle == null -> MissingEntityCard(
-                        title = stringResource(R.string.vehicle_not_found_title),
-                        message = stringResource(R.string.vehicle_not_found_message),
-                    )
-                    else -> VehicleDetailHeaderCard(vehicle = loadedVehicle)
-                }
-            }
-
-            importMessage?.let { message ->
+        ) { innerPadding ->
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                contentPadding = PaddingValues(bottom = 32.dp),
+            ) {
                 item {
-                    InfoCard(title = stringResource(R.string.extraction_update_title), message = message)
-                }
-            }
-
-            importError?.let { message ->
-                item {
-                    ErrorCard(message = message)
-                }
-            }
-
-            if (loadedVehicle != null) {
-                item {
-                    SectionHeader(
-                        title = stringResource(R.string.maintenance_summary_title),
-                        subtitle = stringResource(R.string.maintenance_summary_subtitle),
-                    )
-                }
-                item {
-                    if (!screenState.maintenanceSummaryLoaded) {
-                        CircularProgressIndicator()
-                    } else {
-                        VehicleMaintenanceSummaryCard(items = screenState.maintenanceSummary)
+                    when {
+                        !screenState.vehicleLoaded -> CircularProgressIndicator()
+                        loadedVehicle == null -> MissingEntityCard(
+                            title = stringResource(R.string.vehicle_not_found_title),
+                            message = stringResource(R.string.vehicle_not_found_message),
+                        )
+                        else -> VehicleDetailHeaderCard(vehicle = loadedVehicle)
                     }
                 }
-                item {
-                    SectionHeader(
-                        title = stringResource(R.string.documents_title),
-                        subtitle = stringResource(R.string.documents_subtitle),
-                    )
-                }
 
-                if (!screenState.documentsLoaded) {
+                importMessage?.let { message ->
                     item {
-                        CircularProgressIndicator()
+                        InfoCard(title = stringResource(R.string.extraction_update_title), message = message)
                     }
-                } else if (screenState.documents.isEmpty()) {
+                }
+
+                importError?.let { message ->
                     item {
-                        EmptyDocumentState(onImport = ::beginImportFlow)
+                        ErrorCard(message = message)
                     }
-                } else {
-                    items(screenState.documents, key = { it.documentId }) { document ->
-                        DocumentSummaryCard(
-                            document = document,
-                            onOpenDocument = { onOpenDocument(document.documentId) },
-                            onRetryExtraction = if (supportsManualExtractionRetry(document.extractionStatus)) {
-                                {
-                                    scope.launch {
-                                        retryingDocumentId = document.documentId
-                                        importError = null
-                                        importMessage = null
-                                        runCatching {
-                                            documentExtractionScheduler.queueDocumentExtraction(document.documentId, activity)
-                                        }.onSuccess { queueResult ->
-                                            importMessage = when (queueResult) {
-                                                DocumentExtractionQueueResult.QUEUED -> retryQueuedMessage
-                                                DocumentExtractionQueueResult.NOT_CONFIGURED -> retryNotConfiguredMessage
-                                                DocumentExtractionQueueResult.AUTH_CANCELLED -> retryAuthCancelledMessage
-                                                DocumentExtractionQueueResult.AUTH_UNAVAILABLE -> retryAuthUnavailableMessage
-                                                DocumentExtractionQueueResult.ERROR -> retryKeyErrorMessage
-                                            }
-                                        }.onFailure { error ->
-                                            importError = error.message ?: retryFailedMessage
-                                        }
-                                        retryingDocumentId = null
-                                    }
-                                }
-                            } else {
-                                null
-                            },
-                            isRetrying = retryingDocumentId == document.documentId,
+                }
+
+                if (loadedVehicle != null) {
+                    item {
+                        SectionHeader(
+                            title = stringResource(R.string.maintenance_summary_title),
+                            subtitle = stringResource(R.string.maintenance_summary_subtitle),
                         )
                     }
+                    item {
+                        if (!screenState.maintenanceSummaryLoaded) {
+                            CircularProgressIndicator()
+                        } else {
+                            VehicleMaintenanceSummaryCard(items = screenState.maintenanceSummary)
+                        }
+                    }
+                    item {
+                        SectionHeader(
+                            title = stringResource(R.string.documents_title),
+                            subtitle = stringResource(R.string.documents_subtitle),
+                        )
+                    }
+
+                    if (!screenState.documentsLoaded) {
+                        item {
+                            CircularProgressIndicator()
+                        }
+                    } else if (screenState.documents.isEmpty()) {
+                        item {
+                            EmptyDocumentState(onImport = ::beginImportFlow)
+                        }
+                    } else {
+                        items(screenState.documents, key = { it.documentId }) { document ->
+                            DocumentSummaryCard(
+                                document = document,
+                                onOpenDocument = { onOpenDocument(document.documentId) },
+                                onRetryExtraction = if (supportsManualExtractionRetry(document.extractionStatus)) {
+                                    {
+                                        scope.launch {
+                                            retryingDocumentId = document.documentId
+                                            importError = null
+                                            importMessage = null
+                                            runCatching {
+                                                documentExtractionScheduler.queueDocumentExtraction(document.documentId, activity)
+                                            }.onSuccess { queueResult ->
+                                                importMessage = when (queueResult) {
+                                                    DocumentExtractionQueueResult.QUEUED -> retryQueuedMessage
+                                                    DocumentExtractionQueueResult.NOT_CONFIGURED -> retryNotConfiguredMessage
+                                                    DocumentExtractionQueueResult.AUTH_CANCELLED -> retryAuthCancelledMessage
+                                                    DocumentExtractionQueueResult.AUTH_UNAVAILABLE -> retryAuthUnavailableMessage
+                                                    DocumentExtractionQueueResult.ERROR -> retryKeyErrorMessage
+                                                }
+                                            }.onFailure { error ->
+                                                importError = error.message ?: retryFailedMessage
+                                            }
+                                            retryingDocumentId = null
+                                        }
+                                    }
+                                } else {
+                                    null
+                                },
+                                isRetrying = retryingDocumentId == document.documentId,
+                            )
+                        }
+                    }
+                                }
                 }
             }
         }
-    }
+        DocumentImportFlowOverlay(importFlow = importFlow)
 
-    if (importFlow.chooserOpen) {
-        ImportDocumentGuidanceDialog(
-            onDismiss = importFlow.dismissChooser,
-            onChooseFiles = importFlow.chooseFiles,
-            onChooseScan = importFlow.chooseScan,
-        )
-    }
-
-    importFlow.pendingReviewSources?.let { selectedSources ->
-        ImportImageReviewDialog(
-            sources = selectedSources,
-            onDismiss = importFlow.dismissReview,
-            onComplete = importFlow.completeReview,
-        )
-    }
-
-    importFlow.pendingScannerReviewSources?.let { selectedSources ->
-        ScannerImportReviewDialog(
-            sources = selectedSources,
-            onDismiss = importFlow.dismissScannerReview,
-            onAddMorePages = importFlow.addMoreScannerPages,
-            onSaveAndAnalyze = importFlow.completeScannerReview,
-        )
-    }
-
-    if (showDeleteConfirmation) {
-        AlertDialog(
-            onDismissRequest = {
-                if (!isDeletingVehicle) {
-                    showDeleteConfirmation = false
-                }
-            },
-            title = {
-                Text(stringResource(R.string.delete_vehicle_title))
-            },
-            text = {
-                Text(vehicleDeleteConfirmationMessage(loadedVehicle?.displayName))
-            },
-            confirmButton = {
-                Button(
+        if (showDeleteConfirmation) {
+            AlertDialog(
+                onDismissRequest = {
+                    if (!isDeletingVehicle) {
+                        showDeleteConfirmation = false
+                    }
+                },
+                title = {
+                    Text(stringResource(R.string.delete_vehicle_title))
+                },
+                text = {
+                    Text(vehicleDeleteConfirmationMessage(loadedVehicle?.displayName))
+                },
+                confirmButton = {
+                    Button(
                     onClick = {
                         isDeletingVehicle = true
                         importError = null

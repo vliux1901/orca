@@ -457,6 +457,7 @@ files/vehicles/{vehicleId}/documents/{documentId}/sources/source-003.{ext}</code
               <li class="block" data-block-id="ops-4a">Queue extraction work with a connected-network requirement and exponential backoff so offline or transient-provider failures retry without hammering the backend. Image-based imports should only queue after the per-image review flow is completed.</li>
               <li class="block" data-block-id="ops-4b">Show plain-language extraction status messaging for queued, running, retryable, and terminal-failure states, and note that large PDFs or multi-file logical documents may take longer.</li>
               <li class="block" data-block-id="ops-4c">Expose a manual retry action from vehicle-detail document cards when extraction is still <code>NOT_STARTED</code> or has failed terminally, and route that action through the same authenticated queueing path used during import.</li>
+              <li class="block" data-block-id="ops-4d">Release bundle publishing should use a locally managed upload keystore provided through ignored machine-local configuration such as <code>local.properties</code>, Gradle properties, or environment variables. When Play App Signing is enabled, Orca still signs the uploaded <code>.aab</code> with that upload key while Google manages the separate distribution signing key.</li>
             </ul>
           </article>
 

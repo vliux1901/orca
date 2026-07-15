@@ -1,5 +1,10 @@
 import com.android.build.api.dsl.ApplicationExtension
 import java.util.Properties
+import org.gradle.api.GradleException
+import org.gradle.api.DefaultTask
+import org.gradle.api.provider.Property
+import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.TaskAction
 
 plugins {
     alias(libs.plugins.android.application)
@@ -18,12 +23,57 @@ val localProperties = Properties().apply {
 
 fun localProperty(name: String): String? = localProperties.getProperty(name)?.takeIf { it.isNotBlank() }
 
+fun firstConfiguredOptionalValue(vararg values: String?): String? =
+    values.firstOrNull { !it.isNullOrBlank() }
+
 fun firstConfiguredValue(vararg values: String?): String =
     values.firstOrNull { !it.isNullOrBlank() } ?: ""
+
+val releaseStoreFilePath = firstConfiguredOptionalValue(
+    providers.gradleProperty("orcaReleaseStoreFile").orNull,
+    localProperty("orca.release.storeFile"),
+    System.getenv("ORCA_RELEASE_STORE_FILE"),
+)
+val releaseStorePassword = firstConfiguredOptionalValue(
+    providers.gradleProperty("orcaReleaseStorePassword").orNull,
+    localProperty("orca.release.storePassword"),
+    System.getenv("ORCA_RELEASE_STORE_PASSWORD"),
+)
+val releaseKeyAlias = firstConfiguredOptionalValue(
+    providers.gradleProperty("orcaReleaseKeyAlias").orNull,
+    localProperty("orca.release.keyAlias"),
+    System.getenv("ORCA_RELEASE_KEY_ALIAS"),
+)
+val releaseKeyPassword = firstConfiguredOptionalValue(
+    providers.gradleProperty("orcaReleaseKeyPassword").orNull,
+    localProperty("orca.release.keyPassword"),
+    System.getenv("ORCA_RELEASE_KEY_PASSWORD"),
+)
+val hasReleaseUploadSigningConfig = listOf(
+    releaseStoreFilePath,
+    releaseStorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword,
+).all { !it.isNullOrBlank() }
 
 fun ApplicationExtension.stringBuildConfigField(name: String, value: String) {
     defaultConfig {
         buildConfigField("String", name, "\"${value.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
+    }
+}
+
+abstract class VerifyReleaseUploadSigningTask : DefaultTask() {
+    @get:Input
+    abstract val hasConfig: Property<Boolean>
+
+    @get:Input
+    abstract val helpMessage: Property<String>
+
+    @TaskAction
+    fun verify() {
+        if (!hasConfig.get()) {
+            throw GradleException(helpMessage.get())
+        }
     }
 }
 
@@ -45,11 +95,25 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            if (hasReleaseUploadSigningConfig) {
+                storeFile = file(requireNotNull(releaseStoreFilePath))
+                storePassword = requireNotNull(releaseStorePassword)
+                keyAlias = requireNotNull(releaseKeyAlias)
+                keyPassword = requireNotNull(releaseKeyPassword)
+            }
+        }
+    }
+
     buildTypes {
         debug {
             versionNameSuffix = "-debug"
         }
         release {
+            if (hasReleaseUploadSigningConfig) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             optimization {
                 enable = false
             }
@@ -70,6 +134,25 @@ android.stringBuildConfigField(
     name = "CLOUD_EXTRACTION_PROVIDER_NAME",
     value = "openai",
 )
+
+val releaseUploadSigningHelpMessage = """
+    Missing release upload signing configuration for Play Store bundle generation.
+
+    Configure one of these sources with all four values:
+    - Gradle properties: orcaReleaseStoreFile, orcaReleaseStorePassword, orcaReleaseKeyAlias, orcaReleaseKeyPassword
+    - local.properties: orca.release.storeFile, orca.release.storePassword, orca.release.keyAlias, orca.release.keyPassword
+    - environment: ORCA_RELEASE_STORE_FILE, ORCA_RELEASE_STORE_PASSWORD, ORCA_RELEASE_KEY_ALIAS, ORCA_RELEASE_KEY_PASSWORD
+""".trimIndent()
+
+val verifyReleaseUploadSigning by tasks.registering(VerifyReleaseUploadSigningTask::class) {
+    hasConfig.set(hasReleaseUploadSigningConfig)
+    helpMessage.set(releaseUploadSigningHelpMessage)
+}
+
+tasks.matching { it.name == "bundleRelease" }.configureEach {
+    dependsOn(verifyReleaseUploadSigning)
+}
+
 android.stringBuildConfigField(
     name = "OPENAI_RESPONSES_URL",
     value = firstConfiguredValue(

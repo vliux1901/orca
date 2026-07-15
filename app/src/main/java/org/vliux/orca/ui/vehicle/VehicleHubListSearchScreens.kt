@@ -1,8 +1,6 @@
 package org.vliux.orca.ui.vehicle
 
 import androidx.activity.compose.LocalActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts.OpenMultipleDocuments
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -56,7 +54,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -80,6 +77,7 @@ import org.vliux.orca.R
 import org.vliux.orca.data.SearchRepository
 import org.vliux.orca.data.VehicleRepository
 import org.vliux.orca.data.model.VehicleEntity
+import org.vliux.orca.importing.ImportCaptureFileStore
 import org.vliux.orca.search.SearchAnswer
 import org.vliux.orca.search.SearchCitation
 import org.vliux.orca.search.SearchResultItem
@@ -95,6 +93,7 @@ internal fun VehicleListScreen(
     documentRepository: DocumentRepository,
     documentExtractionScheduler: DocumentExtractionScheduler,
     importDocumentGuidancePreference: ImportDocumentGuidancePreference,
+    importCaptureFileStore: ImportCaptureFileStore,
     onOpenSettings: () -> Unit,
     onOpenDebug: () -> Unit,
     onOpenSearch: (String) -> Unit,
@@ -104,18 +103,15 @@ internal fun VehicleListScreen(
     modifier: Modifier = Modifier,
 ) {
     val activity = LocalActivity.current as? FragmentActivity
-    val context = LocalContext.current
     val vehiclesFlow = remember(vehicleRepository) { vehicleRepository.observeVehicles() }
     val vehicles by vehiclesFlow.collectAsStateWithLifecycle(initialValue = emptyList())
     val importFailedMessage = stringResource(R.string.vehicle_import_failed)
     var menuExpanded by remember { mutableStateOf(false) }
     var fabMenuOpen by remember { mutableStateOf(false) }
     var vehiclePickerOpen by remember { mutableStateOf(false) }
-    var importGuidanceOpen by remember { mutableStateOf(false) }
     var importError by remember { mutableStateOf<String?>(null) }
     var isImporting by remember { mutableStateOf(false) }
     var selectedImportVehicleId by remember { mutableStateOf<String?>(null) }
-    var pendingImportReviewSources by remember { mutableStateOf<List<PendingImportSource>?>(null) }
     val scope = rememberCoroutineScope()
 
     fun importForVehicle(
@@ -144,27 +140,24 @@ internal fun VehicleListScreen(
             isImporting = false
         }
     }
-
-    val launcher = rememberLauncherForActivityResult(OpenMultipleDocuments()) { uris ->
-        val vehicleId = selectedImportVehicleId
-        if (uris.isEmpty() || vehicleId == null) {
+    val importFlow = rememberDocumentImportFlow(
+        activity = activity,
+        importDocumentGuidancePreference = importDocumentGuidancePreference,
+        importCaptureFileStore = importCaptureFileStore,
+        onImportRequestsReady = { requests ->
+            val vehicleId = selectedImportVehicleId
+            selectedImportVehicleId = null
+            if (vehicleId == null) {
+                isImporting = false
+            } else {
+                importForVehicle(vehicleId, requests)
+            }
+        },
+        onFlowCancelled = {
             selectedImportVehicleId = null
             isImporting = false
-            return@rememberLauncherForActivityResult
-        }
-        val selectedSources = uris.mapIndexed { index, uri ->
-            uri.toPendingImportSource(context, index)
-        }
-        if (selectedSources.any { it.requiresImageReview }) {
-            pendingImportReviewSources = selectedSources
-            return@rememberLauncherForActivityResult
-        }
-        selectedImportVehicleId = null
-        importForVehicle(
-            vehicleId = vehicleId,
-            requests = selectedSources.map { source -> source.toSourceImportRequest(context) },
-        )
-    }
+        },
+    )
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -289,50 +282,35 @@ internal fun VehicleListScreen(
             onSelectVehicle = { vehicleId ->
                 vehiclePickerOpen = false
                 selectedImportVehicleId = vehicleId
-                if (importDocumentGuidancePreference.shouldShowGuidance()) {
-                    importGuidanceOpen = true
-                } else {
-                    isImporting = true
-                    launcher.launch(SUPPORTED_IMPORT_MIME_TYPES)
-                }
-            },
-        )
-    }
-
-    if (importGuidanceOpen) {
-        ImportDocumentGuidanceDialog(
-            onDismiss = {
-                importGuidanceOpen = false
-                selectedImportVehicleId = null
-                isImporting = false
-            },
-            onContinue = { dontShowAgain ->
-                if (dontShowAgain) {
-                    importDocumentGuidancePreference.disableGuidance()
-                }
-                importGuidanceOpen = false
                 isImporting = true
-                launcher.launch(SUPPORTED_IMPORT_MIME_TYPES)
+                importFlow.beginImport()
             },
         )
     }
 
-    pendingImportReviewSources?.let { selectedSources ->
+    if (importFlow.chooserOpen) {
+        ImportDocumentGuidanceDialog(
+            showGuidanceEducation = importFlow.chooserShowsGuidance,
+            onDismiss = importFlow.dismissChooser,
+            onChooseFiles = importFlow.chooseFiles,
+            onChooseScan = importFlow.chooseScan,
+        )
+    }
+
+    importFlow.pendingReviewSources?.let { selectedSources ->
         ImportImageReviewDialog(
             sources = selectedSources,
-            onDismiss = {
-                pendingImportReviewSources = null
-                selectedImportVehicleId = null
-                isImporting = false
-            },
-            onComplete = { requests ->
-                val vehicleId = selectedImportVehicleId
-                pendingImportReviewSources = null
-                selectedImportVehicleId = null
-                if (vehicleId != null) {
-                    importForVehicle(vehicleId, requests)
-                }
-            },
+            onDismiss = importFlow.dismissReview,
+            onComplete = importFlow.completeReview,
+        )
+    }
+
+    importFlow.pendingScannerReviewSources?.let { selectedSources ->
+        ScannerImportReviewDialog(
+            sources = selectedSources,
+            onDismiss = importFlow.dismissScannerReview,
+            onAddMorePages = importFlow.addMoreScannerPages,
+            onSaveAndAnalyze = importFlow.completeScannerReview,
         )
     }
 }

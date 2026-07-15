@@ -72,10 +72,22 @@ internal data class PendingImportSource(
     val uri: Uri,
     val displayName: String?,
     val mimeType: String?,
+    val acquisitionMethod: ImportAcquisitionMethod = ImportAcquisitionMethod.FILES,
+    val onConsumed: () -> Unit = {},
 )
 
 internal val PendingImportSource.requiresImageReview: Boolean
-    get() = mimeType?.startsWith("image/") == true
+    get() = requiresImageReview(mimeType, acquisitionMethod)
+
+internal fun PendingImportSource.markConsumed() {
+    onConsumed()
+}
+
+internal fun requiresImageReview(
+    mimeType: String?,
+    acquisitionMethod: ImportAcquisitionMethod,
+): Boolean = mimeType?.startsWith("image/") == true &&
+    acquisitionMethod != ImportAcquisitionMethod.SCAN_DOCUMENT
 
 @Composable
 internal fun ImportImageReviewDialog(
@@ -281,7 +293,7 @@ internal fun ImportImageReviewDialog(
 }
 
 @Composable
-private fun ZoomableImportImagePreview(
+internal fun ZoomableImportImagePreview(
     bitmap: Bitmap?,
     quarterTurns: Int,
     modifier: Modifier = Modifier,
@@ -365,7 +377,7 @@ private fun ZoomableImportImagePreview(
 }
 
 @Composable
-private fun rememberImportReviewBitmap(
+internal fun rememberImportReviewBitmap(
     context: Context,
     uri: Uri,
 ) = produceState<Bitmap?>(
@@ -380,6 +392,8 @@ private fun rememberImportReviewBitmap(
 internal fun Uri.toPendingImportSource(
     context: Context,
     selectionIndex: Int,
+    acquisitionMethod: ImportAcquisitionMethod = ImportAcquisitionMethod.FILES,
+    onConsumed: () -> Unit = {},
 ): PendingImportSource {
     val displayName = context.contentResolver.query(this, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
         ?.use { cursor ->
@@ -394,6 +408,8 @@ internal fun Uri.toPendingImportSource(
         uri = this,
         displayName = displayName,
         mimeType = context.contentResolver.getType(this),
+        acquisitionMethod = acquisitionMethod,
+        onConsumed = onConsumed,
     )
 }
 
@@ -408,6 +424,7 @@ internal fun PendingImportSource.toSourceImportRequest(
             displayName = displayName,
             mimeType = mimeType,
             openInputStream = context.contentResolver::openInputStream,
+            onConsumed = onConsumed,
         )
     }
 
@@ -415,14 +432,16 @@ internal fun PendingImportSource.toSourceImportRequest(
     return SourceImportRequest.fromByteArray(
         displayName = reviewedImageDisplayName(displayName, targetMimeType),
         mimeType = targetMimeType,
-    ) {
-        val bitmap = decodeOriginalBitmap(
-            context = context,
-            uri = uri,
-        ) ?: error("Unable to decode image for review.")
-        val rotatedBitmap = rotateBitmap(bitmap, normalizedQuarterTurns)
-        bitmapToBytes(rotatedBitmap, targetMimeType)
-    }
+        bytesProvider = {
+            val bitmap = decodeOriginalBitmap(
+                context = context,
+                uri = uri,
+            ) ?: error("Unable to decode image for review.")
+            val rotatedBitmap = rotateBitmap(bitmap, normalizedQuarterTurns)
+            bitmapToBytes(rotatedBitmap, targetMimeType)
+        },
+        onConsumed = onConsumed,
+    )
 }
 
 internal fun reviewedImageDisplayName(
@@ -471,7 +490,7 @@ private fun bitmapToBytes(
     }
 }
 
-private fun decodeOriginalBitmap(
+internal fun decodeOriginalBitmap(
     context: Context,
     uri: Uri,
 ): Bitmap? {

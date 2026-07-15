@@ -14,6 +14,7 @@ import org.vliux.orca.data.SearchRepository
 import org.vliux.orca.data.ServiceItemRepository
 import org.vliux.orca.data.VehicleRepository
 import org.vliux.orca.importing.AppFileStorage
+import org.vliux.orca.importing.ImportCaptureFileStore
 import org.vliux.orca.settings.ImportDocumentGuidancePreference
 import org.vliux.orca.settings.NewUserWizardPreference
 import org.vliux.orca.settings.OpenAiApiKeyStore
@@ -25,6 +26,7 @@ fun VehicleHubScreen(
     documentRepository: DocumentRepository,
     documentExtractionScheduler: DocumentExtractionScheduler,
     appFileStorage: AppFileStorage,
+    importCaptureFileStore: ImportCaptureFileStore,
     factRepository: FactRepository,
     serviceItemRepository: ServiceItemRepository,
     searchRepository: SearchRepository,
@@ -54,6 +56,7 @@ fun VehicleHubScreen(
             documentRepository = documentRepository,
             documentExtractionScheduler = documentExtractionScheduler,
             importDocumentGuidancePreference = importDocumentGuidancePreference,
+            importCaptureFileStore = importCaptureFileStore,
             modifier = modifier,
             onOpenSettings = {
                 routeViewModel.updateRoute {
@@ -135,6 +138,7 @@ fun VehicleHubScreen(
             documentRepository = documentRepository,
             documentExtractionScheduler = documentExtractionScheduler,
             importDocumentGuidancePreference = importDocumentGuidancePreference,
+            importCaptureFileStore = importCaptureFileStore,
             modifier = modifier,
             vehicleId = currentRoute.vehicleId,
             onBack = {
@@ -232,6 +236,7 @@ fun VehicleHubScreen(
             documentRepository = documentRepository,
             documentExtractionScheduler = documentExtractionScheduler,
             importDocumentGuidancePreference = importDocumentGuidancePreference,
+            importCaptureFileStore = importCaptureFileStore,
             modifier = modifier,
             onBack = {
                 routeViewModel.updateRoute { navigateBack() }

@@ -12,6 +12,7 @@ import org.vliux.orca.data.SearchRepository
 import org.vliux.orca.data.ServiceItemRepository
 import org.vliux.orca.data.VehicleRepository
 import org.vliux.orca.importing.AppFileStorage
+import org.vliux.orca.importing.ImportCaptureFileStore
 import org.vliux.orca.settings.ImportDocumentGuidancePreference
 import org.vliux.orca.settings.NewUserWizardPreference
 import org.vliux.orca.settings.OpenAiApiKeyStore
@@ -32,6 +33,9 @@ class MainActivity : FragmentActivity() {
 
     @Inject
     lateinit var appFileStorage: AppFileStorage
+
+    @Inject
+    lateinit var importCaptureFileStore: ImportCaptureFileStore
 
     @Inject
     lateinit var factRepository: FactRepository
@@ -61,6 +65,7 @@ class MainActivity : FragmentActivity() {
                     documentRepository = documentRepository,
                     documentExtractionScheduler = documentExtractionScheduler,
                     appFileStorage = appFileStorage,
+                    importCaptureFileStore = importCaptureFileStore,
                     factRepository = factRepository,
                     serviceItemRepository = serviceItemRepository,
                     searchRepository = searchRepository,

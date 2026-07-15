@@ -3,13 +3,27 @@ package org.vliux.orca.ui.vehicle
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.IntSize
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ImportImageReviewTest {
     @Test
+    fun scannerOriginImagesBypassDuplicateReview() {
+        assertFalse(requiresImageReview("image/jpeg", ImportAcquisitionMethod.SCAN_DOCUMENT))
+        assertTrue(requiresImageReview("image/jpeg", ImportAcquisitionMethod.CAMERA_CAPTURE))
+    }
+
+    @Test
     fun reviewedImageDisplayNameKeepsBaseNameAndMatchesMimeType() {
         assertEquals("receipt.jpg", reviewedImageDisplayName("receipt.heic", "image/jpeg"))
         assertEquals("invoice.png", reviewedImageDisplayName("invoice.jpeg", "image/png"))
+    }
+
+    @Test
+    fun scannerPageDisplayNameUsesStableOrdering() {
+        assertEquals("scan-page-001.jpg", scannerPageDisplayName(0))
+        assertEquals("scan-page-012.jpg", scannerPageDisplayName(11))
     }
 
     @Test

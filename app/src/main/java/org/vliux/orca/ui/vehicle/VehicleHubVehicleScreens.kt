@@ -4,7 +4,6 @@ import android.content.Intent
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts.OpenDocument
-import androidx.activity.result.contract.ActivityResultContracts.OpenMultipleDocuments
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -65,6 +64,7 @@ import org.vliux.orca.data.VehicleMaintenanceSummaryItem
 import org.vliux.orca.data.VehicleRepository
 import org.vliux.orca.data.model.DocumentListItem
 import org.vliux.orca.data.model.VehicleEntity
+import org.vliux.orca.importing.ImportCaptureFileStore
 import org.vliux.orca.settings.ImportDocumentGuidancePreference
 import org.vliux.orca.worker.DocumentExtractionQueueResult
 import org.vliux.orca.worker.DocumentExtractionScheduler
@@ -77,6 +77,7 @@ internal fun VehicleDetailScreen(
     documentRepository: DocumentRepository,
     documentExtractionScheduler: DocumentExtractionScheduler,
     importDocumentGuidancePreference: ImportDocumentGuidancePreference,
+    importCaptureFileStore: ImportCaptureFileStore,
     vehicleId: String,
     onBack: () -> Unit,
     onEditVehicle: () -> Unit,
@@ -84,7 +85,6 @@ internal fun VehicleDetailScreen(
     modifier: Modifier = Modifier,
 ) {
     val activity = LocalActivity.current as? FragmentActivity
-    val context = LocalContext.current
     val unableDeleteVehicleMessage = stringResource(R.string.unable_delete_vehicle)
     val importQueuedMessage = stringResource(R.string.vehicle_import_queued)
     val importNotConfiguredMessage = stringResource(R.string.vehicle_import_not_configured)
@@ -118,10 +118,8 @@ internal fun VehicleDetailScreen(
     var importError by remember(vehicleId) { mutableStateOf<String?>(null) }
     var importMessage by remember(vehicleId) { mutableStateOf<String?>(null) }
     var isImporting by remember(vehicleId) { mutableStateOf(false) }
-    var pendingImportReviewSources by remember(vehicleId) { mutableStateOf<List<PendingImportSource>?>(null) }
     var retryingDocumentId by remember(vehicleId) { mutableStateOf<String?>(null) }
     var actionMenuExpanded by remember(vehicleId) { mutableStateOf(false) }
-    var importGuidanceOpen by remember(vehicleId) { mutableStateOf(false) }
     var showDeleteConfirmation by remember(vehicleId) { mutableStateOf(false) }
     var isDeletingVehicle by remember(vehicleId) { mutableStateOf(false) }
     val loadedVehicle = screenState.vehicle
@@ -150,30 +148,22 @@ internal fun VehicleDetailScreen(
             isImporting = false
         }
     }
-
-    val launcher = rememberLauncherForActivityResult(OpenMultipleDocuments()) { uris ->
-        if (uris.isEmpty()) {
-            return@rememberLauncherForActivityResult
-        }
-        val selectedSources = uris.mapIndexed { index, uri ->
-            uri.toPendingImportSource(context, index)
-        }
-        if (selectedSources.any { it.requiresImageReview }) {
-            pendingImportReviewSources = selectedSources
-            return@rememberLauncherForActivityResult
-        }
-        importRequests(selectedSources.map { source -> source.toSourceImportRequest(context) })
-    }
+    val importFlow = rememberDocumentImportFlow(
+        activity = activity,
+        importDocumentGuidancePreference = importDocumentGuidancePreference,
+        importCaptureFileStore = importCaptureFileStore,
+        onImportRequestsReady = ::importRequests,
+        onFlowCancelled = {
+            isImporting = false
+        },
+    )
 
     fun beginImportFlow() {
         if (isImporting) {
             return
         }
-        if (importDocumentGuidancePreference.shouldShowGuidance()) {
-            importGuidanceOpen = true
-        } else {
-            launcher.launch(SUPPORTED_IMPORT_MIME_TYPES)
-        }
+        isImporting = true
+        importFlow.beginImport()
     }
 
     Scaffold(
@@ -311,30 +301,29 @@ internal fun VehicleDetailScreen(
         }
     }
 
-    if (importGuidanceOpen) {
+    if (importFlow.chooserOpen) {
         ImportDocumentGuidanceDialog(
-            onDismiss = { importGuidanceOpen = false },
-            onContinue = { dontShowAgain ->
-                if (dontShowAgain) {
-                    importDocumentGuidancePreference.disableGuidance()
-                }
-                importGuidanceOpen = false
-                launcher.launch(SUPPORTED_IMPORT_MIME_TYPES)
-            },
+            showGuidanceEducation = importFlow.chooserShowsGuidance,
+            onDismiss = importFlow.dismissChooser,
+            onChooseFiles = importFlow.chooseFiles,
+            onChooseScan = importFlow.chooseScan,
         )
     }
 
-    pendingImportReviewSources?.let { selectedSources ->
+    importFlow.pendingReviewSources?.let { selectedSources ->
         ImportImageReviewDialog(
             sources = selectedSources,
-            onDismiss = {
-                pendingImportReviewSources = null
-                isImporting = false
-            },
-            onComplete = { requests ->
-                pendingImportReviewSources = null
-                importRequests(requests)
-            },
+            onDismiss = importFlow.dismissReview,
+            onComplete = importFlow.completeReview,
+        )
+    }
+
+    importFlow.pendingScannerReviewSources?.let { selectedSources ->
+        ScannerImportReviewDialog(
+            sources = selectedSources,
+            onDismiss = importFlow.dismissScannerReview,
+            onAddMorePages = importFlow.addMoreScannerPages,
+            onSaveAndAnalyze = importFlow.completeScannerReview,
         )
     }
 

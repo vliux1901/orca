@@ -26,20 +26,24 @@ class SourceImportRequest(
             displayName: String?,
             mimeType: String?,
             openInputStream: (Uri) -> InputStream?,
+            onConsumed: () -> Unit = {},
         ): SourceImportRequest = SourceImportRequest(
             displayName = displayName,
             mimeType = mimeType,
             openStream = { openInputStream(uri) },
+            onConsumed = onConsumed,
         )
 
         fun fromByteArray(
             displayName: String?,
             mimeType: String?,
             bytesProvider: () -> ByteArray,
+            onConsumed: () -> Unit = {},
         ): SourceImportRequest = SourceImportRequest(
             displayName = displayName,
             mimeType = mimeType,
             openStream = { ByteArrayInputStream(bytesProvider()) },
+            onConsumed = onConsumed,
         )
     }
 }

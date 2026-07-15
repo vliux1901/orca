@@ -27,6 +27,7 @@ import org.vliux.orca.extraction.OpenAiCloudExtractionAdapter
 import org.vliux.orca.extraction.StrictJsonExtractionParser
 import org.vliux.orca.importing.AppFileStorage
 import org.vliux.orca.importing.DocumentImportPlanner
+import org.vliux.orca.importing.ImportCaptureFileStore
 import org.vliux.orca.normalization.ExtractionNormalizer
 import org.vliux.orca.provider.ProviderRuntimeConfigResolver
 import org.vliux.orca.provider.ProviderRuntimeConfigStore
@@ -99,6 +100,12 @@ object AppModule {
     fun provideAppFileStorage(
         @ApplicationContext appContext: Context,
     ): AppFileStorage = AppFileStorage(appContext)
+
+    @Provides
+    @Singleton
+    fun provideImportCaptureFileStore(
+        @ApplicationContext appContext: Context,
+    ): ImportCaptureFileStore = ImportCaptureFileStore(appContext)
 
     @Provides
     @Reusable

@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Orca Privacy Policy</title>
+  <style>
+    :root {
+      --bg: #eef3ed;
+      --panel: #fbfff9;
+      --panel-strong: #e8f0e3;
+      --ink: #202622;
+      --muted: #5a655d;
+      --line: #cad5c9;
+      --accent: #245b66;
+      --accent-soft: #deeff2;
+      --highlight: #fff2a8;
+      --shadow: 0 18px 40px rgba(35, 53, 40, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(36, 91, 102, 0.10), transparent 28%),
+        linear-gradient(180deg, #f7faf5 0%, var(--bg) 100%);
+    }
+
+    .shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      gap: 24px;
+      padding: 24px;
+    }
+
+    .workspace,
+    .comment-panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+    }
+
+    .workspace { padding: 18px; }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .toolbar-left,
+    .toolbar-right {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .status {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      font-family: "IBM Plex Serif", Georgia, serif;
+    }
+
+    h1 {
+      font-size: clamp(2rem, 4vw, 3rem);
+      line-height: 1.05;
+      margin-top: 10px;
+    }
+
+    p, li {
+      line-height: 1.68;
+    }
+
+    button, textarea {
+      font: inherit;
+    }
+
+    button {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      border-radius: 12px;
+      padding: 10px 14px;
+      cursor: pointer;
+      transition: 120ms ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      border-color: var(--accent);
+    }
+
+    button.primary {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    button.ghost {
+      background: transparent;
+    }
+
+    .content-card {
+      padding: 20px;
+      background: rgba(255, 255, 255, 0.84);
+      border: 1px solid rgba(202, 213, 201, 0.94);
+      border-radius: 20px;
+    }
+
+    .content-card + .content-card {
+      margin-top: 14px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .summary-card {
+      padding: 14px;
+      border-radius: 18px;
+      border: 1px solid rgba(202, 213, 201, 0.94);
+      background: rgba(255, 255, 255, 0.92);
+    }
+
+    .summary-card strong {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--accent);
+    }
+
+    .callout {
+      padding: 16px;
+      border-radius: 18px;
+      border: 1px solid rgba(36, 91, 102, 0.22);
+      background: rgba(222, 239, 242, 0.8);
+    }
+
+    .callout strong {
+      color: var(--accent);
+    }
+
+    .policy-list {
+      margin: 0;
+      padding-left: 20px;
+    }
+
+    .policy-list li + li {
+      margin-top: 8px;
+    }
+
+    .block {
+      border-radius: 8px;
+    }
+
+    code {
+      font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
+    }
+
+    mark.comment-highlight {
+      background: var(--highlight);
+      color: inherit;
+      border-radius: 4px;
+      padding: 0 1px;
+    }
+
+    .comment-panel {
+      position: sticky;
+      top: 24px;
+      align-self: start;
+      padding: 18px;
+    }
+
+    .comment-panel h2 {
+      font-size: 1.4rem;
+      margin-bottom: 8px;
+    }
+
+    .comment-panel p,
+    .comment-panel label {
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .selection-box,
+    .comment-list,
+    .export-box {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+    }
+
+    .selection-preview,
+    .comment-quote,
+    .empty-state,
+    .export-help {
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: var(--panel-strong);
+      border: 1px solid rgba(202, 213, 201, 0.94);
+    }
+
+    .selection-preview,
+    .comment-quote {
+      color: var(--ink);
+      font-size: 14px;
+      white-space: pre-wrap;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 110px;
+      margin-top: 10px;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      resize: vertical;
+      background: #fff;
+    }
+
+    .selection-actions,
+    .export-actions,
+    .comment-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .comment-item {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #fff;
+    }
+
+    .comment-item + .comment-item {
+      margin-top: 12px;
+    }
+
+    .comment-meta {
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 1100px) {
+      .shell {
+        grid-template-columns: 1fr;
+      }
+
+      .comment-panel {
+        position: static;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .shell {
+        padding: 14px;
+        gap: 16px;
+      }
+
+      .workspace,
+      .comment-panel {
+        border-radius: 18px;
+      }
+
+      .summary-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <main class="workspace">
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <span class="eyebrow">Play Store Draft</span>
+          <span class="status">Project-local HTML privacy policy for Orca</span>
+        </div>
+        <div class="toolbar-right">
+          <button class="ghost" id="copyLinkButton" type="button">Copy File Path</button>
+        </div>
+      </div>
+
+      <article class="content-card">
+        <div class="eyebrow block" data-block-id="hero-eyebrow">Privacy Policy</div>
+        <h1 class="block" data-block-id="hero-title">Orca Privacy Policy</h1>
+        <p class="block" data-block-id="hero-effective-date"><strong>Effective date:</strong> July 15, 2026</p>
+        <p class="block" data-block-id="hero-summary">
+          This Privacy Policy explains how Orca handles information when you use the Orca Android app.
+          Orca helps users organize vehicle maintenance records, import service documents, and optionally
+          run AI-powered extraction on those documents.
+        </p>
+        <div class="summary-grid">
+          <div class="summary-card block" data-block-id="summary-1">
+            <strong>Core storage model</strong>
+            Vehicle records and imported documents are stored on your device in app-private storage.
+          </div>
+          <div class="summary-card block" data-block-id="summary-2">
+            <strong>AI processing</strong>
+            If you use extraction features, Orca sends the selected source documents and relevant request
+            data to OpenAI using your user-provided API key.
+          </div>
+          <div class="summary-card block" data-block-id="summary-3">
+            <strong>API key handling</strong>
+            Your OpenAI API key is provided by you inside the app and stored locally on your device in
+            encrypted form.
+          </div>
+          <div class="summary-card block" data-block-id="summary-4">
+            <strong>Current app scope</strong>
+            As of this version, Orca does not include third-party advertising SDKs or third-party analytics SDKs.
+          </div>
+        </div>
+      </article>
+
+      <article class="content-card">
+        <h2 class="block" data-block-id="section-1-title">1. Information Orca Handles</h2>
+        <p class="block" data-block-id="section-1-intro">
+          Depending on how you use the app, Orca may handle the following categories of information:
+        </p>
+        <ul class="policy-list">
+          <li class="block" data-block-id="section-1-item-1">Vehicle information you enter, such as vehicle name, make, model, year, color, mileage, and photos.</li>
+          <li class="block" data-block-id="section-1-item-2">Maintenance documents you import, including images, scans, and PDF files such as invoices, receipts, and service records.</li>
+          <li class="block" data-block-id="section-1-item-3">Information extracted from imported documents, such as service dates, mileage, vendors, costs, and service items.</li>
+          <li class="block" data-block-id="section-1-item-4">Your OpenAI API key, if you choose to save one inside Orca.</li>
+          <li class="block" data-block-id="section-1-item-5">Basic technical request data needed to communicate with OpenAI when extraction is used.</li>
+        </ul>
+      </article>
+
+      <article class="content-card">
+        <h2 class="block" data-block-id="section-2-title">2. How Orca Uses Information</h2>
+        <ul class="policy-list">
+          <li class="block" data-block-id="section-2-item-1">To let you create and manage vehicle maintenance records.</li>
+          <li class="block" data-block-id="section-2-item-2">To import, display, organize, and delete your maintenance documents.</li>
+          <li class="block" data-block-id="section-2-item-3">To perform optional AI-powered document extraction when you choose to use that feature.</li>
+          <li class="block" data-block-id="section-2-item-4">To build searchable maintenance records and summaries from imported documents.</li>
+          <li class="block" data-block-id="section-2-item-5">To securely store and unlock your user-provided OpenAI API key when needed for extraction.</li>
+        </ul>
+      </article>
+
+      <article class="content-card">
+        <h2 class="block" data-block-id="section-3-title">3. When Information Is Shared with Third Parties</h2>
+        <p class="block" data-block-id="section-3-intro">
+          Orca does not sell your personal information. Orca shares information with third parties only
+          as needed to provide the features you choose to use.
+        </p>
+        <div class="callout block" data-block-id="section-3-callout">
+          <strong>OpenAI processing</strong>
+          If you use Orca's extraction features, Orca sends the selected documents or images, along with
+          related request content, to OpenAI so OpenAI can process the material and return extraction results.
+          This happens only when you use the cloud extraction flow.
+        </div>
+        <p class="block" data-block-id="section-3-text">
+          Orca uses your user-provided OpenAI API key to authenticate these requests. Orca does not
+          currently include third-party advertising SDKs or third-party analytics SDKs.
+        </p>
+      </article>
+
+      <article class="content-card">
+        <h2 class="block" data-block-id="section-4-title">4. Local Storage and Security</h2>
+        <ul class="policy-list">
+          <li class="block" data-block-id="section-4-item-1">Vehicle records and imported source files are stored in app-private storage on your device.</li>
+          <li class="block" data-block-id="section-4-item-2">Your OpenAI API key is stored locally in encrypted form.</li>
+          <li class="block" data-block-id="section-4-item-3">Orca uses Android Keystore-backed encryption and device authentication flows when saving or unlocking the stored API key.</li>
+          <li class="block" data-block-id="section-4-item-4">Orca excludes the stored OpenAI API key preference file from Android cloud backup and device-transfer backup rules.</li>
+        </ul>
+        <p class="block" data-block-id="section-4-text">
+          No method of storage or transmission is completely secure. However, Orca is designed to reduce
+          unnecessary exposure by keeping local records in app-private storage and requiring device
+          authentication for protected API-key access.
+        </p>
+      </article>
+
+      <article class="content-card">
+        <h2 class="block" data-block-id="section-5-title">5. Permissions and Device Access</h2>
+        <p class="block" data-block-id="section-5-intro">
+          Orca may access device capabilities needed for its core features, including:
+        </p>
+        <ul class="policy-list">
+          <li class="block" data-block-id="section-5-item-1"><strong>Camera and document scanning flows:</strong> to scan paper maintenance documents.</li>
+          <li class="block" data-block-id="section-5-item-2"><strong>Document and media selection:</strong> to let you choose images or PDF files to import.</li>
+          <li class="block" data-block-id="section-5-item-3"><strong>Internet access:</strong> to send requests to OpenAI when you use cloud extraction features.</li>
+          <li class="block" data-block-id="section-5-item-4"><strong>Biometric or device credentials:</strong> to protect stored API-key operations on supported devices.</li>
+        </ul>
+      </article>
+
+      <article class="content-card">
+        <h2 class="block" data-block-id="section-6-title">6. Retention and Deletion</h2>
+        <p class="block" data-block-id="section-6-text-1">
+          Orca keeps your vehicle and document data on your device until you delete it. You can delete
+          vehicles and documents from within the app, which removes the related stored records and app-managed
+          source files associated with those entries.
+        </p>
+        <p class="block" data-block-id="section-6-text-2">
+          You can also clear the stored OpenAI API key from within the app's settings. If you uninstall
+          Orca, app-private local data stored by the app is normally removed by Android.
+        </p>
+      </article>
+
+      <article class="content-card">
+        <h2 class="block" data-block-id="section-7-title">7. Children's Privacy</h2>
+        <p class="block" data-block-id="section-7-text">
+          Orca is not designed specifically for children. If you believe a child has provided information
+          through Orca in a way that requires action under applicable law, contact the app publisher using
+          the contact method listed below.
+        </p>
+      </article>
+
+      <article class="content-card">
+        <h2 class="block" data-block-id="section-8-title">8. Changes to This Privacy Policy</h2>
+        <p class="block" data-block-id="section-8-text">
+          This Privacy Policy may be updated from time to time. If the policy changes, the updated version
+          should be posted at the current policy URL with a revised effective date.
+        </p>
+      </article>
+
+      <article class="content-card">
+        <h2 class="block" data-block-id="section-9-title">9. Contact</h2>
+        <p class="block" data-block-id="section-9-text">
+          Before publishing this policy publicly, replace this section with a real contact method for the
+          Orca publisher, such as a support email address or support website URL.
+        </p>
+        <p class="block" data-block-id="section-9-placeholder">
+          <strong>Placeholder:</strong> <code>support@example.com</code>
+        </p>
+      </article>
+    </main>
+
+    <aside class="comment-panel">
+      <h2>Review Notes</h2>
+      <p>Select text within one paragraph or bullet, then record feedback. Comments stay in your browser via <code>localStorage</code> and can be exported.</p>
+
+      <div class="selection-box">
+        <label for="commentBox">Selected text</label>
+        <div id="selectionPreview" class="selection-preview empty-state">Select one paragraph or bullet to comment on.</div>
+        <textarea id="commentBox" placeholder="Add a note about wording, legal review, missing disclosures, or publishing changes."></textarea>
+        <div class="selection-actions">
+          <button id="saveCommentButton" class="primary" type="button">Save Comment</button>
+          <button id="clearSelectionButton" class="ghost" type="button">Clear</button>
+        </div>
+      </div>
+
+      <div class="comment-list">
+        <h3>Saved Comments</h3>
+        <div id="commentList" class="empty-state">No comments yet.</div>
+      </div>
+
+      <div class="export-box">
+        <h3>Export</h3>
+        <div class="export-help">Export reviewer notes as JSON or prompt-ready text for a follow-up edit pass.</div>
+        <div class="export-actions">
+          <button id="exportJsonButton" type="button">Export JSON</button>
+          <button id="exportPromptButton" type="button">Export Prompt Text</button>
+          <button id="clearCommentsButton" class="ghost" type="button">Clear All</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "orca-privacy-policy-comments-v1";
+    const selectionPreview = document.getElementById("selectionPreview");
+    const commentBox = document.getElementById("commentBox");
+    const commentList = document.getElementById("commentList");
+    const saveCommentButton = document.getElementById("saveCommentButton");
+    const clearSelectionButton = document.getElementById("clearSelectionButton");
+    const exportJsonButton = document.getElementById("exportJsonButton");
+    const exportPromptButton = document.getElementById("exportPromptButton");
+    const clearCommentsButton = document.getElementById("clearCommentsButton");
+    const copyLinkButton = document.getElementById("copyLinkButton");
+
+    let currentSelection = null;
+    let comments = loadComments();
+
+    document.addEventListener("selectionchange", handleSelectionChange);
+    saveCommentButton.addEventListener("click", saveComment);
+    clearSelectionButton.addEventListener("click", clearSelection);
+    exportJsonButton.addEventListener("click", exportJson);
+    exportPromptButton.addEventListener("click", exportPromptText);
+    clearCommentsButton.addEventListener("click", clearComments);
+    copyLinkButton.addEventListener("click", copyFilePath);
+
+    renderComments();
+
+    function handleSelectionChange() {
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
+        return;
+      }
+
+      const range = selection.getRangeAt(0);
+      const text = selection.toString().trim();
+      if (!text) {
+        return;
+      }
+
+      const startBlock = closestBlock(range.startContainer);
+      const endBlock = closestBlock(range.endContainer);
+      if (!startBlock || !endBlock || startBlock !== endBlock) {
+        return;
+      }
+
+      currentSelection = {
+        blockId: startBlock.dataset.blockId || "unlabeled-block",
+        text,
+        sectionTitle: nearestSectionTitle(startBlock)
+      };
+      selectionPreview.textContent = text;
+      selectionPreview.classList.remove("empty-state");
+    }
+
+    function closestBlock(node) {
+      let current = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
+      while (current) {
+        if (current.classList && current.classList.contains("block")) {
+          return current;
+        }
+        current = current.parentElement;
+      }
+      return null;
+    }
+
+    function nearestSectionTitle(block) {
+      const card = block.closest(".content-card");
+      if (!card) return "Document";
+      const heading = card.querySelector("h1, h2, h3");
+      return heading ? heading.textContent.trim() : "Document";
+    }
+
+    function saveComment() {
+      const note = commentBox.value.trim();
+      if (!currentSelection || !note) {
+        return;
+      }
+      comments.push({
+        id: crypto.randomUUID(),
+        blockId: currentSelection.blockId,
+        sectionTitle: currentSelection.sectionTitle,
+        selectedText: currentSelection.text,
+        comment: note,
+        timestamp: new Date().toISOString()
+      });
+      persistComments();
+      renderComments();
+      commentBox.value = "";
+      clearSelection();
+    }
+
+    function clearSelection() {
+      currentSelection = null;
+      selectionPreview.textContent = "Select one paragraph or bullet to comment on.";
+      selectionPreview.classList.add("empty-state");
+      const selection = window.getSelection();
+      if (selection) {
+        selection.removeAllRanges();
+      }
+    }
+
+    function renderComments() {
+      if (!comments.length) {
+        commentList.className = "empty-state";
+        commentList.textContent = "No comments yet.";
+        return;
+      }
+
+      commentList.className = "";
+      commentList.innerHTML = comments.map((item) => `
+        <div class="comment-item">
+          <div class="comment-meta">${escapeHtml(item.sectionTitle)} · ${escapeHtml(item.blockId)} · ${new Date(item.timestamp).toLocaleString()}</div>
+          <div class="comment-quote">${escapeHtml(item.selectedText)}</div>
+          <p>${escapeHtml(item.comment)}</p>
+          <div class="comment-actions">
+            <button type="button" data-jump="${escapeHtml(item.blockId)}">Jump to source</button>
+            <button type="button" data-delete="${escapeHtml(item.id)}">Delete</button>
+          </div>
+        </div>
+      `).join("");
+
+      commentList.querySelectorAll("[data-jump]").forEach((button) => {
+        button.addEventListener("click", () => jumpToBlock(button.dataset.jump));
+      });
+      commentList.querySelectorAll("[data-delete]").forEach((button) => {
+        button.addEventListener("click", () => deleteComment(button.dataset.delete));
+      });
+    }
+
+    function jumpToBlock(blockId) {
+      const target = document.querySelector(`[data-block-id="${CSS.escape(blockId)}"]`);
+      if (!target) return;
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+      target.classList.add("comment-highlight");
+      target.innerHTML = `<mark class="comment-highlight">${target.innerHTML}</mark>`;
+      setTimeout(() => {
+        const mark = target.querySelector("mark.comment-highlight");
+        if (mark) {
+          target.innerHTML = mark.innerHTML;
+        }
+      }, 1400);
+    }
+
+    function deleteComment(id) {
+      comments = comments.filter((item) => item.id !== id);
+      persistComments();
+      renderComments();
+    }
+
+    function clearComments() {
+      if (!comments.length) return;
+      comments = [];
+      persistComments();
+      renderComments();
+    }
+
+    function exportJson() {
+      if (!comments.length) return;
+      downloadFile(
+        "orca-privacy-policy-comments.json",
+        JSON.stringify(comments, null, 2),
+        "application/json"
+      );
+    }
+
+    function exportPromptText() {
+      if (!comments.length) return;
+      const content = comments.map((item) => {
+        return [
+          `Section: ${item.sectionTitle}`,
+          `Block: ${item.blockId}`,
+          `Selected text: ${item.selectedText}`,
+          `Reviewer comment: ${item.comment}`,
+          "Instruction: Update docs/privacy-policy.html to address this feedback while preserving the policy meaning unless the reviewer explicitly asks for a behavior change."
+        ].join("\n");
+      }).join("\n\n---\n\n");
+      downloadFile("orca-privacy-policy-review-prompts.txt", content, "text/plain");
+    }
+
+    function persistComments() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(comments));
+    }
+
+    function loadComments() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+      } catch (error) {
+        return [];
+      }
+    }
+
+    function downloadFile(name, content, mimeType) {
+      const blob = new Blob([content], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = name;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    }
+
+    async function copyFilePath() {
+      const path = "docs/privacy-policy.html";
+      try {
+        await navigator.clipboard.writeText(path);
+        copyLinkButton.textContent = "Copied";
+        setTimeout(() => { copyLinkButton.textContent = "Copy File Path"; }, 1200);
+      } catch (error) {
+        copyLinkButton.textContent = path;
+      }
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll("\"", "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+  </script>
+</body>
+</html>

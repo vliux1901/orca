@@ -11,5 +11,6 @@ New documents should be generated as HTML file(s) by default.
 - `execution-plan.html`: Implementation sequence, phase exit criteria, testing strategy, and delivery risks for building V1.
 - `new-user-wizard.html`: UX review page for the first-run onboarding wizard concept with phone-style mockups and review comments.
 - `camera-document-import-review.html`: UX and implementation proposal for adding paper-document scanning alongside the existing file-import flow.
+- `privacy-policy.html`: Draft Play Store privacy policy for Orca, with in-browser review comments and export support.
 - `prototype.md`: Historical prototype plan from the earlier OCR-first iteration. It no longer matches the current OpenAI-based prototype implementation.
 - `backlogs.md`: TODO backlog for known product and prototype follow-up work.

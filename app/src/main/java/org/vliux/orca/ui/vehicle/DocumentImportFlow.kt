@@ -19,7 +19,6 @@ import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult
 import org.vliux.orca.importing.ImportCaptureFileStore
 import org.vliux.orca.importing.SourceImportRequest
-import org.vliux.orca.settings.ImportDocumentGuidancePreference
 
 internal enum class ImportAcquisitionMethod {
     FILES,
@@ -28,14 +27,13 @@ internal enum class ImportAcquisitionMethod {
 }
 
 internal data class DocumentImportFlow(
-    val chooserShowsGuidance: Boolean,
     val chooserOpen: Boolean,
     val pendingReviewSources: List<PendingImportSource>?,
     val pendingScannerReviewSources: List<PendingImportSource>?,
     val beginImport: () -> Unit,
     val dismissChooser: () -> Unit,
-    val chooseFiles: (Boolean) -> Unit,
-    val chooseScan: (Boolean) -> Unit,
+    val chooseFiles: () -> Unit,
+    val chooseScan: () -> Unit,
     val dismissReview: () -> Unit,
     val completeReview: (List<SourceImportRequest>) -> Unit,
     val dismissScannerReview: () -> Unit,
@@ -86,7 +84,6 @@ internal fun pendingImportStageFor(
 @Composable
 internal fun rememberDocumentImportFlow(
     activity: FragmentActivity?,
-    importDocumentGuidancePreference: ImportDocumentGuidancePreference,
     importCaptureFileStore: ImportCaptureFileStore,
     onImportRequestsReady: (List<SourceImportRequest>) -> Unit,
     onFlowCancelled: () -> Unit,
@@ -234,7 +231,6 @@ internal fun rememberDocumentImportFlow(
     }
 
     return DocumentImportFlow(
-        chooserShowsGuidance = importDocumentGuidancePreference.shouldShowGuidance(),
         chooserOpen = chooserOpen,
         pendingReviewSources = pendingReviewSources,
         pendingScannerReviewSources = pendingScannerReviewSources,
@@ -245,17 +241,11 @@ internal fun rememberDocumentImportFlow(
             chooserOpen = false
             cancelFlow()
         },
-        chooseFiles = { dontShowAgain ->
-            if (dontShowAgain) {
-                importDocumentGuidancePreference.disableGuidance()
-            }
+        chooseFiles = {
             chooserOpen = false
             filePickerLauncher.launch(SUPPORTED_IMPORT_MIME_TYPES)
         },
-        chooseScan = { dontShowAgain ->
-            if (dontShowAgain) {
-                importDocumentGuidancePreference.disableGuidance()
-            }
+        chooseScan = {
             chooserOpen = false
             scannerAppendMode = false
             launchScanner()

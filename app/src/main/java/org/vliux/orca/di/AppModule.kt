@@ -32,11 +32,9 @@ import org.vliux.orca.normalization.ExtractionNormalizer
 import org.vliux.orca.provider.ProviderRuntimeConfigResolver
 import org.vliux.orca.provider.ProviderRuntimeConfigStore
 import org.vliux.orca.search.SearchIndexBuilder
-import org.vliux.orca.settings.ImportDocumentGuidancePreference
-import org.vliux.orca.settings.OpenAiApiKeyStore
 import org.vliux.orca.settings.KeystoreOpenAiApiKeyStore
 import org.vliux.orca.settings.NewUserWizardPreference
-import org.vliux.orca.settings.SharedPreferencesImportDocumentGuidancePreference
+import org.vliux.orca.settings.OpenAiApiKeyStore
 import org.vliux.orca.settings.SharedPreferencesNewUserWizardPreference
 import org.vliux.orca.worker.DocumentExtractionWorkEnqueuer
 import org.vliux.orca.worker.WorkManagerDocumentExtractionWorkEnqueuer
@@ -49,12 +47,6 @@ object AppModule {
     fun provideOpenAiApiKeyStore(
         @ApplicationContext appContext: Context,
     ): OpenAiApiKeyStore = KeystoreOpenAiApiKeyStore(appContext)
-
-    @Provides
-    @Singleton
-    fun provideImportDocumentGuidancePreference(
-        @ApplicationContext appContext: Context,
-    ): ImportDocumentGuidancePreference = SharedPreferencesImportDocumentGuidancePreference(appContext)
 
     @Provides
     @Singleton

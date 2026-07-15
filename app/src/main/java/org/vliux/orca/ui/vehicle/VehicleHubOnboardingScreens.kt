@@ -50,7 +50,6 @@ import org.vliux.orca.R
 import org.vliux.orca.data.DocumentRepository
 import org.vliux.orca.data.VehicleRepository
 import org.vliux.orca.importing.ImportCaptureFileStore
-import org.vliux.orca.settings.ImportDocumentGuidancePreference
 import org.vliux.orca.settings.OpenAiApiKeyAccessState
 import org.vliux.orca.settings.OpenAiApiKeyMutationResult
 import org.vliux.orca.settings.OpenAiApiKeyStore
@@ -319,7 +318,6 @@ internal fun OnboardingImportScreen(
     vehicleRepository: VehicleRepository,
     documentRepository: DocumentRepository,
     documentExtractionScheduler: DocumentExtractionScheduler,
-    importDocumentGuidancePreference: ImportDocumentGuidancePreference,
     importCaptureFileStore: ImportCaptureFileStore,
     onBack: () -> Unit,
     onFinish: () -> Unit,
@@ -364,7 +362,6 @@ internal fun OnboardingImportScreen(
     }
     val importFlow = rememberDocumentImportFlow(
         activity = activity,
-        importDocumentGuidancePreference = importDocumentGuidancePreference,
         importCaptureFileStore = importCaptureFileStore,
         onImportRequestsReady = { requests ->
             val vehicleId = selectedImportVehicleId
@@ -431,7 +428,6 @@ internal fun OnboardingImportScreen(
 
     if (importFlow.chooserOpen) {
         ImportDocumentGuidanceDialog(
-            showGuidanceEducation = importFlow.chooserShowsGuidance,
             onDismiss = importFlow.dismissChooser,
             onChooseFiles = importFlow.chooseFiles,
             onChooseScan = importFlow.chooseScan,

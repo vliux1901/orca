@@ -224,12 +224,10 @@ internal fun InfoCard(
 
 @Composable
 internal fun ImportDocumentGuidanceDialog(
-    showGuidanceEducation: Boolean,
     onDismiss: () -> Unit,
-    onChooseFiles: (dontShowAgain: Boolean) -> Unit,
-    onChooseScan: (dontShowAgain: Boolean) -> Unit,
+    onChooseFiles: () -> Unit,
+    onChooseScan: () -> Unit,
 ) {
-    var dontShowAgain by rememberSaveable { mutableStateOf(false) }
     val message = buildImportDocumentGuidanceMessage(
         prefix = stringResource(R.string.import_document_guidance_message_prefix),
         emphasis = stringResource(R.string.import_document_guidance_message_emphasis),
@@ -274,71 +272,12 @@ internal fun ImportDocumentGuidanceDialog(
                     }
                 }
 
-                if (showGuidanceEducation) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        ),
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            Text(message, style = MaterialTheme.typography.bodyMedium)
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { dontShowAgain = !dontShowAgain },
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Checkbox(
-                                    checked = dontShowAgain,
-                                    onCheckedChange = { checked ->
-                                        dontShowAgain = checked == true
-                                    },
-                                )
-                                Text(
-                                    text = stringResource(R.string.dont_show_again),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                )
-                            }
-                        }
-                    }
-                }
-
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onChooseFiles(dontShowAgain) },
+                        .clickable { onChooseScan() },
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    ),
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        Text(
-                            text = stringResource(R.string.import_document_choose_files),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        Text(
-                            text = stringResource(R.string.import_document_choose_files_description),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onChooseScan(dontShowAgain) },
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
                     ),
                 ) {
                     Column(
@@ -353,8 +292,36 @@ internal fun ImportDocumentGuidanceDialog(
                         Text(
                             text = stringResource(R.string.import_document_scan_paper_description),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                    }
+                }
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onChooseFiles() },
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    ),
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                text = stringResource(R.string.import_document_choose_files),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            Text(
+                                text = stringResource(R.string.import_document_choose_files_description),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Text(message, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
 

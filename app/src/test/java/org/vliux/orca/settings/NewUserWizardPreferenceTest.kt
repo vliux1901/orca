@@ -24,3 +24,13 @@ class NewUserWizardPreferenceTest {
         assertEquals(false, store.values["show_new_user_wizard"])
     }
 }
+
+private class FakeBooleanPreferenceStore : BooleanPreferenceStore {
+    val values = mutableMapOf<String, Boolean>()
+
+    override fun getBoolean(key: String, defaultValue: Boolean): Boolean = values[key] ?: defaultValue
+
+    override fun putBoolean(key: String, value: Boolean) {
+        values[key] = value
+    }
+}

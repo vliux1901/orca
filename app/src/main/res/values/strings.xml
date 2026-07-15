@@ -58,9 +58,9 @@
     <string name="import_document">Import Document</string>
     <string name="import_document_guidance_title">Add a maintenance document</string>
     <string name="import_document_method_message">Choose whether the document already exists on this device or is still on paper.</string>
-    <string name="import_document_choose_files">Choose existing files</string>
-    <string name="import_document_choose_files_description">Use this when the document already exists on the device. You can select multiple images or PDFs at the same time.</string>
-    <string name="import_document_scan_paper">Scan paper document</string>
+    <string name="import_document_choose_files">Import existing files on this device</string>
+    <string name="import_document_choose_files_description">Use this when the document already exists on the device.</string>
+    <string name="import_document_scan_paper">Camera scan documents</string>
     <string name="import_document_scan_paper_description">Use the camera for a receipt, invoice, or printed service record.</string>
     <string name="import_document_guidance_message_prefix">In the next screen, you can select</string>
     <string name="import_document_guidance_message_emphasis">multiple images or PDF files</string>
@@ -85,7 +85,6 @@
     <string name="confirm_images_and_start_extraction">Confirm and start extraction</string>
     <string name="import_existing_vehicle_title">Import into Existing Vehicle</string>
     <string name="import_existing_vehicle_message">Choose which vehicle should receive these files.</string>
-    <string name="dont_show_again">Don\'t show again</string>
     <string name="continue_action">Continue</string>
     <string name="vehicle_mileage_unknown">Mileage unknown</string>
     <string name="vehicle_mileage_mi">%1$d mi</string>

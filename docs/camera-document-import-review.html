@@ -883,21 +883,18 @@
                       </div>
                       <div class="sheet-anchor block" data-block-id="screen-1-sheet">
                         <div class="choice-stack">
-                          <div class="choice-card block" data-block-id="screen-1-files">
-                            <strong>Choose existing files</strong>
-                            <div class="microcopy">Use this when the document already exists on the device. Users can select multiple images or PDFs at the same time.</div>
-                          </div>
                           <div class="choice-card primary block" data-block-id="screen-1-scan">
-                            <strong>Scan paper document</strong>
+                            <strong>Camera scan documents</strong>
                             <div class="microcopy">Use the camera for a receipt, invoice, or printed service record.</div>
                           </div>
-                        </div>
-                        <div class="check-row" style="margin-top: 12px;">
-                          <div class="checkbox" aria-hidden="true"></div>
-                          <div class="microcopy">Don't show the long import tips again</div>
+                          <div class="choice-card block" data-block-id="screen-1-files">
+                            <strong>Import existing files on this device</strong>
+                            <div class="microcopy">Use this when the document already exists on the device.</div>
+                            <div class="microcopy" style="margin-top: 10px;">In the next screen, users can select multiple images or PDF files. Orca will import and process them for this vehicle.</div>
+                          </div>
                         </div>
                         <div class="button-stack" style="margin-top: 12px;">
-                          <div class="cta primary block" data-block-id="screen-1-primary">Scan paper document</div>
+                          <div class="cta primary block" data-block-id="screen-1-primary">Camera scan documents</div>
                           <div class="cta ghost block" data-block-id="screen-1-cancel">Cancel</div>
                         </div>
                       </div>
@@ -1047,7 +1044,7 @@
             <ol>
               <li class="block" data-block-id="flow-1">User taps an existing <code>Import Document</code> CTA.</li>
               <li class="block" data-block-id="flow-2">If needed, Orca asks which vehicle will own the import.</li>
-              <li class="block" data-block-id="flow-3">Orca opens a shared source-method chooser with <code>Choose existing files</code> and <code>Scan paper document</code>.</li>
+              <li class="block" data-block-id="flow-3">Orca opens a shared source-method chooser with <code>Camera scan documents</code> first and <code>Import existing files on this device</code> second.</li>
               <li class="block" data-block-id="flow-4">File imports continue through <code>OpenMultipleDocuments()</code> and the current <code>ImportImageReviewDialog</code>.</li>
               <li class="block" data-block-id="flow-5">Paper scans launch the scanner flow and return ordered JPEG page URIs or a fallback camera capture URI.</li>
               <li class="block" data-block-id="flow-6">Orca converts the returned pages into <code>SourceImportRequest</code> objects, imports them, queues extraction, and navigates to document detail.</li>
@@ -1120,7 +1117,7 @@
             <div class="risk-grid">
               <div class="risk-card block" data-block-id="risk-1">
                 <strong>Product wording</strong>
-                The current import guidance copy is file-centric. It needs to be rewritten so <code>Don't show again</code> does not hide the only path explanation for paper scans.
+                The current import guidance copy is file-centric. It should stay attached to the existing-files option so the chooser keeps a clear explanation for both acquisition paths.
               </div>
               <div class="risk-card block" data-block-id="risk-2">
                 <strong>Unsupported-device UX</strong>

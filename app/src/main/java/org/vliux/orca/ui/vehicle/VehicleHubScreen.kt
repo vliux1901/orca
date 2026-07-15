@@ -15,7 +15,6 @@ import org.vliux.orca.data.ServiceItemRepository
 import org.vliux.orca.data.VehicleRepository
 import org.vliux.orca.importing.AppFileStorage
 import org.vliux.orca.importing.ImportCaptureFileStore
-import org.vliux.orca.settings.ImportDocumentGuidancePreference
 import org.vliux.orca.settings.NewUserWizardPreference
 import org.vliux.orca.settings.OpenAiApiKeyStore
 import org.vliux.orca.worker.DocumentExtractionScheduler
@@ -31,7 +30,6 @@ fun VehicleHubScreen(
     serviceItemRepository: ServiceItemRepository,
     searchRepository: SearchRepository,
     openAiApiKeyStore: OpenAiApiKeyStore,
-    importDocumentGuidancePreference: ImportDocumentGuidancePreference,
     newUserWizardPreference: NewUserWizardPreference,
     modifier: Modifier = Modifier,
 ) {
@@ -55,7 +53,6 @@ fun VehicleHubScreen(
             vehicleRepository = vehicleRepository,
             documentRepository = documentRepository,
             documentExtractionScheduler = documentExtractionScheduler,
-            importDocumentGuidancePreference = importDocumentGuidancePreference,
             importCaptureFileStore = importCaptureFileStore,
             modifier = modifier,
             onOpenSettings = {
@@ -137,7 +134,6 @@ fun VehicleHubScreen(
             vehicleRepository = vehicleRepository,
             documentRepository = documentRepository,
             documentExtractionScheduler = documentExtractionScheduler,
-            importDocumentGuidancePreference = importDocumentGuidancePreference,
             importCaptureFileStore = importCaptureFileStore,
             modifier = modifier,
             vehicleId = currentRoute.vehicleId,
@@ -235,7 +231,6 @@ fun VehicleHubScreen(
             vehicleRepository = vehicleRepository,
             documentRepository = documentRepository,
             documentExtractionScheduler = documentExtractionScheduler,
-            importDocumentGuidancePreference = importDocumentGuidancePreference,
             importCaptureFileStore = importCaptureFileStore,
             modifier = modifier,
             onBack = {

@@ -81,7 +81,6 @@ import org.vliux.orca.importing.ImportCaptureFileStore
 import org.vliux.orca.search.SearchAnswer
 import org.vliux.orca.search.SearchCitation
 import org.vliux.orca.search.SearchResultItem
-import org.vliux.orca.settings.ImportDocumentGuidancePreference
 import org.vliux.orca.ui.theme.SkyBlue80
 import org.vliux.orca.worker.DocumentExtractionQueueResult
 import org.vliux.orca.worker.DocumentExtractionScheduler
@@ -92,7 +91,6 @@ internal fun VehicleListScreen(
     vehicleRepository: VehicleRepository,
     documentRepository: DocumentRepository,
     documentExtractionScheduler: DocumentExtractionScheduler,
-    importDocumentGuidancePreference: ImportDocumentGuidancePreference,
     importCaptureFileStore: ImportCaptureFileStore,
     onOpenSettings: () -> Unit,
     onOpenDebug: () -> Unit,
@@ -142,7 +140,6 @@ internal fun VehicleListScreen(
     }
     val importFlow = rememberDocumentImportFlow(
         activity = activity,
-        importDocumentGuidancePreference = importDocumentGuidancePreference,
         importCaptureFileStore = importCaptureFileStore,
         onImportRequestsReady = { requests ->
             val vehicleId = selectedImportVehicleId
@@ -290,7 +287,6 @@ internal fun VehicleListScreen(
 
     if (importFlow.chooserOpen) {
         ImportDocumentGuidanceDialog(
-            showGuidanceEducation = importFlow.chooserShowsGuidance,
             onDismiss = importFlow.dismissChooser,
             onChooseFiles = importFlow.chooseFiles,
             onChooseScan = importFlow.chooseScan,

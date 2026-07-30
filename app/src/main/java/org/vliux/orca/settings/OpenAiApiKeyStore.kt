@@ -1,5 +1,6 @@
 package org.vliux.orca.settings
 
+import android.app.KeyguardManager
 import android.content.Context
 import android.content.SharedPreferences
 import android.os.Build
@@ -58,6 +59,18 @@ private enum class AuthenticationResult {
     CANCELLED,
     UNAVAILABLE,
 }
+
+internal enum class ApiKeyAuthenticationPromptStyle {
+    MODERN_AUTHENTICATORS,
+    LEGACY_DEVICE_CREDENTIAL,
+}
+
+internal fun apiKeyAuthenticationPromptStyle(sdkInt: Int): ApiKeyAuthenticationPromptStyle =
+    if (sdkInt >= Build.VERSION_CODES.R) {
+        ApiKeyAuthenticationPromptStyle.MODERN_AUTHENTICATORS
+    } else {
+        ApiKeyAuthenticationPromptStyle.LEGACY_DEVICE_CREDENTIAL
+    }
 
 @Singleton
 class KeystoreOpenAiApiKeyStore @Inject constructor(
@@ -164,9 +177,24 @@ class KeystoreOpenAiApiKeyStore @Inject constructor(
         title: String,
         subtitle: String,
     ): AuthenticationResult {
+        val promptStyle = apiKeyAuthenticationPromptStyle(Build.VERSION.SDK_INT)
         val authenticators = BiometricManager.Authenticators.BIOMETRIC_STRONG or
             BiometricManager.Authenticators.DEVICE_CREDENTIAL
-        if (BiometricManager.from(activity).canAuthenticate(authenticators) != BiometricManager.BIOMETRIC_SUCCESS) {
+        val canAuthenticate = when (promptStyle) {
+            ApiKeyAuthenticationPromptStyle.MODERN_AUTHENTICATORS -> {
+                BiometricManager.from(activity).canAuthenticate(authenticators)
+            }
+            ApiKeyAuthenticationPromptStyle.LEGACY_DEVICE_CREDENTIAL -> {
+                if (BiometricManager.from(activity).canAuthenticate() == BiometricManager.BIOMETRIC_SUCCESS ||
+                    activity.getSystemService(KeyguardManager::class.java)?.isDeviceSecure == true
+                ) {
+                    BiometricManager.BIOMETRIC_SUCCESS
+                } else {
+                    BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED
+                }
+            }
+        }
+        if (canAuthenticate != BiometricManager.BIOMETRIC_SUCCESS) {
             accessStateFlow.value = if (hasStoredCiphertext()) {
                 OpenAiApiKeyAccessState.LOCKED
             } else {
@@ -192,11 +220,19 @@ class KeystoreOpenAiApiKeyStore @Inject constructor(
                     }
                 },
             )
-            val promptInfo = BiometricPrompt.PromptInfo.Builder()
+            val promptInfoBuilder = BiometricPrompt.PromptInfo.Builder()
                 .setTitle(title)
                 .setSubtitle(subtitle)
-                .setAllowedAuthenticators(authenticators)
-                .build()
+            when (promptStyle) {
+                ApiKeyAuthenticationPromptStyle.MODERN_AUTHENTICATORS -> {
+                    promptInfoBuilder.setAllowedAuthenticators(authenticators)
+                }
+                ApiKeyAuthenticationPromptStyle.LEGACY_DEVICE_CREDENTIAL -> {
+                    @Suppress("DEPRECATION")
+                    promptInfoBuilder.setDeviceCredentialAllowed(true)
+                }
+            }
+            val promptInfo = promptInfoBuilder.build()
             prompt.authenticate(promptInfo)
         }
     }

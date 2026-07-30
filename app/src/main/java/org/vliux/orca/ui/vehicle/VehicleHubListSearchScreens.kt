@@ -344,9 +344,9 @@ internal data class VehicleListImportResult(
 )
 
 @Composable
-private fun AppIcon() {
+internal fun AppIcon() {
     Image(
-        painter = painterResource(R.drawable.ic_launcher_foreground),
+        painter = painterResource(R.drawable.ic_launcher_foreground_art),
         contentDescription = stringResource(R.string.orca_app_icon_content_description),
         modifier = Modifier
             .size(28.dp)
